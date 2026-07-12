@@ -1,0 +1,206 @@
+# Zolva — Open-Source Agent Platform for Banks & Fintechs
+
+**Status:** Design approved in brainstorming, 2026-07-12 (rev 2: competitive landscape, security, docs plan, quality standard)
+**Goal:** Real OSS product (months horizon), Python, pip-installable, self-hosted inside the bank's own systems. No MCP, no hosted service.
+
+## The prompt (reworked)
+
+> Build an open-source, plug-and-play agent platform for banks and fintechs. Every bank is solving the same problems in a silo: CX support agents, repayment/collections automation, dispute handling, KYC ops. Santander open-sourced the primitives (LLM bridge, guardrails, governance, eval harnesses) but nothing composes them. The project: a Python package where a bank declares any number of agents in config (YAML/JSON + Markdown instructions), plugs in its existing APIs as typed tools, and gets an orchestrator with banking-grade guardrails, CI-gated evals, a feedback-to-fix loop, audit trails, human handover, and synthetic monitoring out of the box. "Rails for bank agents" — opinionated, compliance-aware, model-agnostic, security-first.
+
+## Competitive landscape & positioning
+
+### Closed SaaS (the incumbents we are the OSS alternative to)
+| Product | What it is | Why banks still need us |
+|---|---|---|
+| [Sierra](https://sierra.ai/industries/financial-services) | Enterprise AI agents (voice/chat) for CX, outcome-priced | Hosted — customer data leaves the bank; per-resolution pricing; no self-host |
+| [Salient](https://www.trysalient.com/) | AI-native loan servicing/collections agents | US-centric, closed, vertical-only |
+| [Gradient Labs](https://gradient-labs.ai/guides/best-ai-agents-for-lending) | Borrower-lifecycle agents (onboarding→collections→hardship) | Closed SaaS |
+| [Kore.ai](https://www.kore.ai/blog/top-agentic-ai-platforms-for-banking-and-finance), Talkdesk, etc. | Enterprise agentic platforms w/ SOC2/PCI claims | License cost, lock-in, config lives in their cloud |
+
+### Open source (the pieces, none composed)
+| Project | Covers | Gap we fill |
+|---|---|---|
+| LangGraph / CrewAI / OpenAI Agents SDK | Generic agent orchestration | No banking guardrails, no eval gates, no audit/compliance layer |
+| Parlant | Compliance-minded conversation control | No eval/regression system, no feedback loop, no banking scorecard |
+| NeMo Guardrails / Guardrails AI | Guardrails only | Not tied to an orchestrator, tools, or audit trail |
+| Promptfoo / DeepEval | Evals only | Not runtime-integrated; no failure→regression promotion loop |
+| [SantanderAI](https://github.com/SantanderAI) (`llm_bridge`, `autoguardrails`, `mech-gov-framework`, `ralph`) | Bank-grade primitives | Disconnected repos; no unified runtime, config model, or product |
+
+**Positioning:** the only self-hosted, source-available, bank-opinionated platform where orchestration + guardrails + evals + feedback loop + audit are one coherent system installed *inside* the bank's perimeter. Regulatory tailwind: [EU AI Act high-risk obligations land Aug 2026](https://fin.ai/learn/evaluate-ai-agent-compliance-financial-services); SR 11-7 demands documented validation and ongoing monitoring — our eval gates and audit log ARE that evidence. The [Linux Foundation's argument](https://www.linuxfoundation.org/blog/navigating-the-agentic-ai-guardrails-why-open-source-is-the-key-to-ai-in-regulated-industries) that regulated industries need open source for auditability is our thesis verbatim.
+
+## Decisions made
+
+| Decision | Choice |
+|---|---|
+| Artifact | Full agent orchestrator, installed as a package in the bank's own infra |
+| Distribution | Python ≥3.11, `pip install zolva` + extras (`zolva[evals,guardrails,audit,synthetics]`) |
+| Architecture | Small core + first-party plugin packages behind stable one-class interfaces |
+| Runtime | Own thin runtime; vendor-neutral LLM bridge. No MCP, no LangGraph/vendor SDK dependency |
+| Agents | Data, not code: unlimited agents via config files; bank writes zero framework code beyond tools |
+| "Training/RL" | Feedback-to-fix loop (production signal → permanent regression case → gated fix → weekly re-verify) + `export-dataset` JSONL on-ramp for later SFT/DPO. No weight training in v1 |
+| Security posture | Top priority; see Security section — threat-modeled from day one, not retrofitted |
+
+## Architecture
+
+```
+zolva (core)
+├── config loader        agents/*.yaml + *.md instructions, JSON-Schema validated at load
+├── tool registry        @tool decorator, Pydantic I/O contracts (schema-aware resolver)
+├── LLM bridge           adapter per provider; v1: OpenAI, Anthropic; interface for in-house gateways
+├── orchestrator         agent loop, typed handoffs carrying session context
+├── sessions             storage interface; v1: in-memory + SQLite (encrypted at rest optional)
+├── handover             HandoverBackend interface (escalate/resume); v1: Webhook + Log backends
+└── middleware bus       every step flows through hooks — the plugin attachment point
+
+plugins (separate installable packages)
+├── guardrails           policy YAML: pre/post rules; 3 rule types (regex/structural/LLM-judge);
+│                        `never` violations hard-block + escalate, not configurable off
+├── evals                cohort YAML files; 4 graders (exact, contains, tool_called, judge);
+│                        `zolva eval --gate` exits 1 on worst-cohort failure → CI story
+├── feedback             app.feedback() → failure queue (violations/escalations auto-captured);
+│                        `zolva triage` promotes to permanent eval cases (human-in-loop);
+│                        `zolva export-dataset` → fine-tuning JSONL
+├── audit + scorecard    append-only, hash-chained JSON log via bus, config-version stamped;
+│                        `zolva scorecard`: SARR + paired counter-metrics (4 quadrants)
+└── synthetics           persona-LLM drives real agent multi-turn, judge grades transcript;
+                         reuses eval runner/graders/gate; run from cron/CI
+```
+
+## What a bank writes
+
+```yaml
+# agents/collections.yaml
+name: collections-agent
+instructions: agents/collections.md
+model: { provider: openai, name: gpt-5 }
+tools: [get_dues, get_repayment_options, send_payment_link, schedule_callback]
+handoffs: [hardship-agent, human-escalation]
+guardrails: policies/collections.yaml
+evals: evals/collections/
+```
+
+```python
+from zolva import tool, AgentApp
+
+@tool
+def get_dues(customer_id: str) -> DuesSchema:   # Pydantic contract
+    return loans_api.dues(customer_id)          # their silo, their auth
+
+app = AgentApp.from_config("agents/", handover=WebhookBackend(url))
+reply = await app.run("collections-agent", session_id, user_msg)
+app.feedback(session_id, turn_id, signal="thumbs_down", note="wrong due date")
+```
+
+## Security (top priority)
+
+### Threat model (v1 scope)
+| Threat | Mitigation (built-in, not optional) |
+|---|---|
+| **Prompt injection** (user or tool output steers the agent) | Tool outputs are data, never re-interpreted as instructions: structured (Pydantic) tool results rendered into a fenced, typed context block; guardrail post-checks run on every output regardless of what the model was told; `never` rules cannot be disabled |
+| **Tool misuse / excessive agency** | Per-agent tool allowlist (config); tool args contract-validated; optional `confirm: human` flag per tool for irreversible actions (payments, limit changes) → routes through handover before execution |
+| **Data exfiltration via model provider** | Self-hosted by design; LLM bridge supports in-house gateways/local models; optional PII redaction middleware (regex + NER hook) scrubs configured fields before any provider call, restores after |
+| **Session/customer data leakage across sessions** | Session store keyed and isolated per session_id; no cross-session context ever assembled by the orchestrator |
+| **Secrets** | No secrets in config files — env/secret-manager references only (`${ENV:OPENAI_KEY}`); config loader refuses inline credentials |
+| **Audit tampering** | Audit rows hash-chained (each row carries previous row's hash); `zolva audit verify` detects gaps/edits; WORM-store interface for regulators |
+| **Supply chain** | Minimal dependency tree (pydantic, httpx, pyyaml + provider SDKs only); pinned + hash-verified lockfile; signed releases (Sigstore); SBOM published per release; `pip-audit` in CI |
+| **Malicious/buggy plugin** | Plugins attach via the bus with a declared capability list; core logs which plugin touched each step (accountability in audit trail) |
+
+### Security engineering rules (enforced in CI, see Quality standard)
+- `bandit` + `pip-audit` + secret-scanning on every PR; build fails on findings.
+- All inputs at trust boundaries (config files, user messages, tool results, webhook payloads) schema-validated before use; no `eval`/`exec`/pickle anywhere; YAML loaded with `safe_load` only.
+- Coordinated disclosure: `SECURITY.md` with private reporting channel; CVE process documented.
+- Compliance mapping doc ships with the project: which control satisfies which EU AI Act / SR 11-7 / RBI digital-lending expectation (transparency, traceability, human oversight, ongoing monitoring → audit log, config hashes, handover, weekly evals respectively).
+
+## Guardrails (plugin)
+
+```yaml
+pre:
+  - block_outside_window: { hours: "08:00-19:00", tz: Asia/Kolkata }
+post:
+  - refuse_topics: [investment_advice, legal_advice]      # LLM-judge, binary
+  - require_disclaimer: { when: mentions_mutual_funds, text: "..." }
+  - never: [threats, third_party_disclosure]              # unsafe-comply = hard block
+on_violation: { action: block_and_escalate, log: true }
+```
+
+Rule types: exact-string/regex, structural (time windows, tool allowlists, wrong-reason check vs ledger code), binary LLM-judge. Extension = subclass one `Rule` class. `never` path not configurable off.
+
+## Evals (plugin)
+
+- One YAML file per cohort; cases = `{input, expect}`.
+- Graders: `exact`, `contains`, `tool_called` (contract-checked), `judge` (binary, reference-answer, position/verbosity-bias mitigated).
+- Gate on the **worst cohort, not the average**; `unsafe_comply` cohort requires 1.0. `--gate` exit code 1 blocks any CI.
+- Weekly drift runs via the bank's own cron. Results → stdout table + `eval-results/<date>.json` (git-diffable history).
+- Tools mocked via bank-written `fixtures.py`, or run live against staging.
+
+## Feedback loop (plugin)
+
+1. **Capture** — `feedback()` + auto-capture of guardrail violations and escalations → SQLite failure queue with full turn context.
+2. **Triage** — `zolva triage` interactive CLI; accepted failures become permanent eval cases (human-in-the-loop; no auto-promotion — label poisoning).
+3. **Fix → gate** — edit instruction/policy/tool; `eval --gate` must pass incl. new case. Velocity (wrong→right time) from queue timestamps.
+
+## Human handover (core interface)
+
+```python
+class HandoverBackend:
+    async def escalate(self, ticket: Ticket) -> HandoverRef: ...
+    async def resume(self, ref, resolution) -> None: ...
+```
+
+Triggered by: agent handoff, guardrail `never` violation, user request, or `confirm: human` tools — one code path. Ticket carries transcript + tool calls + agent summary. Ships with `WebhookBackend` (HMAC-signed payloads) and `LogBackend`; ticketing-system adapters are plugin/community territory. Every escalation auto-lands in the failure queue.
+
+## Audit + scorecard (plugin)
+
+- Append-only, hash-chained JSON rows for every bus step; config version + instruction-file hash stamped → any response replayable to exactly what config produced it. `AuditStore` interface (SQLite default; Postgres/S3/WORM for regulators).
+- `zolva scorecard --since 7d`: Safety (unsafe-comply, wrong-reason, disclaimer) / Usefulness (false-refusal, containment, handoff correctness) / Velocity (wrong→right) / **North star: SARR** (resolved end-to-end, no escalation, no re-contact ≤ N days [default 7, config], zero violations).
+
+## Synthetics (plugin)
+
+```yaml
+path: collections-agent
+persona: personas/overdue-customer.md
+goal: "obtains repayment options and a valid payment link"
+judge: graders/resolution.md
+```
+
+Persona-LLM converses with the real agent (staging tools); judge grades transcript; exit 1 on failure. Reuses eval machinery. Personas include adversarial ones (prompt-injection attempts, social-engineering scripts) — security testing as a first-class synthetic.
+
+## Documentation plan (Diátaxis structure, docs site via MkDocs Material)
+
+| Type | Content | When |
+|---|---|---|
+| **Tutorial** | "Your first bank agent in 15 minutes" — mock bank, collections agent, first eval, first gate failure, first triage | Ships with v0.1; the README quickstart is its condensed form |
+| **How-to guides** | One per real task: add an agent, wrap an internal API as a tool, write a guardrail policy, mock tools for evals, wire CI gating (GitHub Actions/GitLab/Jenkins snippets), set up weekly drift cron, build a handover backend, redact PII, verify the audit chain, run adversarial synthetics | Grows with each plugin release |
+| **Reference** | Auto-generated API docs (mkdocstrings) + published JSON Schemas for every config file (agents, policies, cohorts, synthetics) — IDE autocomplete via schema store | Generated in CI, never hand-maintained |
+| **Explanation** | Architecture & middleware bus; the eval philosophy (worst-cohort gating, binary rubrics, regression promotion); the security model & threat model; **compliance mapping** (EU AI Act / SR 11-7 / RBI ↔ platform controls); ADRs (`docs/adr/`) for every irreversible decision | Architecture + security docs at v0.1; ADRs continuous |
+| **Operational** | `SECURITY.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, versioning/deprecation policy (SemVer; config schemas versioned; migration notes per minor) | Repo day one |
+
+Docs are CI-checked: snippets in docs are extracted and executed as tests (no rotting examples); broken links fail the build.
+
+## Engineering quality standard — every line checked, no exceptions
+
+These rules go in `CONTRIBUTING.md` and the repo's `CLAUDE.md` so both humans and AI contributors are bound by them; CI enforces all of them — none are honor-system.
+
+1. **Types:** `mypy --strict` on all packages; `py.typed` shipped. No `Any` escapes without an inline justification comment.
+2. **Lint/format:** `ruff` (lint + format) — zero warnings policy.
+3. **Tests:** every PR carries tests for its change; `pytest` line+branch coverage gate ≥90% on core, ≥85% on plugins; a bugfix PR must include the failing-case test first.
+4. **Dogfood gate:** the `examples/mockbank` app (mock loans/cards APIs, collections + CX agents, eval sets, one adversarial synthetic) runs `zolva eval --gate` in CI — the platform's own release gate is the platform. A release that fails its own eval gate does not ship.
+5. **Security gates:** `bandit`, `pip-audit`, secret-scan (gitleaks) on every PR; dependency updates only via lockfile PRs with changelog review.
+6. **CI matrix:** Python 3.11/3.12/3.13, Linux + macOS; all gates green before merge; `main` is always releasable.
+7. **Review:** no direct pushes to `main`; every PR reviewed (maintainer or second contributor); AI-generated code is labeled and held to the identical bar — it merges only through the same gates.
+8. **Releases:** tagged, signed (Sigstore), SBOM attached, changelog generated from conventional commits; `pip install` from TestPyPI smoke-tested in CI before real publish.
+
+## Explicitly deferred (add when demanded)
+
+Hot-reload config; OpenAPI→tools generation; model fallback chains; Redis sessions; policy DSL; per-rule severity; eval dashboard/UI; statistical significance; auto-prompt-optimization (DSPy-style plugin); fine-tuning pipelines; agent-assist mode; handover routing/queueing; Grafana dashboards; alerting; scheduler; TS SDK; MCP adapter; voice/telephony channel adapters (design keeps channels out of core so a voice plugin can exist).
+
+## Error handling principles
+
+- Tool I/O contract violations rejected/retried at the registry, never try/catch at call sites.
+- Guardrail `never` path cannot be disabled by config.
+- Failure queue and audit log are append-only; a crash mid-turn leaves an auditable partial record.
+- Provider errors surface as typed exceptions with session context; the orchestrator degrades to handover, never to silence.
+
+## Testing
+
+Each package: pytest suite (unit + contract tests on every public interface). Integration: `examples/mockbank` exercised end-to-end in CI via `zolva eval --gate` + one synthetic + one adversarial synthetic. Docs snippets executed as tests.
