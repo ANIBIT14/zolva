@@ -21,9 +21,9 @@ class ToolSpec(BaseModel):
 class _Tool:
     def __init__(self, fn: Callable[..., Any]) -> None:
         self.fn = fn
-        hints = inspect.signature(fn)
+        sig = inspect.signature(fn)
         fields: dict[str, Any] = {}
-        for pname, param in hints.parameters.items():
+        for pname, param in sig.parameters.items():
             annotation = (
                 param.annotation if param.annotation is not inspect.Parameter.empty else Any
             )
@@ -60,7 +60,8 @@ class ToolRegistry:
             params = t.params_model(**args)
         except (ValidationError, TypeError) as e:
             raise ToolContractError(f"{name}: invalid arguments: {e}") from e
-        result = t.fn(**params.model_dump())
+        # getattr, not model_dump(): a deep dump would turn Pydantic-typed params into dicts
+        result = t.fn(**{k: getattr(params, k) for k in t.params_model.model_fields})
         if inspect.isawaitable(result):
             result = await result
         return result

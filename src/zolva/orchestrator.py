@@ -6,7 +6,9 @@ import json
 from pathlib import Path
 from typing import Any
 
-from zolva.bridge import LLMAdapter, Message, get_adapter
+from pydantic import BaseModel
+
+from zolva.bridge import BridgeError, LLMAdapter, Message, ToolCall, get_adapter
 from zolva.bus import Bus, Step
 from zolva.config import AgentConfig, load_agents
 from zolva.handover import HandoverBackend, LogBackend, Ticket
@@ -73,12 +75,16 @@ class AgentApp:
             tools = self._registry.specs(cfg.tools)
             if cfg.handoffs:
                 tools = [*tools, _handoff_spec(cfg)]
-            response = await self._adapter_for(cfg).complete(
-                model=cfg.model.name,
-                system=cfg.instructions,
-                messages=history,
-                tools=tools,
-            )
+            try:
+                response = await self._adapter_for(cfg).complete(
+                    model=cfg.model.name,
+                    system=cfg.instructions,
+                    messages=history,
+                    tools=tools,
+                )
+            except BridgeError as e:
+                # degrade to handover, never to silence
+                return await self._escalate(cfg, session_id, f"provider error: {e}")
             if response.tool_calls:
                 await self._sessions.append(
                     session_id,
@@ -88,11 +94,14 @@ class AgentApp:
                         )
                     ],
                 )
-                for tc in response.tool_calls:
+                for i, tc in enumerate(response.tool_calls):
                     if tc.name == "handoff":
                         target = str(tc.args.get("to", ""))
                         reason = str(tc.args.get("reason", ""))
                         if target == "human-escalation":
+                            # close pending tool_calls or the session history is
+                            # permanently rejected by providers on the next turn
+                            await self._close_pending(session_id, response.tool_calls[i:])
                             return await self._escalate(cfg, session_id, reason or "agent handoff")
                         if target in cfg.handoffs and target in self._agents:
                             await self._sessions.append(
@@ -127,12 +136,19 @@ class AgentApp:
                         )
                     )
                     if not verdict.allow:
+                        await self._close_pending(session_id, response.tool_calls[i:])
                         return await self._escalate(cfg, session_id, verdict.reason or "blocked")
                     try:
                         result = await self._registry.call(tc.name, tc.args)
-                        content = json.dumps(result, default=str)
+                        if isinstance(result, BaseModel):
+                            content = result.model_dump_json()
+                        else:
+                            content = json.dumps(result, default=str)
                     except ToolContractError as e:
                         content = f"TOOL_ERROR: {e}"  # fed back; model retries within MAX_TURNS
+                    except Exception as e:  # bank tool crashed: handover, never silence
+                        await self._close_pending(session_id, response.tool_calls[i:])
+                        return await self._escalate(cfg, session_id, f"tool error: {tc.name}: {e}")
                     await self._sessions.append(
                         session_id, [Message(role="tool", content=content, tool_call_id=tc.id)]
                     )
@@ -154,6 +170,16 @@ class AgentApp:
             return response.text
 
         return await self._escalate(cfg, session_id, "max turns exceeded")
+
+    async def _close_pending(self, session_id: str, pending: list[ToolCall]) -> None:
+        """Answer unresolved tool_calls so the session history stays provider-valid."""
+        await self._sessions.append(
+            session_id,
+            [
+                Message(role="tool", content="escalated to human", tool_call_id=tc.id)
+                for tc in pending
+            ],
+        )
 
     async def _escalate(self, cfg: AgentConfig, session_id: str, reason: str) -> str:
         ticket = Ticket(

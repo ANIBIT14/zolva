@@ -56,8 +56,13 @@ def _resolve(value: Any, key: str = "") -> Any:
 def load_agents(config_dir: str | Path) -> dict[str, AgentConfig]:
     """Load every *.yaml agent in config_dir. instructions: path is relative to the YAML file."""
     root = Path(config_dir)
+    if not root.is_dir():
+        raise ConfigError(f"config dir not found: {root}")
+    paths = sorted(root.glob("*.yaml"))
+    if not paths:
+        raise ConfigError(f"no *.yaml agent configs found in {root}")
     agents: dict[str, AgentConfig] = {}
-    for path in sorted(root.glob("*.yaml")):
+    for path in paths:
         raw = yaml.safe_load(path.read_text())
         if not isinstance(raw, dict):
             raise ConfigError(f"{path}: top level must be a mapping")
@@ -73,6 +78,8 @@ def load_agents(config_dir: str | Path) -> dict[str, AgentConfig]:
             cfg = AgentConfig(**raw)
         except ValidationError as e:
             raise ConfigError(f"{path}: {e}") from e
+        if cfg.name in agents:
+            raise ConfigError(f"duplicate agent name {cfg.name!r} (second definition: {path})")
         agents[cfg.name] = cfg
     for cfg in agents.values():
         for target in cfg.handoffs:
