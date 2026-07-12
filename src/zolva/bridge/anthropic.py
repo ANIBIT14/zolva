@@ -17,7 +17,9 @@ class AnthropicAdapter:
         api_key: str | None = None,
         base_url: str = "https://api.anthropic.com",
         transport: httpx.AsyncBaseTransport | None = None,
+        max_tokens: int = 4096,
     ) -> None:
+        self._max_tokens = max_tokens
         key = api_key or os.environ.get("ANTHROPIC_API_KEY")
         if not key:
             raise BridgeError("ANTHROPIC_API_KEY not set and no api_key given")
@@ -62,7 +64,7 @@ class AnthropicAdapter:
     ) -> LLMResponse:
         body: dict[str, Any] = {
             "model": model,
-            "max_tokens": 4096,
+            "max_tokens": self._max_tokens,
             "system": system,
             "messages": self._wire_messages(messages),
         }

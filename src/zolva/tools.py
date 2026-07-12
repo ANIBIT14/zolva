@@ -5,7 +5,9 @@ from __future__ import annotations
 import inspect
 from typing import Any, Callable
 
-from pydantic import BaseModel, ValidationError, create_model
+from pydantic import BaseModel, ConfigDict, ValidationError, create_model
+
+_RESERVED_TOOL_NAMES = {"handoff"}  # intercepted by the orchestrator, never dispatchable
 
 
 class ToolContractError(Exception):
@@ -29,7 +31,9 @@ class _Tool:
             )
             default = param.default if param.default is not inspect.Parameter.empty else ...
             fields[pname] = (annotation, default)
-        self.params_model: type[BaseModel] = create_model(f"{fn.__name__}_params", **fields)
+        self.params_model: type[BaseModel] = create_model(
+            f"{fn.__name__}_params", __config__=ConfigDict(extra="forbid"), **fields
+        )
         self.spec = ToolSpec(
             name=fn.__name__,
             description=inspect.getdoc(fn) or fn.__name__,
@@ -42,6 +46,8 @@ class ToolRegistry:
         self._tools: dict[str, _Tool] = {}
 
     def register(self, fn: Callable[..., Any]) -> Callable[..., Any]:
+        if fn.__name__ in _RESERVED_TOOL_NAMES:
+            raise ToolContractError(f"{fn.__name__!r} is a reserved tool name")
         self._tools[fn.__name__] = _Tool(fn)
         return fn
 

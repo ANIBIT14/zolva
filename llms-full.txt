@@ -186,7 +186,7 @@ plugins (separate installable packages)
 ```yaml
 # agents/collections.yaml
 name: collections-agent
-instructions: agents/collections.md
+instructions: collections.md   # path relative to this YAML file
 model: { provider: openai, name: gpt-5 }
 tools: [get_dues, get_repayment_options, send_payment_link, schedule_callback]
 handoffs: [hardship-agent, human-escalation]

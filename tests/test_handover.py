@@ -28,6 +28,7 @@ async def test_webhook_posts_signed_payload() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         cap["body"] = request.content
         cap["sig"] = request.headers["x-zolva-signature"]
+        cap["ts"] = request.headers["x-zolva-timestamp"]
         return httpx.Response(200, json={"id": "T-42"})
 
     b = WebhookBackend(
@@ -35,9 +36,20 @@ async def test_webhook_posts_signed_payload() -> None:
     )
     ref = await b.escalate(TICKET)
     assert ref.id == "T-42" and ref.backend == "webhook"
-    expected = hmac.new(b"s3cr3t", cap["body"], hashlib.sha256).hexdigest()
+    expected = hmac.new(
+        b"s3cr3t", cap["ts"].encode() + b"." + cap["body"], hashlib.sha256
+    ).hexdigest()
     assert cap["sig"] == expected
     assert json.loads(cap["body"])["session_id"] == "s1"
+
+
+async def test_webhook_bad_response_body_raises() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"unexpected": True})
+
+    b = WebhookBackend("https://x", secret="s", transport=httpx.MockTransport(handler))
+    with pytest.raises(HandoverError, match="unexpected body"):
+        await b.escalate(TICKET)
 
 
 async def test_webhook_http_failure_raises() -> None:

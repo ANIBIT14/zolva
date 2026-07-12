@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
+import time
 import uuid
 from abc import ABC, abstractmethod
 
@@ -26,6 +27,7 @@ class Ticket(BaseModel):
     reason: str
     transcript: list[Message]
     summary: str = ""
+    trigger: str = ""  # the exact content that caused the escalation (may not be in transcript)
 
 
 class HandoverRef(BaseModel):
@@ -59,14 +61,24 @@ class WebhookBackend(HandoverBackend):
 
     async def escalate(self, ticket: Ticket) -> HandoverRef:
         body = ticket.model_dump_json().encode()
-        sig = hmac.new(self._secret, body, hashlib.sha256).hexdigest()
+        ts = str(int(time.time()))
+        # timestamp inside the MAC so a captured request can't be replayed later
+        sig = hmac.new(self._secret, ts.encode() + b"." + body, hashlib.sha256).hexdigest()
         try:
             r = await self._client.post(
                 self._url,
                 content=body,
-                headers={"Content-Type": "application/json", "X-Zolva-Signature": sig},
+                headers={
+                    "Content-Type": "application/json",
+                    "X-Zolva-Signature": sig,
+                    "X-Zolva-Timestamp": ts,
+                },
             )
             r.raise_for_status()
         except httpx.HTTPError as e:
             raise HandoverError(f"webhook escalation failed: {e}") from e
-        return HandoverRef(id=str(r.json()["id"]), backend="webhook")
+        try:
+            ref_id = str(r.json()["id"])
+        except Exception as e:
+            raise HandoverError(f"webhook returned unexpected body: {e}") from e
+        return HandoverRef(id=ref_id, backend="webhook")

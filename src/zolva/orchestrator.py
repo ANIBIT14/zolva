@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from zolva.bridge import BridgeError, LLMAdapter, Message, ToolCall, get_adapter
 from zolva.bus import Bus, Step
-from zolva.config import AgentConfig, load_agents
+from zolva.config import AgentConfig, ConfigError, load_agents
 from zolva.handover import HandoverBackend, LogBackend, Ticket
 from zolva.sessions import InMemorySessionStore, SessionStore
 from zolva.tools import ToolContractError, ToolRegistry, ToolSpec, default_registry
@@ -62,12 +62,17 @@ class AgentApp:
         return self._adapter if self._adapter is not None else get_adapter(cfg.model.provider)
 
     async def run(self, agent_name: str, session_id: str, user_msg: str) -> str:
-        cfg = self._agents[agent_name]
+        try:
+            cfg = self._agents[agent_name]
+        except KeyError:
+            raise ConfigError(f"unknown agent {agent_name!r}") from None
         verdict = await self.bus.emit(
             Step(type="user_msg", session_id=session_id, agent=cfg.name, data={"text": user_msg})
         )
         if not verdict.allow:
-            return await self._escalate(cfg, session_id, verdict.reason or "blocked")
+            return await self._escalate(
+                cfg, session_id, verdict.reason or "blocked", trigger=user_msg
+            )
         await self._sessions.append(session_id, [Message(role="user", content=user_msg)])
 
         for _ in range(MAX_TURNS):
@@ -75,6 +80,16 @@ class AgentApp:
             tools = self._registry.specs(cfg.tools)
             if cfg.handoffs:
                 tools = [*tools, _handoff_spec(cfg)]
+            verdict = await self.bus.emit(
+                Step(
+                    type="model_call",
+                    session_id=session_id,
+                    agent=cfg.name,
+                    data={"provider": cfg.model.provider, "model": cfg.model.name},
+                )
+            )
+            if not verdict.allow:
+                return await self._escalate(cfg, session_id, verdict.reason or "blocked")
             try:
                 response = await self._adapter_for(cfg).complete(
                     model=cfg.model.name,
@@ -94,7 +109,19 @@ class AgentApp:
                         )
                     ],
                 )
+                batch_agent = cfg.name  # bus attribution stays with the agent that made the calls
                 for i, tc in enumerate(response.tool_calls):
+                    verdict = await self.bus.emit(
+                        Step(
+                            type="tool_call",
+                            session_id=session_id,
+                            agent=batch_agent,
+                            data={"name": tc.name, "args": tc.args},
+                        )
+                    )
+                    if not verdict.allow:
+                        await self._close_pending(session_id, response.tool_calls[i:])
+                        return await self._escalate(cfg, session_id, verdict.reason or "blocked")
                     if tc.name == "handoff":
                         target = str(tc.args.get("to", ""))
                         reason = str(tc.args.get("reason", ""))
@@ -127,17 +154,6 @@ class AgentApp:
                             ],
                         )
                         continue
-                    verdict = await self.bus.emit(
-                        Step(
-                            type="tool_call",
-                            session_id=session_id,
-                            agent=cfg.name,
-                            data={"name": tc.name, "args": tc.args},
-                        )
-                    )
-                    if not verdict.allow:
-                        await self._close_pending(session_id, response.tool_calls[i:])
-                        return await self._escalate(cfg, session_id, verdict.reason or "blocked")
                     try:
                         result = await self._registry.call(tc.name, tc.args)
                         if isinstance(result, BaseModel):
@@ -163,7 +179,9 @@ class AgentApp:
                 )
             )
             if not verdict.allow:
-                return await self._escalate(cfg, session_id, verdict.reason or "blocked")
+                return await self._escalate(
+                    cfg, session_id, verdict.reason or "blocked", trigger=response.text
+                )
             await self._sessions.append(
                 session_id, [Message(role="assistant", content=response.text)]
             )
@@ -181,12 +199,15 @@ class AgentApp:
             ],
         )
 
-    async def _escalate(self, cfg: AgentConfig, session_id: str, reason: str) -> str:
+    async def _escalate(
+        self, cfg: AgentConfig, session_id: str, reason: str, trigger: str = ""
+    ) -> str:
         ticket = Ticket(
             session_id=session_id,
             agent=cfg.name,
             reason=reason,
             transcript=await self._sessions.history(session_id),
+            trigger=trigger,  # blocked content never reaches the session; humans still see it
         )
         await self.bus.emit(
             Step(type="handover", session_id=session_id, agent=cfg.name, data={"reason": reason})
