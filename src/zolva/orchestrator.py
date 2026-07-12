@@ -11,10 +11,27 @@ from zolva.bus import Bus, Step
 from zolva.config import AgentConfig, load_agents
 from zolva.handover import HandoverBackend, LogBackend, Ticket
 from zolva.sessions import InMemorySessionStore, SessionStore
-from zolva.tools import ToolContractError, ToolRegistry, default_registry
+from zolva.tools import ToolContractError, ToolRegistry, ToolSpec, default_registry
 
 BLOCKED_MESSAGE = "I can't help with that here — I've connected you with a human teammate."
 MAX_TURNS = 10
+
+_HANDOFF_SPEC_PARAMS: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "to": {"type": "string", "description": "Target agent name or 'human-escalation'"},
+        "reason": {"type": "string"},
+    },
+    "required": ["to", "reason"],
+}
+
+
+def _handoff_spec(cfg: AgentConfig) -> ToolSpec:
+    return ToolSpec(
+        name="handoff",
+        description=f"Hand this conversation to one of: {', '.join(cfg.handoffs)}",
+        parameters=_HANDOFF_SPEC_PARAMS,
+    )
 
 
 class AgentApp:
@@ -53,11 +70,14 @@ class AgentApp:
 
         for _ in range(MAX_TURNS):
             history = await self._sessions.history(session_id)
+            tools = self._registry.specs(cfg.tools)
+            if cfg.handoffs:
+                tools = [*tools, _handoff_spec(cfg)]
             response = await self._adapter_for(cfg).complete(
                 model=cfg.model.name,
                 system=cfg.instructions,
                 messages=history,
-                tools=self._registry.specs(cfg.tools),
+                tools=tools,
             )
             if response.tool_calls:
                 await self._sessions.append(
@@ -69,6 +89,35 @@ class AgentApp:
                     ],
                 )
                 for tc in response.tool_calls:
+                    if tc.name == "handoff":
+                        target = str(tc.args.get("to", ""))
+                        reason = str(tc.args.get("reason", ""))
+                        if target == "human-escalation":
+                            return await self._escalate(cfg, session_id, reason or "agent handoff")
+                        if target in cfg.handoffs and target in self._agents:
+                            await self._sessions.append(
+                                session_id,
+                                [
+                                    Message(
+                                        role="tool",
+                                        content=f"handed off to {target}",
+                                        tool_call_id=tc.id,
+                                    )
+                                ],
+                            )
+                            cfg = self._agents[target]
+                            continue
+                        await self._sessions.append(
+                            session_id,
+                            [
+                                Message(
+                                    role="tool",
+                                    content=f"TOOL_ERROR: invalid handoff target {target!r}",
+                                    tool_call_id=tc.id,
+                                )
+                            ],
+                        )
+                        continue
                     verdict = await self.bus.emit(
                         Step(
                             type="tool_call",
