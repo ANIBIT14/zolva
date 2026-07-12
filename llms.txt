@@ -1,0 +1,21 @@
+# Zolva
+
+> Open-source, self-hosted agent platform for banks and fintechs. Agents are
+> declared in YAML + Markdown config; tools are the bank's own APIs registered
+> as typed Python functions; guardrails, evals, feedback loop, audit, and
+> synthetics attach to every step via a middleware bus. pip-installable, runs
+> entirely inside the bank's infrastructure. Apache-2.0. https://zolva.ai
+
+Install: `pip install zolva` (dev: `pip install -e ".[dev]"`). Python >=3.11.
+Entry points: `zolva.AgentApp.from_config("agents/")`, `@zolva.tool`, CLI `zolva validate <dir>`.
+
+## Docs
+
+- [AGENTS.md](AGENTS.md): exact setup, verify, and convention instructions for AI coding agents
+- [README.md](README.md): quickstart and public API
+- [docs/specs/2026-07-12-zolva-design.md](docs/specs/2026-07-12-zolva-design.md): full architecture, security model, competitive positioning
+- [examples/mockbank/](examples/mockbank/): runnable end-to-end example (config + tools + orchestrator)
+
+## Optional
+
+- [docs/plans/2026-07-12-core-runtime.md](docs/plans/2026-07-12-core-runtime.md): core implementation plan with every interface signature
