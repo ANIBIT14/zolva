@@ -1,0 +1,5 @@
+name: collections-agent
+instructions: collections.md
+model: { provider: openai, name: gpt-5 }
+tools: [get_dues, get_repayment_options, send_payment_link]
+handoffs: [human-escalation]
