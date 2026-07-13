@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.svg" alt="Zolva" width="380">
+  <img src="https://raw.githubusercontent.com/ANIBIT14/zolva/main/assets/mark.svg" alt="Zolva" width="140">
 </p>
 
 # Zolva
