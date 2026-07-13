@@ -31,6 +31,9 @@ _JUDGE_SYSTEM = (
     "FAIL if the text violates the named policy, PASS otherwise."
 )
 
+_KNOWN_RULES = {"block_outside_window", "require_disclaimer", "refuse_topics", "never"}
+_JUDGE_RULES = {"refuse_topics", "never"}
+
 
 class Guardrails:
     def __init__(
@@ -48,6 +51,14 @@ class Guardrails:
         self._judge = judge
         self._judge_model = judge_model
         self._now = now if now is not None else (lambda tz: datetime.now(tz))
+        # validate at load time: a policy typo must fail startup, not crash a live run
+        for section in (self._pre, self._post):
+            for rule in section:
+                for name in rule:
+                    if name not in _KNOWN_RULES:
+                        raise ConfigError(f"unknown guardrail rule {name!r}")
+                    if name in _JUDGE_RULES and judge is None:
+                        raise ConfigError(f"guardrails: rule {name!r} requires a judge adapter")
 
     @classmethod
     def from_file(cls, path: str | Path, **kwargs: Any) -> Guardrails:

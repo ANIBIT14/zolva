@@ -58,6 +58,10 @@ class AgentApp:
     def from_config(cls, config_dir: str | Path, **kwargs: Any) -> AgentApp:
         return cls(load_agents(config_dir), **kwargs)
 
+    @property
+    def sessions(self) -> SessionStore:
+        return self._sessions
+
     def _adapter_for(self, cfg: AgentConfig) -> LLMAdapter:
         return self._adapter if self._adapter is not None else get_adapter(cfg.model.provider)
 

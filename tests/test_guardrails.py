@@ -73,16 +73,14 @@ async def test_other_agents_unaffected() -> None:
     assert await g._hook(step("user_msg", "hi", agent="cx-agent")) is None
 
 
-async def test_unknown_rule_raises() -> None:
-    g = Guardrails({"pre": [{"bogus_rule": {}}]}, agent=AGENT)
+def test_unknown_rule_fails_at_construction() -> None:
     with pytest.raises(ConfigError, match="unknown guardrail rule"):
-        await g._hook(step("user_msg", "hi"))
+        Guardrails({"pre": [{"bogus_rule": {}}]}, agent=AGENT)
 
 
-async def test_topic_rule_without_judge_raises() -> None:
-    g = Guardrails({"post": [{"never": ["threats"]}]}, agent=AGENT)
+def test_topic_rule_without_judge_fails_at_construction() -> None:
     with pytest.raises(ConfigError, match="judge adapter"):
-        await g._hook(step("response", "text"))
+        Guardrails({"post": [{"never": ["threats"]}]}, agent=AGENT)
 
 
 def test_from_file_rejects_non_mapping(tmp_path: Path) -> None:
