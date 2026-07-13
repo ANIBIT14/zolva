@@ -121,7 +121,12 @@ class AgentApp:
                     )
                     if not verdict.allow:
                         await self._close_pending(session_id, response.tool_calls[i:])
-                        return await self._escalate(cfg, session_id, verdict.reason or "blocked")
+                        return await self._escalate(
+                            cfg,
+                            session_id,
+                            verdict.reason or "blocked",
+                            trigger=json.dumps({"tool": tc.name, "args": tc.args}, default=str),
+                        )
                     if tc.name == "handoff":
                         target = str(tc.args.get("to", ""))
                         reason = str(tc.args.get("reason", ""))
@@ -164,7 +169,12 @@ class AgentApp:
                         content = f"TOOL_ERROR: {e}"  # fed back; model retries within MAX_TURNS
                     except Exception as e:  # bank tool crashed: handover, never silence
                         await self._close_pending(session_id, response.tool_calls[i:])
-                        return await self._escalate(cfg, session_id, f"tool error: {tc.name}: {e}")
+                        return await self._escalate(
+                            cfg,
+                            session_id,
+                            f"tool error: {tc.name}: {e}",
+                            trigger=json.dumps({"tool": tc.name, "args": tc.args}, default=str),
+                        )
                     await self._sessions.append(
                         session_id, [Message(role="tool", content=content, tool_call_id=tc.id)]
                     )

@@ -84,6 +84,7 @@ async def test_handoff_is_blockable_via_bus() -> None:
     )
     assert await app.run("collections-agent", "s1", "hi") == BLOCKED_MESSAGE
     assert handover.tickets[0].reason == "handoff vetoed"
+    assert "handoff" in handover.tickets[0].trigger  # blocked tool call visible to humans
     assert _no_dangling(await sessions.history("s1"))
 
 

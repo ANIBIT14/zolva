@@ -58,7 +58,7 @@ def load_agents(config_dir: str | Path) -> dict[str, AgentConfig]:
     root = Path(config_dir)
     if not root.is_dir():
         raise ConfigError(f"config dir not found: {root}")
-    paths = sorted([*root.glob("*.yaml"), *root.glob("*.yml")])
+    paths = sorted(p for p in root.iterdir() if p.suffix in {".yaml", ".yml"})
     if not paths:
         raise ConfigError(f"no *.yaml agent configs found in {root}")
     agents: dict[str, AgentConfig] = {}
