@@ -78,6 +78,28 @@ def test_unknown_rule_fails_at_construction() -> None:
         Guardrails({"pre": [{"bogus_rule": {}}]}, agent=AGENT)
 
 
+def test_malformed_window_fails_at_construction() -> None:
+    for bad in ("08:00-12:30-19:00", "8:00-19:00", "08:00"):
+        with pytest.raises(ConfigError, match="HH:MM-HH:MM"):
+            Guardrails(
+                {"pre": [{"block_outside_window": {"hours": bad, "tz": "Asia/Kolkata"}}]},
+                agent=AGENT,
+            )
+
+
+def test_invalid_when_regex_fails_at_construction() -> None:
+    with pytest.raises(ConfigError, match="invalid regex"):
+        Guardrails(
+            {"post": [{"require_disclaimer": {"when": "[unclosed", "text": "x"}}]}, agent=AGENT
+        )
+
+
+def test_string_topics_rejected() -> None:
+    judge = FakeAdapter(script=[])
+    with pytest.raises(ConfigError, match="LIST of topics"):
+        Guardrails({"post": [{"never": "threats"}]}, agent=AGENT, judge=judge)
+
+
 def test_topic_rule_without_judge_fails_at_construction() -> None:
     with pytest.raises(ConfigError, match="judge adapter"):
         Guardrails({"post": [{"never": ["threats"]}]}, agent=AGENT)

@@ -54,11 +54,32 @@ class Guardrails:
         # validate at load time: a policy typo must fail startup, not crash a live run
         for section in (self._pre, self._post):
             for rule in section:
-                for name in rule:
+                for name, spec in rule.items():
                     if name not in _KNOWN_RULES:
                         raise ConfigError(f"unknown guardrail rule {name!r}")
-                    if name in _JUDGE_RULES and judge is None:
-                        raise ConfigError(f"guardrails: rule {name!r} requires a judge adapter")
+                    if name in _JUDGE_RULES:
+                        if judge is None:
+                            raise ConfigError(f"guardrails: rule {name!r} requires a judge adapter")
+                        if not isinstance(spec, list):
+                            raise ConfigError(
+                                f"guardrails: {name} must be a LIST of topics, got {spec!r}"
+                            )
+                    if name == "block_outside_window":
+                        parts = str(spec["hours"]).split("-")
+                        if len(parts) != 2 or not all(
+                            re.fullmatch(r"\d{2}:\d{2}", p) for p in parts
+                        ):
+                            raise ConfigError(
+                                "block_outside_window hours must be zero-padded "
+                                f"'HH:MM-HH:MM', got {spec['hours']!r}"
+                            )
+                    if name == "require_disclaimer":
+                        try:
+                            re.compile(str(spec["when"]))
+                        except re.error as e:
+                            raise ConfigError(
+                                f"require_disclaimer 'when' is an invalid regex: {e}"
+                            ) from e
 
     @classmethod
     def from_file(cls, path: str | Path, **kwargs: Any) -> Guardrails:
