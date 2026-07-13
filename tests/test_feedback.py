@@ -38,6 +38,23 @@ async def test_manual_record_and_pending(tmp_path: Path) -> None:
     assert any("due date" in m.content for m in pending[0].transcript)
 
 
+async def test_attach_twice_does_not_double_capture(tmp_path: Path) -> None:
+    bus = Bus()
+
+    async def block_all(s: Step) -> Verdict | None:
+        if s.type == "response":
+            return Verdict(allow=False, reason="policy")
+        return None
+
+    bus.on(block_all)
+    app = make_app([LLMResponse(text="bad")], bus=bus)
+    q = FeedbackQueue(tmp_path / "fb.db")
+    q.attach(app)
+    q.attach(app)  # must be idempotent
+    await app.run(AGENT, "s1", "hi")
+    assert len(q.pending()) == 1
+
+
 async def test_escalations_auto_captured(tmp_path: Path) -> None:
     bus = Bus()
 

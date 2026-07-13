@@ -112,8 +112,11 @@ class EvalRunner:
 
     async def run(self, evals_dir: str | Path) -> EvalReport:
         self._tool_calls.clear()  # stale observations from a prior run must not grade this one
+        cohorts = load_cohorts(evals_dir)
+        if any(c.grader == "judge" for c in cohorts) and self._judge is None:
+            raise ConfigError("evals: judge grader requires a judge adapter")  # fail before running
         cohort_results = []
-        for cohort in load_cohorts(evals_dir):
+        for cohort in cohorts:
             results = []
             for i, case in enumerate(cohort.cases):
                 session_id = f"eval-{cohort.cohort}-{i}"

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Protocol
 
@@ -37,8 +39,15 @@ class SqliteSessionStore:
                 "PRIMARY KEY (session_id, seq))"
             )
 
-    def _conn(self) -> sqlite3.Connection:
-        return sqlite3.connect(self._path)
+    @contextmanager
+    def _conn(self) -> Iterator[sqlite3.Connection]:
+        # sqlite3's own context manager commits but never closes — close explicitly
+        conn = sqlite3.connect(self._path)
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
 
     async def history(self, session_id: str) -> list[Message]:
         with self._conn() as conn:

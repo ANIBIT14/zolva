@@ -10,6 +10,8 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -24,6 +26,7 @@ _GENESIS = "genesis"
 class AuditLog:
     def __init__(self, path: str | Path) -> None:
         self._path = str(path)
+        self._attached = False
         with self._conn() as conn:
             conn.execute(
                 "CREATE TABLE IF NOT EXISTS audit ("
@@ -32,10 +35,20 @@ class AuditLog:
                 "data TEXT NOT NULL, prev_hash TEXT NOT NULL, hash TEXT NOT NULL)"
             )
 
-    def _conn(self) -> sqlite3.Connection:
-        return sqlite3.connect(self._path)
+    @contextmanager
+    def _conn(self) -> Iterator[sqlite3.Connection]:
+        # sqlite3's own context manager commits but never closes — close explicitly
+        conn = sqlite3.connect(self._path)
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
 
     def attach(self, app: AgentApp) -> None:
+        if self._attached:
+            return  # idempotent: a second attach must not double-log every step
+        self._attached = True
         app.bus.on(self._observe)
 
     async def _observe(self, step: Step) -> Verdict | None:

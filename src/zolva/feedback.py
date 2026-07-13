@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -43,11 +45,20 @@ class FeedbackQueue:
                 "transcript TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending')"
             )
 
-    def _conn(self) -> sqlite3.Connection:
-        return sqlite3.connect(self._path)
+    @contextmanager
+    def _conn(self) -> Iterator[sqlite3.Connection]:
+        # sqlite3's own context manager commits but never closes — close explicitly
+        conn = sqlite3.connect(self._path)
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
 
     def attach(self, app: AgentApp) -> None:
         """Auto-capture every escalation: an escalation is tomorrow's eval case."""
+        if self._app is not None:
+            return  # idempotent: a second attach must not double-insert every escalation
         self._app = app
         app.bus.on(self._observe)
 
