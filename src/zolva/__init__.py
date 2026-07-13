@@ -11,7 +11,7 @@ from zolva.orchestrator import BLOCKED_MESSAGE, AgentApp
 from zolva.synthetics import SyntheticResult, SyntheticRunner, load_synthetics
 from zolva.tools import ToolRegistry, default_registry, tool
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 __all__ = [
     "BLOCKED_MESSAGE",

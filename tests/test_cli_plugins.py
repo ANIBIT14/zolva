@@ -1,4 +1,5 @@
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -63,6 +64,32 @@ def test_eval_cli_gate_fail_exits_1(tmp_path: Path, app_module: str) -> None:
 def test_eval_cli_bad_app_spec(tmp_path: Path) -> None:
     (tmp_path / "e").mkdir()
     assert main(["eval", str(tmp_path / "e"), "--app", "nocolon"]) == 1
+
+
+def test_eval_cli_imports_app_from_cwd(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A bank runs `zolva eval --app app:app` from its project root; CWD must be importable."""
+    (tmp_path / "bankapp2.py").write_text(
+        "from zolva.orchestrator import AgentApp\n"
+        "from zolva.bridge import LLMResponse\n"
+        "from zolva.bridge.fake import FakeAdapter\n"
+        "from zolva.config import AgentConfig, ModelConfig\n"
+        "from zolva.tools import ToolRegistry\n"
+        "cfg = AgentConfig(name='collections-agent', instructions='x',\n"
+        "                  model=ModelConfig(provider='test', name='m'))\n"
+        "app = AgentApp({'collections-agent': cfg}, registry=ToolRegistry(),\n"
+        "               adapter=FakeAdapter(script=[LLMResponse(text='You owe 4200.')]))\n"
+    )
+    evals = tmp_path / "evals"
+    evals.mkdir()
+    (evals / "d.yaml").write_text(
+        f"cohort: d\nagent: {AGENT}\ngrader: contains\nmin_pass_rate: 1.0\n"
+        'cases:\n  - { input: "q", expect: "4200" }\n'
+    )
+    monkeypatch.chdir(tmp_path)  # NOT on sys.path; the CLI must add it
+    monkeypatch.delitem(sys.modules, "bankapp2", raising=False)
+    assert main(["eval", str(evals), "--app", "bankapp2:app", "--gate"]) == 0
 
 
 async def test_scorecard_cli(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

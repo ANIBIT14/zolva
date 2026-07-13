@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import importlib
 import json
+import os
 import sys
 from typing import Any
 
@@ -18,7 +19,15 @@ def _load_app(spec: str) -> AgentApp:
     module_name, _, attr = spec.partition(":")
     if not module_name or not attr:
         raise ConfigError(f"--app must be 'module.path:attr', got {spec!r}")
-    module = importlib.import_module(module_name)
+    # console-script entry points don't put CWD on sys.path the way `python x.py` does;
+    # a bank runs `zolva eval --app app:app` from its project root, so make that work
+    cwd = os.getcwd()
+    if cwd not in sys.path:
+        sys.path.insert(0, cwd)
+    try:
+        module = importlib.import_module(module_name)
+    except ModuleNotFoundError as e:
+        raise ConfigError(f"could not import {module_name!r} for --app (cwd={cwd}): {e}") from e
     app = getattr(module, attr, None)
     if not isinstance(app, AgentApp):
         raise ConfigError(f"{spec} is not an AgentApp instance")
