@@ -10,7 +10,7 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
-## Verify the installation (run ALL — do not skip)
+## Verify the installation (run ALL, do not skip)
 
 ```bash
 pytest -q                         # expect: all tests pass
@@ -25,11 +25,11 @@ If any command fails, STOP and report the output. Do not work around failures.
 
 1. Copy `examples/mockbank/agents/` to `agents/` in the host project.
 2. Edit the YAML: `name`, `model.provider` (`openai` | `anthropic`), `model.name`, `tools`, `handoffs`.
-3. Write instructions in the sibling `.md` file — plain Markdown, owned by product/compliance.
+3. Write instructions in the sibling `.md` file, plain Markdown, owned by product/compliance.
 4. Register tools by decorating the bank's existing API client functions with `@zolva.tool`.
    Type hints are the contract: annotate every parameter and the return type.
 5. Provider keys come from env (`OPENAI_API_KEY` / `ANTHROPIC_API_KEY`).
-   NEVER write credentials into YAML — the loader rejects keys matching key/secret/token/password
+   NEVER write credentials into YAML, the loader rejects keys matching key/secret/token/password
    unless they are `${ENV:VAR}` references.
 6. Verify: `zolva validate agents/` then test with `zolva.bridge.fake.FakeAdapter` before any live key.
 

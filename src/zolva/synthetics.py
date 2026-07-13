@@ -2,7 +2,7 @@
 
 A persona LLM converses with the REAL agent (staging tools); a judge grades
 the transcript against the path's promise. Adversarial personas (injection
-attempts, social engineering) are just personas — security testing is a
+attempts, social engineering) are just personas, security testing is a
 first-class synthetic.
 """
 

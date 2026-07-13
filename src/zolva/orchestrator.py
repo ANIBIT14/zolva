@@ -15,7 +15,7 @@ from zolva.handover import HandoverBackend, LogBackend, Ticket
 from zolva.sessions import InMemorySessionStore, SessionStore
 from zolva.tools import ToolContractError, ToolRegistry, ToolSpec, default_registry
 
-BLOCKED_MESSAGE = "I can't help with that here — I've connected you with a human teammate."
+BLOCKED_MESSAGE = "I can't help with that here, I've connected you with a human teammate."
 MAX_TURNS = 10
 
 _HANDOFF_SPEC_PARAMS: dict[str, Any] = {

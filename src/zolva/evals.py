@@ -1,7 +1,7 @@
 """Evals plugin: golden datasets per agent, CI-gated on the WORST cohort, not the average.
 
 One YAML file per cohort. Four graders: exact, contains (regex), tool_called
-(observed via the bus), judge (binary LLM-as-judge with a reference answer —
+(observed via the bus), judge (binary LLM-as-judge with a reference answer -
 bias mitigation per the spec).
 """
 
@@ -63,7 +63,7 @@ class EvalReport(BaseModel):
 
     @property
     def gate_passed(self) -> bool:
-        """Worst cohort decides — a great average never rescues a failing cohort."""
+        """Worst cohort decides, a great average never rescues a failing cohort."""
         return all(c.passed for c in self.cohorts)
 
     def summary(self) -> str:

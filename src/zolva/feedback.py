@@ -2,7 +2,7 @@
 
 Capture is automatic for escalations (bus `handover` steps) and manual via
 `FeedbackQueue.record()` (thumbs-downs). Promotion to an eval cohort is
-human-in-the-loop on purpose — auto-promotion poisons golden sets.
+human-in-the-loop on purpose, auto-promotion poisons golden sets.
 """
 
 from __future__ import annotations
@@ -109,7 +109,7 @@ class FeedbackQueue:
         return self._rows("accepted")
 
     def accept(self, failure_id: int, cohort_path: str | Path, expect: str) -> None:
-        """Promote a failure to a PERMANENT eval case — the bug can never silently return."""
+        """Promote a failure to a PERMANENT eval case, the bug can never silently return."""
         failure = self._get(failure_id)
         user_msgs = [m.content for m in failure.transcript if m.role == "user"]
         if not user_msgs:
@@ -157,7 +157,7 @@ class FeedbackQueue:
             conn.execute("UPDATE failures SET status = ? WHERE id = ?", (status, failure_id))
 
     def export_dataset(self, out_path: str | Path) -> int:
-        """Accepted failures as fine-tuning JSONL — the SFT/DPO on-ramp, no training code."""
+        """Accepted failures as fine-tuning JSONL, the SFT/DPO on-ramp, no training code."""
         rows = self.accepted()
         with open(out_path, "w") as f:
             for failure in rows:

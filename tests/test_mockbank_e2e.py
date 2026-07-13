@@ -22,7 +22,7 @@ async def test_collections_flow_end_to_end() -> None:
                     )
                 ]
             ),
-            LLMResponse(text="Done — sent a link for ₹2100."),
+            LLMResponse(text="Done, sent a link for ₹2100."),
         ]
     )
     app = AgentApp.from_config(AGENTS_DIR, adapter=fake)

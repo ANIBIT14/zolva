@@ -6,7 +6,7 @@ Three rule shapes (spec section "Guardrails"):
 - LLM-judge (binary): refuse_topics, never
 
 `never` violations hard-block; there is deliberately no config switch to
-disable a rule at runtime — remove it from the policy file or it runs.
+disable a rule at runtime, remove it from the policy file or it runs.
 """
 
 from __future__ import annotations

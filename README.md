@@ -1,10 +1,10 @@
 # Zolva
 
-> **⚠️ Beta** — APIs may change before 1.0. Battle-test it in staging; tell us what breaks.
+> **⚠️ Beta**, APIs may change before 1.0. Battle-test it in staging; tell us what breaks.
 
 **The open-source, self-hosted agent platform for banks and fintechs.**
 
-Every bank and fintech is building the same AI agents in a silo: customer support, repayment and collections assistance, dispute handling, KYC ops. Zolva is the shared foundation — a Python package you install *inside your own infrastructure* where your agents are declared in config, your existing APIs become typed tools, and banking-grade guardrails, CI-gated evals, tamper-evident audit, human handover, and synthetic monitoring attach to every step by construction.
+Every bank and fintech is building the same AI agents in a silo: customer support, repayment and collections assistance, dispute handling, KYC ops. Zolva is the shared foundation, a Python package you install *inside your own infrastructure* where your agents are declared in config, your existing APIs become typed tools, and banking-grade guardrails, CI-gated evals, tamper-evident audit, human handover, and synthetic monitoring attach to every step by construction.
 
 **Website:** [zolva.ai](https://zolva.ai) · **License:** Apache-2.0 · **Python:** ≥3.11
 
@@ -30,7 +30,7 @@ pip install zolva
 
 ## Five-minute quickstart
 
-**1. Declare an agent** — agents are data, not code:
+**1. Declare an agent**, agents are data, not code:
 
 ```yaml
 # agents/collections.yaml
@@ -48,7 +48,7 @@ discussing amounts. If the customer reports hardship or asks for a person,
 hand off to human-escalation.
 ```
 
-**2. Wrap your existing APIs as tools** — type hints are the contract:
+**2. Wrap your existing APIs as tools**, type hints are the contract:
 
 ```python
 from zolva import tool, AgentApp
@@ -67,9 +67,9 @@ app = AgentApp.from_config("agents/")
 reply = await app.run("collections-agent", session_id, user_msg)
 ```
 
-Malformed model calls are rejected at the contract and fed back for retry — never `try/except` at call sites. Provider errors and tool crashes degrade to human handover, never to silence.
+Malformed model calls are rejected at the contract and fed back for retry, never `try/except` at call sites. Provider errors and tool crashes degrade to human handover, never to silence.
 
-**3. Validate and test** — no live keys needed:
+**3. Validate and test**, no live keys needed:
 
 ```bash
 zolva validate agents/          # config check, exit 1 on any error
@@ -84,7 +84,7 @@ A full runnable example lives in [`examples/mockbank/`](examples/mockbank/).
 
 ## The platform
 
-### Guardrails — policy as config, enforced on every step
+### Guardrails, policy as config, enforced on every step
 
 ```yaml
 # policies/collections.yaml
@@ -102,9 +102,9 @@ Guardrails.from_file("policies/collections.yaml", agent="collections-agent",
                      judge=judge_adapter, judge_model="...").attach(app.bus)
 ```
 
-Policies are validated at startup — a typo fails your deploy, not a live customer conversation. Judge rules are **fail-closed**: anything that isn't an explicit PASS blocks. Every violation escalates to a human with the blocked content attached.
+Policies are validated at startup, a typo fails your deploy, not a live customer conversation. Judge rules are **fail-closed**: anything that isn't an explicit PASS blocks. Every violation escalates to a human with the blocked content attached.
 
-### Evals — gate releases on the worst cohort, never the average
+### Evals, gate releases on the worst cohort, never the average
 
 ```yaml
 # evals/refusals.yaml
@@ -125,7 +125,7 @@ assert report.gate_passed        # exit-1 this in CI; a great average never resc
 
 Run weekly on cron to catch provider drift; run per-PR to catch your own regressions.
 
-### Feedback loop — every failure becomes a permanent test
+### Feedback loop, every failure becomes a permanent test
 
 ```python
 from zolva import FeedbackQueue
@@ -140,7 +140,7 @@ q.export_dataset("dataset.jsonl")                # fine-tuning on-ramp (SFT/DPO-
 
 Production signal → failure queue → triage → permanent eval case → gated fix. The bug can never silently return.
 
-### Audit — tamper-evident, regulator-ready
+### Audit, tamper-evident, regulator-ready
 
 ```python
 from zolva import AuditLog, scorecard
@@ -150,7 +150,7 @@ assert log.verify()
 print(scorecard(log).summary())  # SARR (Safe Automated Resolution Rate) + containment
 ```
 
-### Synthetics — patrol every critical path
+### Synthetics, patrol every critical path
 
 ```yaml
 # synthetics/repayment.yaml
@@ -159,31 +159,31 @@ persona: "You are an overdue customer who wants to settle this month."
 goal: "customer obtains their dues amount and a valid repayment option"
 ```
 
-A persona LLM converses with your *real* agent (staging tools); a judge grades the transcript. Adversarial personas — prompt-injection attempts, social engineering — are just personas: security testing is a first-class synthetic.
+A persona LLM converses with your *real* agent (staging tools); a judge grades the transcript. Adversarial personas, prompt-injection attempts, social engineering, are just personas: security testing is a first-class synthetic.
 
-### Human handover — one interface, your ticketing system
+### Human handover, one interface, your ticketing system
 
 ```python
 from zolva import HandoverBackend, WebhookBackend
 app = AgentApp.from_config("agents/", handover=WebhookBackend(url, secret=hmac_secret))
 ```
 
-Triggered by agent decision, guardrail violation, tool crash, provider failure, or the customer asking — one code path. Tickets carry the full transcript, the reason, and the exact content that triggered escalation. Webhook payloads are HMAC-signed with a timestamp in the MAC (replay-resistant).
+Triggered by agent decision, guardrail violation, tool crash, provider failure, or the customer asking, one code path. Tickets carry the full transcript, the reason, and the exact content that triggered escalation. Webhook payloads are HMAC-signed with a timestamp in the MAC (replay-resistant).
 
 ## Security posture
 
-- **Self-hosted by design** — nothing leaves your infrastructure except the LLM calls you configure; the bridge supports in-house gateways.
-- **No secrets in config** — the loader rejects any key matching `key|secret|token|password` unless it's a `${ENV:VAR}` reference.
+- **Self-hosted by design**, nothing leaves your infrastructure except the LLM calls you configure; the bridge supports in-house gateways.
+- **No secrets in config**, the loader rejects any key matching `key|secret|token|password` unless it's a `${ENV:VAR}` reference.
 - **`yaml.safe_load` only; no `eval`/`exec`/`pickle` anywhere.**
-- **Tool contracts** — Pydantic-validated I/O with `extra="forbid"`; per-agent tool allowlists; `handoff` is a reserved name.
-- **Session isolation** — no cross-session context is ever assembled.
+- **Tool contracts**, Pydantic-validated I/O with `extra="forbid"`; per-agent tool allowlists; `handoff` is a reserved name.
+- **Session isolation**, no cross-session context is ever assembled.
 - CI runs `bandit` and `pip-audit` on every commit.
 
-Found something? See [SECURITY.md](SECURITY.md) — coordinated disclosure, 72-hour acknowledgement.
+Found something? See [SECURITY.md](SECURITY.md), coordinated disclosure, 72-hour acknowledgement.
 
 ## For AI coding agents
 
-Point your agent at [`llms.txt`](llms.txt) / [`llms-full.txt`](llms-full.txt), or hand it [`AGENTS.md`](AGENTS.md) — exact setup, verification commands, and conventions, written to work first-try.
+Point your agent at [`llms.txt`](llms.txt) / [`llms-full.txt`](llms-full.txt), or hand it [`AGENTS.md`](AGENTS.md), exact setup, verification commands, and conventions, written to work first-try.
 
 ## Status & roadmap
 
@@ -198,7 +198,7 @@ Design docs: [`docs/specs/`](docs/specs/) · Full architecture, threat model, an
 
 ## Contributing
 
-Every PR: `pytest -q && ruff check . && mypy` all green, tests first, conventional commits. See [AGENTS.md](AGENTS.md) for the full contract — it binds humans and AI contributors alike.
+Every PR: `pytest -q && ruff check . && mypy` all green, tests first, conventional commits. See [AGENTS.md](AGENTS.md) for the full contract, it binds humans and AI contributors alike.
 
 ## License
 

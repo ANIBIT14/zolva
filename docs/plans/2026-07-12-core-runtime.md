@@ -12,7 +12,7 @@
 
 - Python `>=3.11`; CI matrix 3.11/3.12/3.13.
 - Runtime deps ONLY: `pydantic>=2.7`, `httpx>=0.27`, `pyyaml>=6.0`. No new deps without spec change.
-- `mypy --strict` clean; `ruff check` + `ruff format --check` clean — every task ends with both.
+- `mypy --strict` clean; `ruff check` + `ruff format --check` clean, every task ends with both.
 - YAML loaded with `yaml.safe_load` ONLY. No `eval`/`exec`/`pickle` anywhere.
 - No secrets in config files: only `${ENV:VAR}` references (Task 2 enforces).
 - All public models are pydantic `BaseModel` with `extra="forbid"` on config-facing models.
@@ -36,7 +36,7 @@ zolva/
 │   ├── cli.py               # zolva validate
 │   └── bridge/
 │       ├── __init__.py      # Message, ToolCall, LLMResponse, LLMAdapter, adapter registry, BridgeError
-│       ├── fake.py          # FakeAdapter (shipped — banks use it in their own tests)
+│       ├── fake.py          # FakeAdapter (shipped, banks use it in their own tests)
 │       ├── openai.py        # OpenAIAdapter
 │       └── anthropic.py     # AnthropicAdapter
 ├── tests/                   # mirrors src: test_config.py, test_tools.py, ...
@@ -67,7 +67,7 @@ def test_version() -> None:
     assert zolva.__version__ == "0.1.0"
 ```
 
-- [ ] **Step 2: Run it — expect fail**
+- [ ] **Step 2: Run it, expect fail**
 
 Run: `cd ~/Work/zolva && pytest tests/test_package.py -v` → FAIL (`ModuleNotFoundError: zolva`)
 
@@ -171,7 +171,7 @@ git add -A && git commit -m "chore: package scaffold with ruff/mypy/pytest/CI ga
   - `class ConfigError(Exception)`
   - `class ModelConfig(BaseModel)`: `provider: str`, `name: str`
   - `class AgentConfig(BaseModel)`: `name: str`, `instructions: str` (resolved MD content), `model: ModelConfig`, `tools: list[str] = []`, `handoffs: list[str] = []`, `guardrails: str | None = None`, `evals: str | None = None`
-  - `def load_agents(config_dir: str | Path) -> dict[str, AgentConfig]` — `instructions:` in YAML is a path **relative to the YAML file**; `${ENV:VAR}` strings resolved from env; inline credentials rejected; unknown YAML keys rejected; handoff targets must exist or be `"human-escalation"`.
+  - `def load_agents(config_dir: str | Path) -> dict[str, AgentConfig]`, `instructions:` in YAML is a path **relative to the YAML file**; `${ENV:VAR}` strings resolved from env; inline credentials rejected; unknown YAML keys rejected; handoff targets must exist or be `"human-escalation"`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -263,7 +263,7 @@ def test_missing_env_var_is_clear_error(tmp_path: Path) -> None:
         load_agents(tmp_path / "a")
 ```
 
-- [ ] **Step 2: Run — expect fail**
+- [ ] **Step 2: Run, expect fail**
 
 Run: `pytest tests/test_config.py -v` → FAIL (`ModuleNotFoundError: zolva.config`)
 
@@ -377,7 +377,7 @@ git commit -m "feat: agent config loader with env-ref secrets and validation"
   - `class ToolContractError(Exception)`
   - `class ToolSpec(BaseModel)`: `name: str`, `description: str`, `parameters: dict[str, Any]` (JSON Schema)
   - `class ToolRegistry`: `.register(fn: Callable[..., Any]) -> Callable[..., Any]`, `.specs(names: list[str]) -> list[ToolSpec]` (raises `ToolContractError` for unknown name), `async .call(name: str, args: dict[str, Any]) -> Any` (validates args, awaits async fns, raises `ToolContractError` on unknown tool / bad args)
-  - `default_registry: ToolRegistry`; `def tool(fn)` — decorator registering into `default_registry`.
+  - `default_registry: ToolRegistry`; `def tool(fn)`, decorator registering into `default_registry`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -445,7 +445,7 @@ def test_default_registry_decorator() -> None:
     assert default_registry.specs(["ping"])[0].name == "ping"
 ```
 
-- [ ] **Step 2: Run — expect fail**
+- [ ] **Step 2: Run, expect fail**
 
 Run: `pytest tests/test_tools.py -v` → FAIL (`ModuleNotFoundError: zolva.tools`)
 
@@ -549,7 +549,7 @@ git commit -m "feat: tool registry with Pydantic contracts (schema-aware resolve
   - `class LLMResponse(BaseModel)`: `text: str = ""`, `tool_calls: list[ToolCall] = []`
   - `class LLMAdapter(Protocol)`: `async def complete(self, *, model: str, system: str, messages: list[Message], tools: list[ToolSpec]) -> LLMResponse`
   - `def register_adapter(provider: str, factory: Callable[[], LLMAdapter]) -> None`; `def get_adapter(provider: str) -> LLMAdapter` (raises `BridgeError` for unknown provider)
-  - `class FakeAdapter` (in `zolva.bridge.fake`): `FakeAdapter(script: list[LLMResponse])` — returns scripted responses in order; records every `complete()` call in `.calls: list[dict[str, Any]]`; raises `BridgeError` when script exhausted.
+  - `class FakeAdapter` (in `zolva.bridge.fake`): `FakeAdapter(script: list[LLMResponse])`, returns scripted responses in order; records every `complete()` call in `.calls: list[dict[str, Any]]`; raises `BridgeError` when script exhausted.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -596,7 +596,7 @@ def test_unknown_provider_raises() -> None:
         get_adapter("nope-provider")
 ```
 
-- [ ] **Step 2: Run — expect fail**
+- [ ] **Step 2: Run, expect fail**
 
 Run: `pytest tests/test_bridge.py -v` → FAIL (`ModuleNotFoundError`)
 
@@ -705,7 +705,7 @@ git commit -m "feat: LLM bridge types, adapter registry, FakeAdapter"
 
 **Interfaces:**
 - Consumes: `Message`, `ToolCall`, `LLMResponse`, `BridgeError`, `ToolSpec` from Task 4/3.
-- Produces: `class OpenAIAdapter`: `__init__(self, api_key: str | None = None, base_url: str = "https://api.openai.com/v1", transport: httpx.AsyncBaseTransport | None = None)` — key falls back to `OPENAI_API_KEY` env (raises `BridgeError` if absent); implements `LLMAdapter.complete`. Registered as provider `"openai"` on import via `register_adapter`.
+- Produces: `class OpenAIAdapter`: `__init__(self, api_key: str | None = None, base_url: str = "https://api.openai.com/v1", transport: httpx.AsyncBaseTransport | None = None)`, key falls back to `OPENAI_API_KEY` env (raises `BridgeError` if absent); implements `LLMAdapter.complete`. Registered as provider `"openai"` on import via `register_adapter`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -783,7 +783,7 @@ def test_missing_key_raises(monkeypatch: pytest.MonkeyPatch) -> None:
         OpenAIAdapter()
 ```
 
-- [ ] **Step 2: Run — expect fail**
+- [ ] **Step 2: Run, expect fail**
 
 Run: `pytest tests/test_openai_adapter.py -v` → FAIL
 
@@ -888,7 +888,7 @@ git commit -m "feat: OpenAI adapter"
 
 **Interfaces:**
 - Consumes: Task 4 types.
-- Produces: `class AnthropicAdapter`: `__init__(self, api_key: str | None = None, base_url: str = "https://api.anthropic.com", transport: httpx.AsyncBaseTransport | None = None)` — key falls back to `ANTHROPIC_API_KEY`; registered as provider `"anthropic"`. Mapping: `tool` role messages become `user` messages with a `tool_result` content block; assistant `tool_calls` become `tool_use` blocks.
+- Produces: `class AnthropicAdapter`: `__init__(self, api_key: str | None = None, base_url: str = "https://api.anthropic.com", transport: httpx.AsyncBaseTransport | None = None)`, key falls back to `ANTHROPIC_API_KEY`; registered as provider `"anthropic"`. Mapping: `tool` role messages become `user` messages with a `tool_result` content block; assistant `tool_calls` become `tool_use` blocks.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -959,7 +959,7 @@ def test_missing_key_raises(monkeypatch: pytest.MonkeyPatch) -> None:
         AnthropicAdapter()
 ```
 
-- [ ] **Step 2: Run — expect fail**
+- [ ] **Step 2: Run, expect fail**
 
 Run: `pytest tests/test_anthropic_adapter.py -v` → FAIL
 
@@ -1077,7 +1077,7 @@ git commit -m "feat: Anthropic adapter"
   - `class Step(BaseModel)`: `type: StepType`, `session_id: str`, `agent: str`, `data: dict[str, Any]`
   - `class Verdict(BaseModel)`: `allow: bool = True`, `reason: str | None = None`
   - `Hook = Callable[[Step], Awaitable[Verdict | None]]`
-  - `class Bus`: `.on(hook: Hook) -> None`; `async .emit(step: Step) -> Verdict` — runs hooks in registration order; first `allow=False` verdict short-circuits and is returned; otherwise returns `Verdict()`.
+  - `class Bus`: `.on(hook: Hook) -> None`; `async .emit(step: Step) -> Verdict`, runs hooks in registration order; first `allow=False` verdict short-circuits and is returned; otherwise returns `Verdict()`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1127,7 +1127,7 @@ async def test_observing_hook_sees_all_steps() -> None:
     assert len(log) == 2
 ```
 
-- [ ] **Step 2: Run — expect fail**
+- [ ] **Step 2: Run, expect fail**
 
 Run: `pytest tests/test_bus.py -v` → FAIL
 
@@ -1240,7 +1240,7 @@ async def test_sqlite_preserves_tool_calls(tmp_path: Path) -> None:
     assert hist[0].tool_calls[0].args == {"x": 1}
 ```
 
-- [ ] **Step 2: Run — expect fail**
+- [ ] **Step 2: Run, expect fail**
 
 Run: `pytest tests/test_sessions.py -v` → FAIL
 
@@ -1336,8 +1336,8 @@ git commit -m "feat: in-memory and SQLite session stores"
   - `class Ticket(BaseModel)`: `session_id: str`, `agent: str`, `reason: str`, `transcript: list[Message]`, `summary: str = ""`
   - `class HandoverRef(BaseModel)`: `id: str`, `backend: str`
   - `class HandoverBackend(ABC)`: `async def escalate(self, ticket: Ticket) -> HandoverRef` (abstract); `async def resume(self, ref: HandoverRef, resolution: str) -> None` (default no-op)
-  - `class LogBackend(HandoverBackend)` — logs the ticket via `logging`, returns `HandoverRef(id="log-<uuid4>", backend="log")`
-  - `class WebhookBackend(HandoverBackend)`: `__init__(self, url: str, secret: str, transport: httpx.AsyncBaseTransport | None = None)` — POSTs `ticket.model_dump_json()` with header `X-Zolva-Signature` = hex HMAC-SHA256 of the body using `secret`; expects `{"id": "..."}` back; raises `HandoverError` on HTTP failure.
+  - `class LogBackend(HandoverBackend)`, logs the ticket via `logging`, returns `HandoverRef(id="log-<uuid4>", backend="log")`
+  - `class WebhookBackend(HandoverBackend)`: `__init__(self, url: str, secret: str, transport: httpx.AsyncBaseTransport | None = None)`, POSTs `ticket.model_dump_json()` with header `X-Zolva-Signature` = hex HMAC-SHA256 of the body using `secret`; expects `{"id": "..."}` back; raises `HandoverError` on HTTP failure.
   - `class HandoverError(Exception)`
 
 - [ ] **Step 1: Write the failing tests**
@@ -1394,7 +1394,7 @@ async def test_webhook_http_failure_raises() -> None:
         await b.escalate(TICKET)
 ```
 
-- [ ] **Step 2: Run — expect fail**
+- [ ] **Step 2: Run, expect fail**
 
 Run: `pytest tests/test_handover.py -v` → FAIL
 
@@ -1496,10 +1496,10 @@ git commit -m "feat: handover interface with Log and HMAC-signed Webhook backend
 **Interfaces:**
 - Consumes: everything from Tasks 2–9 (exact names as listed in those tasks).
 - Produces:
-  - `BLOCKED_MESSAGE: str = "I can't help with that here — I've connected you with a human teammate."`
+  - `BLOCKED_MESSAGE: str = "I can't help with that here, I've connected you with a human teammate."`
   - `MAX_TURNS: int = 10`
   - `class AgentApp`:
-    - `__init__(self, agents: dict[str, AgentConfig], *, registry: ToolRegistry | None = None, handover: HandoverBackend | None = None, sessions: SessionStore | None = None, bus: Bus | None = None, adapter: LLMAdapter | None = None)` — defaults: `default_registry`, `LogBackend()`, `InMemorySessionStore()`, `Bus()`; `adapter=None` means resolve per-agent via `get_adapter(cfg.model.provider)`.
+    - `__init__(self, agents: dict[str, AgentConfig], *, registry: ToolRegistry | None = None, handover: HandoverBackend | None = None, sessions: SessionStore | None = None, bus: Bus | None = None, adapter: LLMAdapter | None = None)`, defaults: `default_registry`, `LogBackend()`, `InMemorySessionStore()`, `Bus()`; `adapter=None` means resolve per-agent via `get_adapter(cfg.model.provider)`.
     - `@classmethod def from_config(cls, config_dir: str | Path, **kwargs: Any) -> AgentApp`
     - `async def run(self, agent_name: str, session_id: str, user_msg: str) -> str`
   - Behavior: emits `user_msg` step (blockable) → appends user message → loop ≤ `MAX_TURNS`: adapter.complete → tool calls each emit blockable `tool_call` step, `ToolContractError` is fed back to the model as a `TOOL_ERROR: ...` tool message (model self-corrects within the turn budget) → final text emits blockable `response` step → appended + returned. Any block or turn-exhaustion → `_escalate` → `Ticket` to handover backend + `handover` step emitted → returns `BLOCKED_MESSAGE`.
@@ -1623,7 +1623,7 @@ async def test_max_turns_escalates() -> None:
     assert "max turns" in handover.tickets[0].reason
 ```
 
-- [ ] **Step 2: Run — expect fail**
+- [ ] **Step 2: Run, expect fail**
 
 Run: `pytest tests/test_orchestrator.py -v` → FAIL
 
@@ -1646,7 +1646,7 @@ from zolva.handover import HandoverBackend, LogBackend, Ticket
 from zolva.sessions import InMemorySessionStore, SessionStore
 from zolva.tools import ToolContractError, ToolRegistry, default_registry
 
-BLOCKED_MESSAGE = "I can't help with that here — I've connected you with a human teammate."
+BLOCKED_MESSAGE = "I can't help with that here, I've connected you with a human teammate."
 MAX_TURNS = 10
 
 
@@ -1773,7 +1773,7 @@ __all__ = [
 ]
 ```
 
-- [ ] **Step 4: Verify green (full suite — this integrates everything)**
+- [ ] **Step 4: Verify green (full suite, this integrates everything)**
 
 Run: `pytest -q && ruff check . && mypy` → all PASS
 
@@ -1794,7 +1794,7 @@ git commit -m "feat: orchestrator loop with bus verdicts, contract retry, escala
 
 **Interfaces:**
 - Consumes: Task 10's `AgentApp.run` loop.
-- Produces: when `cfg.handoffs` is non-empty, a built-in tool spec named `handoff` (parameters: `to: str`, `reason: str`) is appended to the tools sent to the model. When the model calls it: `to == "human-escalation"` → `_escalate(cfg, session_id, reason)`; `to == <agent name>` → validate it's in `cfg.handoffs`, append tool result `"handed off to <to>"`, switch `cfg` to the target agent, continue the loop (context carried — same session history). Invalid target → `TOOL_ERROR:` fed back.
+- Produces: when `cfg.handoffs` is non-empty, a built-in tool spec named `handoff` (parameters: `to: str`, `reason: str`) is appended to the tools sent to the model. When the model calls it: `to == "human-escalation"` → `_escalate(cfg, session_id, reason)`; `to == <agent name>` → validate it's in `cfg.handoffs`, append tool result `"handed off to <to>"`, switch `cfg` to the target agent, continue the loop (context carried, same session history). Invalid target → `TOOL_ERROR:` fed back.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1868,11 +1868,11 @@ async def test_invalid_handoff_target_fed_back_as_error() -> None:
     assert tool_msgs[0].content.startswith("TOOL_ERROR:")
 ```
 
-- [ ] **Step 2: Run — expect fail**
+- [ ] **Step 2: Run, expect fail**
 
 Run: `pytest tests/test_handoffs.py -v` → FAIL
 
-- [ ] **Step 3: Implement — modify `orchestrator.py`**
+- [ ] **Step 3: Implement, modify `orchestrator.py`**
 
 Add after the imports:
 
@@ -1946,14 +1946,14 @@ git commit -m "feat: typed handoffs between agents and to human escalation"
 
 ---
 
-### Task 12: CLI — `zolva validate`
+### Task 12: CLI, `zolva validate`
 
 **Files:**
 - Create: `src/zolva/cli.py`, `tests/test_cli.py`
 
 **Interfaces:**
 - Consumes: `load_agents`, `ConfigError` from Task 2.
-- Produces: `def main(argv: list[str] | None = None) -> int` — `zolva validate <config_dir>` prints one line per agent (`name  provider/model  tools=N  handoffs=[...]`), returns 0; on `ConfigError` prints to stderr, returns 1. (Entry point already wired in Task 1's pyproject.)
+- Produces: `def main(argv: list[str] | None = None) -> int`, `zolva validate <config_dir>` prints one line per agent (`name  provider/model  tools=N  handoffs=[...]`), returns 0; on `ConfigError` prints to stderr, returns 1. (Entry point already wired in Task 1's pyproject.)
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1981,7 +1981,7 @@ def test_validate_bad_config(tmp_path: Path, capsys: pytest.CaptureFixture[str])
     assert "not found" in capsys.readouterr().err
 ```
 
-- [ ] **Step 2: Run — expect fail**
+- [ ] **Step 2: Run, expect fail**
 
 Run: `pytest tests/test_cli.py -v` → FAIL
 
@@ -2025,7 +2025,7 @@ def main(argv: list[str] | None = None) -> int:
 - [ ] **Step 4: Verify green**
 
 Run: `pytest tests/test_cli.py -v && ruff check . && mypy` → all PASS
-Run: `zolva validate examples/mockbank/agents 2>&1 || true` → (dir doesn't exist yet — fine, Task 13 creates it)
+Run: `zolva validate examples/mockbank/agents 2>&1 || true` → (dir doesn't exist yet, fine, Task 13 creates it)
 
 - [ ] **Step 5: Commit**
 
@@ -2119,7 +2119,7 @@ async def test_collections_flow_end_to_end() -> None:
             LLMResponse(tool_calls=[ToolCall(id="1", name="get_dues", args={"customer_id": "c1"})]),
             LLMResponse(text="You owe ₹4200, due 2026-07-20. Pay in full or in parts?"),
             LLMResponse(tool_calls=[ToolCall(id="2", name="send_payment_link", args={"customer_id": "c1", "amount": 2100})]),
-            LLMResponse(text="Done — sent a link for ₹2100."),
+            LLMResponse(text="Done, sent a link for ₹2100."),
         ]
     )
     app = AgentApp.from_config(AGENTS_DIR, adapter=fake)
@@ -2135,7 +2135,7 @@ async def test_cli_validates_example() -> None:
     assert main(["validate", str(AGENTS_DIR)]) == 0
 ```
 
-- [ ] **Step 3: Run — expect fail, then create missing `__init__.py` files**
+- [ ] **Step 3: Run, expect fail, then create missing `__init__.py` files**
 
 Run: `pytest tests/test_mockbank_e2e.py -v` → FAIL (import error)
 Create empty `examples/__init__.py` and `examples/mockbank/__init__.py` so the test can import the example.
@@ -2177,10 +2177,10 @@ reply = await app.run("collections-agent", session_id, user_msg)
 ​```
 
 Status: v0.1 core. Guardrails, evals, feedback loop, audit, synthetics ship as
-plugins — see the spec.
+plugins, see the spec.
 ```
 
-(Remove the zero-width characters around the fences when writing the real file — they exist only to nest the code blocks in this plan.)
+(Remove the zero-width characters around the fences when writing the real file, they exist only to nest the code blocks in this plan.)
 
 - [ ] **Step 6: Commit**
 
@@ -2191,7 +2191,7 @@ git commit -m "feat: mockbank example, e2e test, README quickstart"
 
 ---
 
-### Task 14: AI-agent onboarding — llms.txt, llms-full.txt, AGENTS.md
+### Task 14: AI-agent onboarding, llms.txt, llms-full.txt, AGENTS.md
 
 Adopting banks will point their own AI coding agents (Cursor, Copilot, and similar) at this repo and say "set this up." This task makes that work first-try.
 
@@ -2200,7 +2200,7 @@ Adopting banks will point their own AI coding agents (Cursor, Copilot, and simil
 - Generate: `llms-full.txt` (committed, rebuilt by the script)
 
 **Interfaces:**
-- Consumes: README (Task 13), spec, plan — all existing docs.
+- Consumes: README (Task 13), spec, plan, all existing docs.
 - Produces: repo-root `llms.txt` (llmstxt.org format: H1 + summary + linked sections), `llms-full.txt` (concatenation of README, AGENTS.md, spec, and public API surface), `AGENTS.md` (exact setup/verify commands + conventions for AI agents).
 
 - [ ] **Step 1: Write the failing test**
@@ -2234,7 +2234,7 @@ def test_llms_full_is_fresh() -> None:
     assert (ROOT / "llms-full.txt").read_text() == before, "llms-full.txt stale: run scripts/build_llms_full.py"
 ```
 
-- [ ] **Step 2: Run — expect fail**
+- [ ] **Step 2: Run, expect fail**
 
 Run: `pytest tests/test_llms_docs.py -v` → FAIL (files missing)
 
@@ -2279,7 +2279,7 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 ​```
 
-## Verify the installation (run ALL — do not skip)
+## Verify the installation (run ALL, do not skip)
 
 ​```bash
 pytest -q                         # expect: all tests pass
@@ -2294,11 +2294,11 @@ If any command fails, STOP and report the output. Do not work around failures.
 
 1. Copy `examples/mockbank/agents/` to `agents/` in the host project.
 2. Edit the YAML: `name`, `model.provider` (`openai` | `anthropic`), `model.name`, `tools`, `handoffs`.
-3. Write instructions in the sibling `.md` file — plain Markdown, owned by product/compliance.
+3. Write instructions in the sibling `.md` file, plain Markdown, owned by product/compliance.
 4. Register tools by decorating the bank's existing API client functions with `@zolva.tool`.
    Type hints are the contract: annotate every parameter and the return type.
 5. Provider keys come from env (`OPENAI_API_KEY` / `ANTHROPIC_API_KEY`).
-   NEVER write credentials into YAML — the loader rejects keys matching key/secret/token/password
+   NEVER write credentials into YAML, the loader rejects keys matching key/secret/token/password
    unless they are `${ENV:VAR}` references.
 6. Verify: `zolva validate agents/` then test with `zolva.bridge.fake.FakeAdapter` before any live key.
 
@@ -2353,4 +2353,4 @@ git commit -m "feat: AI-agent onboarding docs (llms.txt, llms-full.txt, AGENTS.m
 - `pytest -q` green (≈35 tests), `ruff check .` + `ruff format --check .` clean, `mypy` (strict) clean.
 - `zolva validate examples/mockbank/agents` exits 0.
 - CI workflow green on 3.11/3.12/3.13.
-- Every public interface listed in a task's **Produces** block exists with that exact signature — plugin plans (guardrails, evals, feedback, audit, synthetics) build against them.
+- Every public interface listed in a task's **Produces** block exists with that exact signature, plugin plans (guardrails, evals, feedback, audit, synthetics) build against them.
