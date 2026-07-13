@@ -187,12 +187,13 @@ Point your agent at [`llms.txt`](llms.txt) / [`llms-full.txt`](llms-full.txt), o
 
 ## Status & roadmap
 
-**Beta.** Core runtime + all five plugins are implemented and tested (97 tests, `mypy --strict`, 3-version CI matrix). Before 1.0:
+**Beta.** Core runtime, all five plugins, and the CLI (`zolva validate | eval --gate | scorecard | triage | export-dataset`) are implemented and tested (105 tests, `mypy --strict`, 3-version CI matrix). Agents with a `guardrails:` field in their YAML get their policy attached automatically by `AgentApp.from_config`.
 
-- CLI subcommands for the plugins (`zolva eval --gate`, `zolva triage`, `zolva scorecard`)
+Before 1.0:
+
 - Docs site at [zolva.ai](https://zolva.ai)
 - Voice/telephony channel adapters, ticketing-system handover backends (community welcome)
-- Auto-wiring `guardrails:`/`evals:` fields from agent YAML
+- Auto-wiring `evals:` from agent YAML; judge model configured per policy
 
 Design docs: [`docs/specs/`](docs/specs/) · Full architecture, threat model, and competitive positioning included.
 

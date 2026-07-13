@@ -1,0 +1,2 @@
+post:
+  - require_disclaimer: { when: "mutual fund", text: "Subject to market risks." }

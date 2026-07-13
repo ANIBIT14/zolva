@@ -55,8 +55,29 @@ class AgentApp:
         self._adapter = adapter
 
     @classmethod
-    def from_config(cls, config_dir: str | Path, **kwargs: Any) -> AgentApp:
-        return cls(load_agents(config_dir), **kwargs)
+    def from_config(
+        cls,
+        config_dir: str | Path,
+        *,
+        judge: LLMAdapter | None = None,
+        judge_model: str = "",
+        **kwargs: Any,
+    ) -> AgentApp:
+        """Build the app from a config dir; agents with a `guardrails:` policy
+        get it attached automatically (paths resolve relative to config_dir)."""
+        agents = load_agents(config_dir)
+        app = cls(agents, **kwargs)
+        from zolva.guardrails import Guardrails  # deferred: plugin import inside core factory
+
+        for cfg in agents.values():
+            if cfg.guardrails:
+                policy_path = Path(config_dir) / cfg.guardrails
+                if not policy_path.is_file():
+                    raise ConfigError(f"agent {cfg.name!r}: policy file not found: {policy_path}")
+                Guardrails.from_file(
+                    policy_path, agent=cfg.name, judge=judge, judge_model=judge_model
+                ).attach(app.bus)
+        return app
 
     @property
     def sessions(self) -> SessionStore:
