@@ -111,6 +111,7 @@ class EvalRunner:
         return None
 
     async def run(self, evals_dir: str | Path) -> EvalReport:
+        self._tool_calls.clear()  # stale observations from a prior run must not grade this one
         cohort_results = []
         for cohort in load_cohorts(evals_dir):
             results = []

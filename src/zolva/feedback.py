@@ -130,10 +130,23 @@ class FeedbackQueue:
         self._set_status(failure_id, "rejected")
 
     def _get(self, failure_id: int) -> Failure:
-        for f in self.pending():
-            if f.id == failure_id:
-                return f
-        raise ConfigError(f"no pending failure with id {failure_id}")
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT id, session_id, agent, kind, note, transcript, status "
+                "FROM failures WHERE id = ? AND status = 'pending'",
+                (failure_id,),
+            ).fetchone()
+        if row is None:
+            raise ConfigError(f"no pending failure with id {failure_id}")
+        return Failure(
+            id=row[0],
+            session_id=row[1],
+            agent=row[2],
+            kind=row[3],
+            note=row[4],
+            transcript=[Message.model_validate(m) for m in json.loads(row[5])],
+            status=row[6],
+        )
 
     def _set_status(self, failure_id: int, status: str) -> None:
         with self._conn() as conn:
