@@ -53,19 +53,27 @@ def _resolve(value: Any, key: str = "") -> Any:
     return value
 
 
-def load_agents(config_dir: str | Path) -> dict[str, AgentConfig]:
-    """Load every *.yaml agent in config_dir. instructions: path is relative to the YAML file."""
-    root = Path(config_dir)
+def load_yaml_dir(dir_path: str | Path, what: str) -> list[tuple[Path, dict[str, Any]]]:
+    """Load every *.yaml/*.yml mapping in a directory. Shared by agents/evals/synthetics."""
+    root = Path(dir_path)
     if not root.is_dir():
-        raise ConfigError(f"config dir not found: {root}")
+        raise ConfigError(f"{what} dir not found: {root}")
     paths = sorted(p for p in root.iterdir() if p.suffix in {".yaml", ".yml"})
     if not paths:
-        raise ConfigError(f"no *.yaml agent configs found in {root}")
-    agents: dict[str, AgentConfig] = {}
+        raise ConfigError(f"no {what} files found in {root}")
+    out: list[tuple[Path, dict[str, Any]]] = []
     for path in paths:
         raw = yaml.safe_load(path.read_text())
         if not isinstance(raw, dict):
             raise ConfigError(f"{path}: top level must be a mapping")
+        out.append((path, raw))
+    return out
+
+
+def load_agents(config_dir: str | Path) -> dict[str, AgentConfig]:
+    """Load every *.yaml agent in config_dir. instructions: path is relative to the YAML file."""
+    agents: dict[str, AgentConfig] = {}
+    for path, raw in load_yaml_dir(config_dir, "agent config"):
         raw = _resolve(raw)
         ins = raw.get("instructions")
         if not isinstance(ins, str):

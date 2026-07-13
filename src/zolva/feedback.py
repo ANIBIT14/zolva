@@ -9,14 +9,14 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import AbstractContextManager
 from pathlib import Path
 from typing import Any
 
 import yaml
 from pydantic import BaseModel
 
+from zolva._db import sqlite_conn
 from zolva.bridge import Message
 from zolva.bus import Step, Verdict
 from zolva.config import ConfigError
@@ -45,15 +45,8 @@ class FeedbackQueue:
                 "transcript TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending')"
             )
 
-    @contextmanager
-    def _conn(self) -> Iterator[sqlite3.Connection]:
-        # sqlite3's own context manager commits but never closes — close explicitly
-        conn = sqlite3.connect(self._path)
-        try:
-            with conn:
-                yield conn
-        finally:
-            conn.close()
+    def _conn(self) -> AbstractContextManager[sqlite3.Connection]:
+        return sqlite_conn(self._path)
 
     def attach(self, app: AgentApp) -> None:
         """Auto-capture every escalation: an escalation is tomorrow's eval case."""

@@ -10,13 +10,13 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
-from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import AbstractContextManager
 from datetime import datetime, timezone
 from pathlib import Path
 
 from pydantic import BaseModel
 
+from zolva._db import sqlite_conn
 from zolva.bus import Step, Verdict
 from zolva.orchestrator import AgentApp
 
@@ -35,15 +35,8 @@ class AuditLog:
                 "data TEXT NOT NULL, prev_hash TEXT NOT NULL, hash TEXT NOT NULL)"
             )
 
-    @contextmanager
-    def _conn(self) -> Iterator[sqlite3.Connection]:
-        # sqlite3's own context manager commits but never closes — close explicitly
-        conn = sqlite3.connect(self._path)
-        try:
-            with conn:
-                yield conn
-        finally:
-            conn.close()
+    def _conn(self) -> AbstractContextManager[sqlite3.Connection]:
+        return sqlite_conn(self._path)
 
     def attach(self, app: AgentApp) -> None:
         if self._attached:
@@ -88,7 +81,7 @@ class AuditLog:
             prev = digest
         return True
 
-    def _step_types_by_session(self) -> dict[str, set[str]]:
+    def step_types_by_session(self) -> dict[str, set[str]]:
         with self._conn() as conn:
             rows = conn.execute("SELECT session_id, type FROM audit").fetchall()
         by_session: dict[str, set[str]] = {}
@@ -117,7 +110,7 @@ def scorecard(audit: AuditLog) -> Scorecard:
     ponytail: no re-contact window yet (needs customer identity across
     sessions); add when a bank wires customer refs into session ids.
     """
-    by_session = audit._step_types_by_session()
+    by_session = audit.step_types_by_session()
     sessions = [types for sid, types in by_session.items() if "user_msg" in types]
     total = len(sessions)
     escalated = sum(1 for types in sessions if "handover" in types)

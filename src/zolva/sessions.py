@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import sqlite3
-from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import AbstractContextManager
 from pathlib import Path
 from typing import Protocol
 
+from zolva._db import sqlite_conn
 from zolva.bridge import Message
 
 
@@ -39,15 +39,8 @@ class SqliteSessionStore:
                 "PRIMARY KEY (session_id, seq))"
             )
 
-    @contextmanager
-    def _conn(self) -> Iterator[sqlite3.Connection]:
-        # sqlite3's own context manager commits but never closes — close explicitly
-        conn = sqlite3.connect(self._path)
-        try:
-            with conn:
-                yield conn
-        finally:
-            conn.close()
+    def _conn(self) -> AbstractContextManager[sqlite3.Connection]:
+        return sqlite_conn(self._path)
 
     async def history(self, session_id: str) -> list[Message]:
         with self._conn() as conn:

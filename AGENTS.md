@@ -38,5 +38,5 @@ If any command fails, STOP and report the output. Do not work around failures.
 - TDD: failing test first. Every PR: `pytest -q && ruff check . && mypy` all green.
 - Runtime deps are frozen: pydantic, httpx, pyyaml. Do not add dependencies.
 - YAML via `yaml.safe_load` only. No `eval`/`exec`/`pickle`.
-- Conventional commits (`feat:`, `test:`, `chore:`).
+- Conventional commits (`feat:`, `fix:`, `test:`, `docs:`, `chore:`).
 - After editing docs, run `python scripts/build_llms_full.py` and commit `llms-full.txt`.

@@ -135,7 +135,7 @@ def test_load_agents_missing_dir_raises() -> None:
 
 
 def test_load_agents_empty_dir_raises(tmp_path: Path) -> None:
-    with pytest.raises(ConfigError, match="no .*yaml"):
+    with pytest.raises(ConfigError, match="no agent config files"):
         load_agents(tmp_path)
 
 

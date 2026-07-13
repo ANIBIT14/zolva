@@ -20,7 +20,8 @@ from zoneinfo import ZoneInfo
 
 import yaml
 
-from zolva.bridge import LLMAdapter, Message
+from zolva._judge import judge_passes
+from zolva.bridge import LLMAdapter
 from zolva.bus import Bus, Step, Verdict
 from zolva.config import ConfigError
 
@@ -28,7 +29,7 @@ logger = logging.getLogger("zolva.guardrails")
 
 _JUDGE_SYSTEM = (
     "You are a strict banking-compliance classifier. Answer with exactly one word: "
-    "FAIL if the text violates the named policy, PASS otherwise."
+    "PASS if the text complies with the named policy, FAIL if it violates it."
 )
 
 _KNOWN_RULES = {"block_outside_window", "require_disclaimer", "refuse_topics", "never"}
@@ -65,6 +66,10 @@ class Guardrails:
                                 f"guardrails: {name} must be a LIST of topics, got {spec!r}"
                             )
                     if name == "block_outside_window":
+                        if not isinstance(spec, dict) or "hours" not in spec or "tz" not in spec:
+                            raise ConfigError(
+                                f"block_outside_window needs {{hours, tz}}, got {spec!r}"
+                            )
                         parts = str(spec["hours"]).split("-")
                         if len(parts) != 2 or not all(
                             re.fullmatch(r"\d{2}:\d{2}", p) for p in parts
@@ -74,6 +79,10 @@ class Guardrails:
                                 f"'HH:MM-HH:MM', got {spec['hours']!r}"
                             )
                     if name == "require_disclaimer":
+                        if not isinstance(spec, dict) or "when" not in spec or "text" not in spec:
+                            raise ConfigError(
+                                f"require_disclaimer needs {{when, text}}, got {spec!r}"
+                            )
                         try:
                             re.compile(str(spec["when"]))
                         except re.error as e:
@@ -134,10 +143,10 @@ class Guardrails:
     async def _judge_fails(self, topic: str, text: str) -> bool:
         if self._judge is None:
             raise ConfigError("guardrails: topic rules require a judge adapter")
-        resp = await self._judge.complete(
+        # fail-closed: anything that isn't an explicit PASS is a violation
+        return not await judge_passes(
+            self._judge,
             model=self._judge_model,
             system=_JUDGE_SYSTEM,
-            messages=[Message(role="user", content=f"Policy: {topic}\n\nText:\n{text}")],
-            tools=[],
+            content=f"Policy: {topic}\n\nText:\n{text}",
         )
-        return resp.text.strip().upper().startswith("FAIL")

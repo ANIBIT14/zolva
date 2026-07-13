@@ -12,11 +12,11 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-import yaml
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
+from zolva._judge import judge_passes
 from zolva.bridge import LLMAdapter, Message
-from zolva.config import ConfigError
+from zolva.config import ConfigError, load_yaml_dir
 from zolva.orchestrator import AgentApp
 
 _JUDGE_SYSTEM = (
@@ -39,7 +39,7 @@ class Synthetic(BaseModel):
     persona: str = ""  # inline persona text
     persona_file: str = ""  # or a path relative to the synthetic YAML
     goal: str
-    max_turns: int = 6
+    max_turns: int = Field(default=6, ge=1)
 
 
 class SyntheticResult(BaseModel):
@@ -49,17 +49,8 @@ class SyntheticResult(BaseModel):
 
 
 def load_synthetics(dir_path: str | Path) -> list[Synthetic]:
-    root = Path(dir_path)
-    if not root.is_dir():
-        raise ConfigError(f"synthetics dir not found: {root}")
-    paths = sorted(p for p in root.iterdir() if p.suffix in {".yaml", ".yml"})
-    if not paths:
-        raise ConfigError(f"no synthetic files found in {root}")
     synthetics = []
-    for path in paths:
-        raw = yaml.safe_load(path.read_text())
-        if not isinstance(raw, dict):
-            raise ConfigError(f"{path}: synthetic must be a mapping")
+    for path, raw in load_yaml_dir(dir_path, "synthetic"):
         raw.setdefault("name", path.stem)
         try:
             synth = Synthetic(**raw)
@@ -104,21 +95,18 @@ class SyntheticRunner:
                 tools=[],
             )
             customer_msg = move.text.strip()
-            if customer_msg == "DONE":
-                break
+            if customer_msg == "DONE" or not customer_msg:
+                break  # empty driver output must not produce a malformed "CUSTOMER:" line
             lines.append(f"CUSTOMER: {customer_msg}")
             reply = await self._app.run(synth.agent, session_id, customer_msg)
             lines.append(f"AGENT: {reply}")
         transcript = "\n".join(lines)
-        verdict = await self._judge.complete(
+        passed = await judge_passes(
+            self._judge,
             model=self._judge_model,
             system=_JUDGE_SYSTEM,
-            messages=[
-                Message(role="user", content=f"Goal: {synth.goal}\n\nTranscript:\n{transcript}")
-            ],
-            tools=[],
+            content=f"Goal: {synth.goal}\n\nTranscript:\n{transcript}",
         )
-        passed = verdict.text.strip().upper().startswith("PASS")
         return SyntheticResult(name=synth.name, passed=passed, transcript=transcript)
 
     async def run(self, dir_path: str | Path) -> list[SyntheticResult]:

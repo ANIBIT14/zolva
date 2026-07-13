@@ -11,12 +11,12 @@ import re
 from pathlib import Path
 from typing import Any, Literal
 
-import yaml
 from pydantic import BaseModel, ConfigDict
 
-from zolva.bridge import LLMAdapter, Message
+from zolva._judge import judge_passes
+from zolva.bridge import LLMAdapter
 from zolva.bus import Step, Verdict
-from zolva.config import ConfigError
+from zolva.config import ConfigError, load_yaml_dir
 from zolva.orchestrator import AgentApp
 
 _JUDGE_SYSTEM = (
@@ -77,17 +77,8 @@ class EvalReport(BaseModel):
 
 
 def load_cohorts(evals_dir: str | Path) -> list[Cohort]:
-    root = Path(evals_dir)
-    if not root.is_dir():
-        raise ConfigError(f"evals dir not found: {root}")
-    paths = sorted(p for p in root.iterdir() if p.suffix in {".yaml", ".yml"})
-    if not paths:
-        raise ConfigError(f"no cohort files found in {root}")
     cohorts = []
-    for path in paths:
-        raw = yaml.safe_load(path.read_text())
-        if not isinstance(raw, dict):
-            raise ConfigError(f"{path}: cohort must be a mapping")
+    for path, raw in load_yaml_dir(evals_dir, "cohort"):
         try:
             cohorts.append(Cohort(**raw))
         except Exception as e:
@@ -147,18 +138,12 @@ class EvalRunner:
         # judge: binary with reference answer
         if self._judge is None:
             raise ConfigError("evals: judge grader requires a judge adapter")
-        resp = await self._judge.complete(
+        return await judge_passes(
+            self._judge,
             model=self._judge_model,
             system=_JUDGE_SYSTEM,
-            messages=[
-                Message(
-                    role="user",
-                    content=f"Expectation: {case.expect}\n\nAssistant reply:\n{response}",
-                )
-            ],
-            tools=[],
+            content=f"Expectation: {case.expect}\n\nAssistant reply:\n{response}",
         )
-        return resp.text.strip().upper().startswith("PASS")
 
 
 def report_to_json(report: EvalReport) -> dict[str, Any]:
