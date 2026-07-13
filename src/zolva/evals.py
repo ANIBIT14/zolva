@@ -135,7 +135,10 @@ class EvalRunner:
         if grader == "exact":
             return response == case.expect
         if grader == "contains":
-            return re.search(case.expect, response, re.IGNORECASE) is not None
+            try:
+                return re.search(case.expect, response, re.IGNORECASE) is not None
+            except re.error as e:
+                raise ConfigError(f"invalid regex in contains case {case.input!r}: {e}") from e
         if grader == "tool_called":
             return case.expect_tool in self._tool_calls.get(session_id, [])
         # judge: binary with reference answer
