@@ -1,6 +1,10 @@
+<p align="center">
+  <img src="assets/logo.svg" alt="Zolva" width="380">
+</p>
+
 # Zolva
 
-> **⚠️ Beta**, APIs may change before 1.0. Battle-test it in staging; tell us what breaks.
+> **⚠️ Beta**: APIs may change before 1.0. Battle-test it in staging; tell us what breaks.
 
 **The open-source, self-hosted agent platform for banks and fintechs.**
 
