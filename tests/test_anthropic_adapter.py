@@ -25,7 +25,7 @@ async def test_wire_format_and_text_parse() -> None:
     payload = {"content": [{"type": "text", "text": "hello"}]}
     a = AnthropicAdapter(api_key="ak", transport=transport(payload, cap))
     resp = await a.complete(
-        model="claude-fable-5",
+        model="frontier-model-1",
         system="s",
         messages=[Message(role="user", content="hi")],
         tools=[TOOL],

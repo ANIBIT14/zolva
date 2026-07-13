@@ -921,7 +921,7 @@ async def test_wire_format_and_text_parse() -> None:
     payload = {"content": [{"type": "text", "text": "hello"}]}
     a = AnthropicAdapter(api_key="ak", transport=transport(payload, cap))
     resp = await a.complete(
-        model="claude-fable-5", system="s", messages=[Message(role="user", content="hi")], tools=[TOOL]
+        model="frontier-model-1", system="s", messages=[Message(role="user", content="hi")], tools=[TOOL]
     )
     assert resp.text == "hello"
     assert cap["key"] == "ak"
@@ -2193,7 +2193,7 @@ git commit -m "feat: mockbank example, e2e test, README quickstart"
 
 ### Task 14: AI-agent onboarding — llms.txt, llms-full.txt, AGENTS.md
 
-Adopting banks will point their own AI coding agents (Claude Code, Cursor, Copilot) at this repo and say "set this up." This task makes that work first-try.
+Adopting banks will point their own AI coding agents (Cursor, Copilot, and similar) at this repo and say "set this up." This task makes that work first-try.
 
 **Files:**
 - Create: `llms.txt`, `AGENTS.md`, `scripts/build_llms_full.py`, `tests/test_llms_docs.py`

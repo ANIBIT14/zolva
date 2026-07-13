@@ -179,7 +179,7 @@ Docs are CI-checked: snippets in docs are extracted and executed as tests (no ro
 
 ## Engineering quality standard — every line checked, no exceptions
 
-These rules go in `CONTRIBUTING.md` and the repo's `CLAUDE.md` so both humans and AI contributors are bound by them; CI enforces all of them — none are honor-system.
+These rules go in `CONTRIBUTING.md` and the repo's `AGENTS.md` so both humans and AI contributors are bound by them; CI enforces all of them — none are honor-system.
 
 1. **Types:** `mypy --strict` on all packages; `py.typed` shipped. No `Any` escapes without an inline justification comment.
 2. **Lint/format:** `ruff` (lint + format) — zero warnings policy.
