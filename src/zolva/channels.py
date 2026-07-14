@@ -12,11 +12,8 @@ audit and guardrails see customer contact itself, not just the conversation.
 
 from __future__ import annotations
 
-import hashlib
-import hmac
 import json
 import logging
-import time
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Callable
@@ -28,6 +25,7 @@ from pydantic import BaseModel
 from zolva.bus import Step
 from zolva.config import ConfigError, resolve_refs
 from zolva.orchestrator import BLOCKED_MESSAGE, AgentApp
+from zolva.signing import sign_payload
 
 logger = logging.getLogger("zolva.channels")
 
@@ -80,7 +78,7 @@ class WebhookChannel(ChannelAdapter):
         self, url: str, secret: str, transport: httpx.AsyncBaseTransport | None = None
     ) -> None:
         self._url = url
-        self._secret = secret.encode()
+        self._secret = secret
         self._client = httpx.AsyncClient(transport=transport, timeout=30.0)
 
     async def receive(self, raw: dict[str, Any]) -> InboundMessage:
@@ -88,8 +86,7 @@ class WebhookChannel(ChannelAdapter):
 
     async def send(self, session_id: str, text: str) -> None:
         body = json.dumps({"session_id": session_id, "text": text}).encode()
-        ts = str(int(time.time()))
-        sig = hmac.new(self._secret, ts.encode() + b"." + body, hashlib.sha256).hexdigest()
+        ts, sig = sign_payload(self._secret, body)
         try:
             r = await self._client.post(
                 self._url,

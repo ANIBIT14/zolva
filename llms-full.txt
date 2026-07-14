@@ -249,7 +249,7 @@ from zolva import HandoverBackend, WebhookBackend
 app = AgentApp.from_config("agents/", handover=WebhookBackend(url, secret=hmac_secret))
 ```
 
-Triggered by agent decision, guardrail violation, tool crash, provider failure, or the customer asking, one code path. Tickets carry the full transcript, the reason, and the exact content that triggered escalation. Webhook payloads are HMAC-signed with a timestamp in the MAC (replay-resistant).
+Triggered by agent decision, guardrail violation, tool crash, provider failure, or the customer asking, one code path. Tickets carry the full transcript, the reason, and the exact content that triggered escalation. Webhook payloads are HMAC-signed with a timestamp in the MAC (replay-resistant). Receivers verify with `zolva.verify_zolva_signature(body, sig, ts, secret)`.
 
 ### Channels, one CX endpoint, every declared channel
 

@@ -25,6 +25,7 @@ from typing import Any
 import httpx
 
 from zolva.channels import ChannelAdapter, ChannelError, InboundMessage, _parse_inbound
+from zolva.signing import sign_payload
 
 _DEFAULT_MODEL = "eleven_multilingual_v2"
 _DEFAULT_FORMAT = "mp3_44100_128"
@@ -45,7 +46,7 @@ class ElevenLabsChannel(ChannelAdapter):
         self._voice_id = voice_id
         self._api_key = api_key
         self._delivery_url = delivery_url
-        self._delivery_secret = delivery_secret.encode()
+        self._delivery_secret = delivery_secret
         self._model_id = model_id
         self._output_format = output_format
         self._api_base = api_base.rstrip("/")
@@ -67,10 +68,7 @@ class ElevenLabsChannel(ChannelAdapter):
         except httpx.HTTPError as e:
             raise ChannelError(f"elevenlabs tts failed: {e}") from e
         audio = r.content
-        ts = str(int(time.time()))
-        sig = hmac.new(
-            self._delivery_secret, ts.encode() + b"." + audio, hashlib.sha256
-        ).hexdigest()
+        ts, sig = sign_payload(self._delivery_secret, audio)
         try:
             r = await self._client.post(
                 self._delivery_url,
