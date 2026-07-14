@@ -1,0 +1,12 @@
+# Customer channels for MockBank: the one CX endpoint, resolved per channel.
+# `webhook` posts HMAC-signed replies to the bank's own gateway;
+# `log` is the dev channel. Secrets are env references, never inline.
+channels:
+  whatsapp:
+    adapter: webhook
+    url: https://gateway.mockbank.example/wa/send
+    secret: ${ENV:MOCKBANK_WA_SECRET}
+  ops-log:
+    adapter: log
+agents:
+  collections-agent: [whatsapp, ops-log]

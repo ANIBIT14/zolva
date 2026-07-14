@@ -35,12 +35,12 @@ class AgentConfig(BaseModel):
     evals: str | None = None
 
 
-def _resolve(value: Any, key: str = "") -> Any:
+def resolve_refs(value: Any, key: str = "") -> Any:
     """Resolve ${ENV:VAR} references; reject inline credentials at trust boundary."""
     if isinstance(value, dict):
-        return {k: _resolve(v, str(k)) for k, v in value.items()}
+        return {k: resolve_refs(v, str(k)) for k, v in value.items()}
     if isinstance(value, list):
-        return [_resolve(v, key) for v in value]
+        return [resolve_refs(v, key) for v in value]
     if isinstance(value, str):
         m = _ENV_REF.match(value)
         if m:
@@ -74,7 +74,7 @@ def load_agents(config_dir: str | Path) -> dict[str, AgentConfig]:
     """Load every *.yaml agent in config_dir. instructions: path is relative to the YAML file."""
     agents: dict[str, AgentConfig] = {}
     for path, raw in load_yaml_dir(config_dir, "agent config"):
-        raw = _resolve(raw)
+        raw = resolve_refs(raw)
         ins = raw.get("instructions")
         if not isinstance(ins, str):
             raise ConfigError(f"{path}: 'instructions' must be a path string")

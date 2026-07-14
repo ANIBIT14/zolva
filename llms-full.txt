@@ -251,6 +251,27 @@ app = AgentApp.from_config("agents/", handover=WebhookBackend(url, secret=hmac_s
 
 Triggered by agent decision, guardrail violation, tool crash, provider failure, or the customer asking, one code path. Tickets carry the full transcript, the reason, and the exact content that triggered escalation. Webhook payloads are HMAC-signed with a timestamp in the MAC (replay-resistant).
 
+### Channels, one CX endpoint, every declared channel
+
+```yaml
+# channels.yaml
+channels:
+  whatsapp: { adapter: webhook, url: https://gateway.bank.internal/wa/send, secret: "${ENV:WA_SECRET}" }
+  ops-log:  { adapter: log }
+agents:
+  collections-agent: [whatsapp, ops-log]
+```
+
+```python
+from zolva import ChannelHub
+hub = ChannelHub.from_config("channels.yaml", app)
+reply = await hub.dispatch("whatsapp", "collections-agent", webhook_payload)
+```
+
+Any agent becomes reachable on the channels the company declares; the hub resolves the adapter, enforces a per-agent channel allowlist, namespaces sessions per channel (identities can never collide across channels), and delivers the reply back on the same channel with HMAC-signed webhooks. Both directions are emitted on the bus, so audit and guardrails see the customer contact itself. Custom channels implement one two-method `ChannelAdapter`; a scripted `FakeChannel` ships for tests, and an `elevenlabs` voice adapter (documented TTS endpoint, signed audio delivery, webhook-signature helper) ships in the box.
+
+End-to-end recipes, voice CX with ElevenLabs, WhatsApp collections, CI gating, live at [zolva.ai/playbooks](https://zolva.ai/playbooks/).
+
 ## Security posture
 
 - **Self-hosted by design**, nothing leaves your infrastructure except the LLM calls you configure; the bridge supports in-house gateways.
@@ -268,12 +289,12 @@ Point your agent at [`llms.txt`](llms.txt) / [`llms-full.txt`](llms-full.txt), o
 
 ## Status & roadmap
 
-**Beta.** Core runtime, all five plugins, and the CLI (`zolva validate | eval --gate | scorecard | triage | export-dataset`) are implemented and tested (105 tests, `mypy --strict`, 3-version CI matrix). Agents with a `guardrails:` field in their YAML get their policy attached automatically by `AgentApp.from_config`.
+**Beta.** Core runtime, all six plugins (guardrails, evals, feedback, audit, synthetics, channels), and the CLI (`zolva validate | eval --gate | scorecard | triage | export-dataset`) are implemented and tested (132 tests, `mypy --strict`, 3-version CI matrix). Agents with a `guardrails:` field in their YAML get their policy attached automatically by `AgentApp.from_config`.
 
 Before 1.0:
 
 - Docs site at [zolva.ai](https://zolva.ai)
-- Voice/telephony channel adapters, ticketing-system handover backends (community welcome)
+- More `ChannelAdapter` implementations (Twilio, telephony) and ticketing-system handover backends (the interfaces and an ElevenLabs voice adapter ship; more adapters welcome)
 - Auto-wiring `evals:` from agent YAML; judge model configured per policy
 
 Design docs: [`docs/specs/`](docs/specs/) · Full architecture, threat model, and competitive positioning included.

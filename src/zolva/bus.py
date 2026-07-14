@@ -6,7 +6,9 @@ from typing import Any, Awaitable, Callable, Literal
 
 from pydantic import BaseModel
 
-StepType = Literal["user_msg", "model_call", "tool_call", "response", "handover", "feedback"]
+StepType = Literal[
+    "user_msg", "model_call", "tool_call", "response", "handover", "feedback", "channel"
+]
 
 
 class Step(BaseModel):

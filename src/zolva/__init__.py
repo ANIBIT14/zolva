@@ -2,6 +2,14 @@
 
 from zolva.audit import AuditLog, Scorecard, scorecard
 from zolva.bus import Bus, Step, Verdict
+from zolva.channels import (
+    ChannelAdapter,
+    ChannelError,
+    ChannelHub,
+    InboundMessage,
+    LogChannel,
+    WebhookChannel,
+)
 from zolva.config import AgentConfig, ConfigError, load_agents
 from zolva.evals import EvalReport, EvalRunner, load_cohorts
 from zolva.feedback import Failure, FeedbackQueue
@@ -11,7 +19,7 @@ from zolva.orchestrator import BLOCKED_MESSAGE, AgentApp
 from zolva.synthetics import SyntheticResult, SyntheticRunner, load_synthetics
 from zolva.tools import ToolRegistry, default_registry, tool
 
-__version__ = "0.1.2"
+__version__ = "0.2.0"
 
 __all__ = [
     "BLOCKED_MESSAGE",
@@ -19,6 +27,9 @@ __all__ = [
     "AgentConfig",
     "AuditLog",
     "Bus",
+    "ChannelAdapter",
+    "ChannelError",
+    "ChannelHub",
     "ConfigError",
     "EvalReport",
     "EvalRunner",
@@ -26,7 +37,9 @@ __all__ = [
     "FeedbackQueue",
     "Guardrails",
     "HandoverBackend",
+    "InboundMessage",
     "LogBackend",
+    "LogChannel",
     "Scorecard",
     "Step",
     "SyntheticResult",
@@ -35,6 +48,7 @@ __all__ = [
     "ToolRegistry",
     "Verdict",
     "WebhookBackend",
+    "WebhookChannel",
     "default_registry",
     "load_agents",
     "load_cohorts",
