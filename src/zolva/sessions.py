@@ -39,8 +39,8 @@ class SqliteSessionStore:
                 "PRIMARY KEY (session_id, seq))"
             )
 
-    def _conn(self) -> AbstractContextManager[sqlite3.Connection]:
-        return sqlite_conn(self._path)
+    def _conn(self, *, immediate: bool = False) -> AbstractContextManager[sqlite3.Connection]:
+        return sqlite_conn(self._path, immediate=immediate)
 
     async def history(self, session_id: str) -> list[Message]:
         with self._conn() as conn:
@@ -50,7 +50,7 @@ class SqliteSessionStore:
         return [Message.model_validate_json(r[0]) for r in rows]
 
     async def append(self, session_id: str, messages: list[Message]) -> None:
-        with self._conn() as conn:
+        with self._conn(immediate=True) as conn:
             row = conn.execute(
                 "SELECT COALESCE(MAX(seq), -1) FROM messages WHERE session_id = ?", (session_id,)
             ).fetchone()
