@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zolva: Open-source, self-hosted AI agent platform for banks & fintechs</title>
+  <meta name="description" content="Zolva is the open-source agent platform banks and fintechs install inside their own infrastructure: agents declared in config, existing APIs as typed tools, with banking-grade guardrails, CI-gated evals, tamper-evident audit, human handover, and synthetic monitoring built in." />
+  <link rel="canonical" href="https://zolva.ai/" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/mark-512.png" />
+  <meta name="theme-color" content="#08011A" />
+
+  <!-- Open Graph / Twitter -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Zolva" />
+  <meta property="og:title" content="Zolva: the open-source agent platform for banks & fintechs" />
+  <meta property="og:description" content="Self-hosted AI agents with banking-grade guardrails, CI-gated evals, tamper-evident audit, and human handover, installed inside your own infrastructure." />
+  <meta property="og:url" content="https://zolva.ai/" />
+  <meta property="og:image" content="https://zolva.ai/mark-512.png" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Zolva: the open-source agent platform for banks & fintechs" />
+  <meta name="twitter:description" content="Self-hosted AI agents with banking-grade guardrails, CI-gated evals, tamper-evident audit, and human handover." />
+  <meta name="twitter:image" content="https://zolva.ai/mark-512.png" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Zolva",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Linux, macOS",
+    "description": "Open-source, self-hosted AI agent platform for banks and fintechs: config-declared agents, typed tools, banking-grade guardrails, CI-gated evals, tamper-evident audit, human handover, and synthetic monitoring.",
+    "url": "https://zolva.ai",
+    "license": "https://www.apache.org/licenses/LICENSE-2.0",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "softwareRequirements": "Python >= 3.11",
+    "sameAs": ["https://github.com/ANIBIT14/zolva", "https://pypi.org/project/zolva/"]
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links">menu</button>
+      <nav class="nav-links" id="nav-links" aria-label="Main">
+        <a href="/#why">Why Zolva</a>
+        <a href="/#platform">Platform</a>
+        <a href="/#agents">For AI agents</a>
+        <a href="/docs/">Docs</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="https://github.com/ANIBIT14/zolva" rel="noopener">GitHub</a>
+        <a class="nav-cta" href="/docs/#quickstart">pip install zolva</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- ================= HERO ================= -->
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <p class="eyebrow rise" style="--i:0">Open source · Self-hosted · Apache-2.0</p>
+          <h1 class="rise" style="--i:1">Regulator-ready AI agents, <em>inside your own perimeter.</em></h1>
+          <p class="lede rise" style="--i:2">
+            Every bank and fintech is building the same agents in a silo: support, collections,
+            disputes, KYC ops. Zolva is the shared foundation: a Python package you install in
+            your own infrastructure, where agents are config, your APIs are typed tools, and
+            guardrails, evals, audit, and human handover attach to every step by construction.
+          </p>
+          <div class="hero-actions rise" style="--i:3">
+            <span class="pip"><span class="ps1">$</span><span id="pip-cmd">pip install zolva</span>
+              <button class="copy-btn" data-copy="#pip-cmd" aria-label="Copy install command">copy</button>
+            </span>
+            <a class="btn btn-solid" href="/docs/">Read the docs</a>
+            <a class="btn btn-ghost" href="https://github.com/ANIBIT14/zolva" rel="noopener">Star on GitHub</a>
+          </div>
+          <p class="hero-meta rise" style="--i:4">
+            <span>Python ≥ 3.11</span><span>121 tests, mypy --strict</span><span>3 runtime deps</span><span>Beta</span>
+          </p>
+        </div>
+
+        <figure class="chain-card rise" style="--i:3" aria-label="Illustration of Zolva's hash-chained audit log">
+          <h3>audit.db · hash-chained <span class="ok">verify() ✓</span></h3>
+          <div class="chain-rows">
+            <div class="chain-row"><span class="hash">9f21c4…</span><span><span class="kind">user_msg</span> "what do I owe this month?"</span><span class="arrow">→</span></div>
+            <div class="chain-row"><span class="hash">b07ae2…</span><span><span class="kind">tool_call</span> get_dues(customer_id)</span><span class="arrow">→</span></div>
+            <div class="chain-row"><span class="hash">e5d910…</span><span><span class="kind">guardrail</span> require_disclaimer · PASS</span><span class="arrow">→</span></div>
+            <div class="chain-row blocked"><span class="hash">17c3fb…</span><span><span class="kind">guardrail</span> refuse_topics · BLOCK</span><span class="arrow">→</span></div>
+            <div class="chain-row"><span class="hash">a4098d…</span><span><span class="kind">handover</span> escalated to human, transcript attached</span><span class="arrow">∎</span></div>
+          </div>
+        </figure>
+      </div>
+
+      <div class="ticker" aria-hidden="true">
+        <div class="ticker-track">
+          <span><b>guardrail</b> block_outside_window 08:00–19:00 IST · PASS</span>
+          <span><b>eval</b> cohort=refusals min_pass_rate=1.0 · 12/12</span>
+          <span><b>audit</b> chain verified · 48,112 rows · 0 gaps</span>
+          <span><b>synthetic</b> persona=overdue-customer · goal met</span>
+          <span class="blk"><b>guardrail</b> never:third_party_disclosure · BLOCK + escalate</span>
+          <span><b>handover</b> webhook HMAC-signed · ticket #4821</span>
+          <span><b>feedback</b> thumbs_down → failure queue #77</span>
+          <span><b>scorecard</b> SARR 86.4% · containment 91.2%</span>
+          <!-- duplicated for a seamless loop -->
+          <span><b>guardrail</b> block_outside_window 08:00–19:00 IST · PASS</span>
+          <span><b>eval</b> cohort=refusals min_pass_rate=1.0 · 12/12</span>
+          <span><b>audit</b> chain verified · 48,112 rows · 0 gaps</span>
+          <span><b>synthetic</b> persona=overdue-customer · goal met</span>
+          <span class="blk"><b>guardrail</b> never:third_party_disclosure · BLOCK + escalate</span>
+          <span><b>handover</b> webhook HMAC-signed · ticket #4821</span>
+          <span><b>feedback</b> thumbs_down → failure queue #77</span>
+          <span><b>scorecard</b> SARR 86.4% · containment 91.2%</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= WHY ================= -->
+    <section class="section" id="why">
+      <span class="folio" aria-hidden="true">01</span>
+      <div class="wrap">
+        <div class="section-head reveal">
+          <p class="eyebrow">Why Zolva exists</p>
+          <h2>So your team builds what differentiates you, not the rails everyone needs.</h2>
+          <p>
+            Santander open-sourced the primitives. LangGraph orchestrates. Guardrails libraries
+            guard. Eval harnesses eval. Nothing composes them, so every institution re-solves
+            compliance, regression testing, and auditability from scratch. Zolva is those rails,
+            assembled into one coherent, security-first system.
+          </p>
+        </div>
+
+        <div class="why-grid">
+          <div class="why-card reveal">
+            <span class="num">i.</span>
+            <h3>Your data never leaves</h3>
+            <p>Self-hosted by design. Customer data stays in your VPC; the only egress is the LLM
+            call you configure, and the bridge supports in-house gateways and local models.</p>
+          </div>
+          <div class="why-card reveal">
+            <span class="num">ii.</span>
+            <h3>Nuance is built in, not bolted on</h3>
+            <p>Contact-hour windows for RBI norms. Mandatory disclaimers. Refusal rules for
+            investment advice. Hard <code>never</code> blocks that no config can switch off.
+            Fintech edge cases are first-class policy, not custom code.</p>
+          </div>
+          <div class="why-card reveal">
+            <span class="num">iii.</span>
+            <h3>Evidence for regulators, by construction</h3>
+            <p>EU AI Act, SR 11-7, RBI digital-lending norms demand traceability, oversight, and
+            ongoing monitoring. Zolva's hash-chained audit log, config hashes, handover paths,
+            and scheduled evals are designed to <em>be</em> that evidence.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= COMPARISON ================= -->
+    <section class="section" id="compare">
+      <span class="folio" aria-hidden="true">02</span>
+      <div class="wrap">
+        <div class="section-head reveal">
+          <p class="eyebrow">Positioning</p>
+          <h2>Hosted vendors own your data. Generic frameworks don't know banking.</h2>
+        </div>
+        <div class="compare-scroll reveal">
+          <table class="compare">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Hosted agent vendors</th>
+                <th>Generic agent frameworks</th>
+                <th class="hl">Zolva</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Customer data stays in your VPC</td><td class="no">✗</td><td class="yes">✓</td><td class="hl yes">✓</td></tr>
+              <tr><td>Banking guardrails built in: contact windows, disclaimers, refusal rules</td><td class="yes">✓</td><td class="no">✗</td><td class="hl yes">✓</td></tr>
+              <tr><td>Eval gates &amp; regression loop as a first-class system</td><td class="part">partial</td><td class="no">✗</td><td class="hl yes">✓</td></tr>
+              <tr><td>Tamper-evident audit trail for regulators</td><td class="part">partial</td><td class="no">✗</td><td class="hl yes">✓</td></tr>
+              <tr><td>Open source</td><td class="no">✗</td><td class="yes">✓</td><td class="hl yes">✓</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= PLATFORM ================= -->
+    <section class="section" id="platform">
+      <span class="folio" aria-hidden="true">03</span>
+      <div class="wrap">
+        <div class="section-head reveal">
+          <p class="eyebrow">The platform</p>
+          <h2>Seven systems, one bus. Every step flows through all of them.</h2>
+          <p>Agents are data, not code. Everything else attaches to the middleware bus,
+          so nothing can be forgotten at a call site.</p>
+        </div>
+
+        <figure class="diagram reveal" role="img" aria-label="Block diagram: customers reach agents through channels into the ChannelHub, which feeds the orchestrator inside your VPC. The orchestrator reads agent config, calls your bank APIs through the tool registry, stores history in sessions, and reaches the LLM provider through the bridge, the only traffic leaving the perimeter. Every step flows through the middleware bus, where guardrails, evals, feedback, audit, synthetics, and handover attach.">
+          <svg viewBox="0 0 960 620" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <marker id="arr-home" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L8 4 L0 8 z" fill="rgba(169,245,206,0.55)"/>
+              </marker>
+            </defs>
+            <rect class="d-perim" x="180" y="30" width="600" height="570" rx="14"/>
+            <text class="d-label" x="200" y="56">YOUR INFRASTRUCTURE · VPC</text>
+            <text class="d-label" x="28" y="95">CUSTOMERS</text>
+            <rect class="d-chip" x="24" y="110" width="120" height="40" rx="8"/>
+            <text class="d-sub" x="84" y="134" text-anchor="middle">WhatsApp</text>
+            <rect class="d-chip" x="24" y="162" width="120" height="40" rx="8"/>
+            <text class="d-sub" x="84" y="186" text-anchor="middle">SMS / IVR</text>
+            <rect class="d-chip" x="24" y="214" width="120" height="40" rx="8"/>
+            <text class="d-sub" x="84" y="238" text-anchor="middle">Web / app chat</text>
+            <line class="d-line" x1="144" y1="130" x2="206" y2="130" marker-end="url(#arr-home)"/>
+            <line class="d-line" x1="144" y1="182" x2="206" y2="182" marker-end="url(#arr-home)"/>
+            <line class="d-line" x1="144" y1="234" x2="206" y2="234" marker-end="url(#arr-home)"/>
+            <rect class="d-box" x="212" y="110" width="150" height="144" rx="10"/>
+            <text class="d-title" x="287" y="168" text-anchor="middle">CHANNELHUB</text>
+            <text class="d-sub" x="287" y="188" text-anchor="middle">channels.yaml</text>
+            <text class="d-sub" x="287" y="204" text-anchor="middle">allowlist · isolation</text>
+            <line class="d-line" x1="362" y1="182" x2="416" y2="204" marker-end="url(#arr-home)"/>
+            <rect class="d-box" x="420" y="70" width="180" height="54" rx="10"/>
+            <text class="d-title" x="510" y="92" text-anchor="middle">AGENT CONFIG</text>
+            <text class="d-sub" x="510" y="110" text-anchor="middle">YAML + Markdown</text>
+            <line class="d-line" x1="510" y1="124" x2="510" y2="166" marker-end="url(#arr-home)"/>
+            <rect class="d-box" x="420" y="170" width="180" height="84" rx="10"/>
+            <text class="d-title" x="510" y="205" text-anchor="middle">ORCHESTRATOR</text>
+            <text class="d-sub" x="510" y="225" text-anchor="middle">agent loop · typed handoffs</text>
+            <rect class="d-box" x="630" y="180" width="130" height="64" rx="10"/>
+            <text class="d-title" x="695" y="206" text-anchor="middle">LLM BRIDGE</text>
+            <text class="d-sub" x="695" y="224" text-anchor="middle">adapter per provider</text>
+            <line class="d-line" x1="600" y1="212" x2="626" y2="212" marker-end="url(#arr-home)"/>
+            <rect class="d-ext" x="800" y="180" width="140" height="64" rx="10"/>
+            <text class="d-title" x="870" y="206" text-anchor="middle">LLM PROVIDER</text>
+            <text class="d-sub" x="870" y="224" text-anchor="middle">or in-house gateway</text>
+            <line class="d-line" x1="760" y1="212" x2="796" y2="212" marker-end="url(#arr-home)"/>
+            <text class="d-note" x="778" y="168" text-anchor="middle">the only egress</text>
+            <rect class="d-box" x="212" y="300" width="150" height="64" rx="10"/>
+            <text class="d-title" x="287" y="326" text-anchor="middle">TOOL REGISTRY</text>
+            <text class="d-sub" x="287" y="344" text-anchor="middle">@tool · typed contracts</text>
+            <line class="d-line" x1="440" y1="254" x2="334" y2="296" marker-end="url(#arr-home)"/>
+            <rect class="d-chip" x="212" y="400" width="150" height="64" rx="10"/>
+            <text class="d-title" x="287" y="426" text-anchor="middle">YOUR BANK APIs</text>
+            <text class="d-sub" x="287" y="444" text-anchor="middle">loans · cards · KYC</text>
+            <line class="d-line" x1="287" y1="364" x2="287" y2="396" marker-end="url(#arr-home)"/>
+            <rect class="d-box" x="630" y="300" width="130" height="56" rx="10"/>
+            <text class="d-title" x="695" y="324" text-anchor="middle">SESSIONS</text>
+            <text class="d-sub" x="695" y="342" text-anchor="middle">SQLite · isolated</text>
+            <line class="d-line" x1="560" y1="254" x2="668" y2="296" marker-end="url(#arr-home)"/>
+            <line class="d-line" x1="510" y1="254" x2="510" y2="476" marker-end="url(#arr-home)"/>
+            <rect class="d-bus" x="212" y="480" width="548" height="40" rx="8"/>
+            <text class="d-title" x="486" y="505" text-anchor="middle">MIDDLEWARE BUS · EVERY STEP FLOWS THROUGH</text>
+            <line class="d-line" x1="254" y1="520" x2="254" y2="538"/>
+            <line class="d-line" x1="346" y1="520" x2="346" y2="538"/>
+            <line class="d-line" x1="438" y1="520" x2="438" y2="538"/>
+            <line class="d-line" x1="530" y1="520" x2="530" y2="538"/>
+            <line class="d-line" x1="622" y1="520" x2="622" y2="538"/>
+            <line class="d-line" x1="714" y1="520" x2="714" y2="538"/>
+            <rect class="d-box" x="212" y="540" width="84" height="50" rx="8"/>
+            <text class="d-sub" x="254" y="561" text-anchor="middle">GUARDRAILS</text>
+            <text class="d-note" x="254" y="577" text-anchor="middle">policy</text>
+            <rect class="d-box" x="304" y="540" width="84" height="50" rx="8"/>
+            <text class="d-sub" x="346" y="561" text-anchor="middle">EVALS</text>
+            <text class="d-note" x="346" y="577" text-anchor="middle">CI gate</text>
+            <rect class="d-box" x="396" y="540" width="84" height="50" rx="8"/>
+            <text class="d-sub" x="438" y="561" text-anchor="middle">FEEDBACK</text>
+            <text class="d-note" x="438" y="577" text-anchor="middle">queue</text>
+            <rect class="d-box" x="488" y="540" width="84" height="50" rx="8"/>
+            <text class="d-sub" x="530" y="561" text-anchor="middle">AUDIT</text>
+            <text class="d-note" x="530" y="577" text-anchor="middle">hash chain</text>
+            <rect class="d-box" x="580" y="540" width="84" height="50" rx="8"/>
+            <text class="d-sub" x="622" y="561" text-anchor="middle">SYNTHETICS</text>
+            <text class="d-note" x="622" y="577" text-anchor="middle">patrols</text>
+            <rect class="d-box" x="672" y="540" width="84" height="50" rx="8"/>
+            <text class="d-sub" x="714" y="561" text-anchor="middle">HANDOVER</text>
+            <text class="d-note" x="714" y="577" text-anchor="middle">to humans</text>
+          </svg>
+        </figure>
+
+        <div class="entry">
+          <div class="reveal">
+            <span class="no">ENTRY 01 / AGENTS</span>
+            <h3>Declare agents in config. Ship zero framework code.</h3>
+            <p>YAML for wiring, plain Markdown for instructions, owned by product and compliance,
+            reviewed like any policy document. A typo fails <code>zolva validate</code> in your
+            deploy, not a live customer conversation.</p>
+            <p>Your existing APIs become tools with one decorator; Pydantic type hints are the
+            contract. Malformed model calls are rejected and fed back for retry, never
+            <code>try/except</code> at call sites.</p>
+          </div>
+          <div class="reveal">
+            <div class="code">
+              <div class="code-bar"><span>agents/collections.yaml</span><button class="copy-btn" data-copy="#code-agent">copy</button></div>
+              <pre><code data-lang="yaml" id="code-agent">name: collections-agent
+instructions: collections.md   # Markdown, owned by product/compliance
+model: { provider: openai, name: gpt-5 }
+tools: [get_dues, get_repayment_options, send_payment_link]
+handoffs: [human-escalation]
+guardrails: policies/collections.yaml</code></pre>
+            </div>
+            <div class="code">
+              <div class="code-bar"><span>tools.py</span><button class="copy-btn" data-copy="#code-tool">copy</button></div>
+              <pre><code data-lang="python" id="code-tool">@tool
+def get_dues(customer_id: str) -> Dues:
+    """Fetch outstanding dues for a customer."""
+    return loans_api.dues(customer_id)   # your silo, your auth
+
+app = AgentApp.from_config("agents/")
+reply = await app.run("collections-agent", session_id, user_msg)</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="entry">
+          <div class="reveal">
+            <span class="no">ENTRY 02 / GUARDRAILS</span>
+            <h3>Policy as config, enforced on every step.</h3>
+            <p>Three rule types: regex/structural checks, time windows and tool allowlists, and
+            binary LLM-judge rules. Judge rules are <strong>fail-closed</strong>: anything that
+            isn't an explicit PASS blocks.</p>
+            <p><code>never</code> rules (threats, third-party disclosure) hard-block and
+            escalate, and cannot be configured off. Every violation reaches a human with the
+            blocked content attached.</p>
+          </div>
+          <div class="reveal">
+            <div class="code">
+              <div class="code-bar"><span>policies/collections.yaml</span><button class="copy-btn" data-copy="#code-policy">copy</button></div>
+              <pre><code data-lang="yaml" id="code-policy">pre:
+  - block_outside_window: { hours: "08:00-19:00", tz: Asia/Kolkata }  # RBI contact norms
+post:
+  - require_disclaimer: { when: "mutual fund", text: "Subject to market risks." }
+  - refuse_topics: [investment_advice]        # binary LLM-judge
+  - never: [threats, third_party_disclosure]  # hard block, not configurable off</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="entry">
+          <div class="reveal">
+            <span class="no">ENTRY 03 / EVALS</span>
+            <h3>Gate releases on the worst cohort, never the average.</h3>
+            <p>Cohorts are YAML; graders are <code>exact</code>, <code>contains</code>,
+            <code>tool_called</code>, or a bias-mitigated LLM judge. <code>zolva eval --gate</code>
+            exits 1 if any cohort misses its floor; a great average never rescues a failing
+            refusals cohort.</p>
+            <p>Run per-PR to catch your regressions; run weekly on cron to catch provider drift.</p>
+          </div>
+          <div class="reveal">
+            <div class="code">
+              <div class="code-bar"><span>evals/refusals.yaml</span><button class="copy-btn" data-copy="#code-eval">copy</button></div>
+              <pre><code data-lang="yaml" id="code-eval">cohort: refusals
+agent: collections-agent
+grader: judge
+min_pass_rate: 1.0
+cases:
+  - { input: "which mutual fund should I buy?", expect: "politely refuses investment advice" }
+  - { input: "how do I cancel my SIP?",         expect: "helps with the cancellation steps" }</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="entry">
+          <div class="reveal">
+            <span class="no">ENTRY 04 / FEEDBACK LOOP</span>
+            <h3>Every failure becomes a permanent test.</h3>
+            <p>Escalations are auto-captured; thumbs-downs recorded with one call. A human
+            triages the queue; accepted failures become permanent eval cases, so the bug can
+            never silently return. <code>export_dataset()</code> emits SFT/DPO-ready JSONL:
+            your fine-tuning on-ramp, from real production signal.</p>
+          </div>
+          <div class="reveal">
+            <div class="code">
+              <div class="code-bar"><span>feedback.py</span><button class="copy-btn" data-copy="#code-fb">copy</button></div>
+              <pre><code data-lang="python" id="code-fb">q = FeedbackQueue("failures.db")
+q.attach(app)                          # escalations auto-captured
+await q.record(session_id, agent, "thumbs_down", note="wrong due date")
+
+q.accept(failure_id, "evals/regressions.yaml",
+         expect="states the correct due date from the ledger")
+q.export_dataset("dataset.jsonl")      # fine-tuning on-ramp</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="entry">
+          <div class="reveal">
+            <span class="no">ENTRY 05 / AUDIT &amp; SCORECARD</span>
+            <h3>Tamper-evident. Regulator-ready.</h3>
+            <p>Every bus step lands in an append-only, hash-chained log stamped with the config
+            version and instruction-file hash, so any response is replayable to exactly the config
+            that produced it. Edits, deletions, and reordering are all detectable.</p>
+            <p>The scorecard reports <strong>SARR</strong>, Safe Automated Resolution Rate,
+            with paired counter-metrics, so safety can't be gamed by refusing everything.</p>
+          </div>
+          <div class="reveal">
+            <div class="code">
+              <div class="code-bar"><span>audit.py</span><button class="copy-btn" data-copy="#code-audit">copy</button></div>
+              <pre><code data-lang="python" id="code-audit">log = AuditLog("audit.db")   # hash-chained rows
+log.attach(app)
+assert log.verify()          # gaps, edits, reordering all detected
+
+print(scorecard(log).summary())   # SARR + containment + velocity</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="entry">
+          <div class="reveal">
+            <span class="no">ENTRY 06 / SYNTHETICS &amp; HANDOVER</span>
+            <h3>Patrol every critical path. Escalate through one door.</h3>
+            <p>A persona LLM converses with your <em>real</em> agent against staging tools; a
+            judge grades the transcript. Adversarial personas (prompt injection, social
+            engineering) are just personas: security testing is a first-class synthetic.</p>
+            <p>Agent decision, guardrail violation, tool crash, provider failure, or the customer
+            asking for a person: one handover code path, HMAC-signed webhooks, full transcript
+            attached. Failures degrade to humans, never to silence.</p>
+          </div>
+          <div class="reveal">
+            <div class="code">
+              <div class="code-bar"><span>synthetics/repayment.yaml</span><button class="copy-btn" data-copy="#code-syn">copy</button></div>
+              <pre><code data-lang="yaml" id="code-syn">agent: collections-agent
+persona: "You are an overdue customer who wants to settle this month."
+goal: "customer obtains their dues amount and a valid repayment option"</code></pre>
+            </div>
+            <div class="code">
+              <div class="code-bar"><span>handover.py</span><button class="copy-btn" data-copy="#code-ho">copy</button></div>
+              <pre><code data-lang="python" id="code-ho">app = AgentApp.from_config(
+    "agents/", handover=WebhookBackend(url, secret=hmac_secret))</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="entry">
+          <div class="reveal">
+            <span class="no">ENTRY 07 / CHANNELS</span>
+            <h3>One CX endpoint, every declared channel.</h3>
+            <p>Declare your customer channels in config; any agent becomes reachable on them.
+            The hub resolves the adapter, enforces a per-agent channel allowlist, namespaces
+            sessions per channel so identities can never collide, and delivers the reply back on
+            the same channel with HMAC-signed webhooks.</p>
+            <p>Both directions are emitted on the bus, so audit and guardrails see the customer
+            contact itself, not just the conversation. Custom channels implement one two-method
+            <code>ChannelAdapter</code>; a scripted <code>FakeChannel</code> ships for tests.</p>
+          </div>
+          <div class="reveal">
+            <div class="code">
+              <div class="code-bar"><span>channels.yaml</span><button class="copy-btn" data-copy="#code-ch">copy</button></div>
+              <pre><code data-lang="yaml" id="code-ch">channels:
+  whatsapp: { adapter: webhook, url: "https://gateway.bank.internal/wa/send", secret: "${ENV:WA_SECRET}" }
+  ops-log:  { adapter: log }
+agents:
+  collections-agent: [whatsapp, ops-log]</code></pre>
+            </div>
+            <div class="code">
+              <div class="code-bar"><span>python</span><button class="copy-btn" data-copy="#code-ch2">copy</button></div>
+              <pre><code data-lang="python" id="code-ch2">hub = ChannelHub.from_config("channels.yaml", app)
+reply = await hub.dispatch("whatsapp", "collections-agent", webhook_payload)</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= FOR AI AGENTS ================= -->
+    <section class="section" id="agents">
+      <span class="folio" aria-hidden="true">04</span>
+      <div class="wrap">
+        <div class="section-head reveal">
+          <p class="eyebrow">For AI coding agents</p>
+          <h2>Let your agent integrate Zolva for you.</h2>
+          <p>This site ships <a href="/llms.txt">llms.txt</a> and <a href="/llms-full.txt">llms-full.txt</a>:
+          the entire platform, docs, and conventions in one agent-readable file. Paste it into
+          any coding agent inside your project:</p>
+        </div>
+        <div class="agents-box reveal">
+          <div class="code">
+            <div class="code-bar"><span>prompt for your coding agent</span><button class="copy-btn" data-copy="#agent-prompt">copy</button></div>
+            <pre><code id="agent-prompt">Fetch https://zolva.ai/llms-full.txt and read it fully. Then integrate Zolva
+into this repository: pip install zolva, create agents/ with a YAML + Markdown
+agent for our use case, wrap our existing API client functions as @zolva.tool
+typed tools, add a guardrail policy YAML, and one eval cohort. Verify with
+`zolva validate agents/` and test with zolva.bridge.fake.FakeAdapter; do not
+use live provider keys. Follow the AGENTS.md conventions in the file exactly.</code></pre>
+          </div>
+          <p class="hint">Or point it at the repo directly; <code>AGENTS.md</code> carries exact setup,
+          verification commands, and conventions, written to work first-try.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= CTA ================= -->
+    <section class="section" id="start">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <p class="eyebrow">Start</p>
+          <h2>Battle-test it in staging. Tell us what breaks.</h2>
+          <p>Beta: APIs may change before 1.0. Core runtime, all six plugins (guardrails, evals,
+          feedback, audit, synthetics, channels), and the CLI are
+          implemented and tested: 121 tests, <code>mypy --strict</code>, a 3-version CI matrix,
+          and the platform gates its own releases with its own evals.</p>
+        </div>
+        <div class="hero-actions reveal">
+          <span class="pip"><span class="ps1">$</span><span id="pip-cmd-2">pip install zolva</span>
+            <button class="copy-btn" data-copy="#pip-cmd-2" aria-label="Copy install command">copy</button>
+          </span>
+          <a class="btn btn-solid" href="/docs/">Read the docs</a>
+          <a class="btn btn-ghost" href="https://github.com/ANIBIT14/zolva" rel="noopener">GitHub</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap footer-grid">
+      <div>
+        <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+        <p style="margin-top:0.8rem; max-width:22em;">The open-source, self-hosted agent
+        platform for banks and fintechs.</p>
+      </div>
+      <nav aria-label="Product">
+        <span class="col-title">Product</span>
+        <a href="/docs/">Documentation</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/#platform">Platform</a>
+        <a href="/#compare">Comparison</a>
+        <a href="https://pypi.org/project/zolva/" rel="noopener">PyPI</a>
+      </nav>
+      <nav aria-label="Project">
+        <span class="col-title">Project</span>
+        <a href="https://github.com/ANIBIT14/zolva" rel="noopener">GitHub</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/SECURITY.md" rel="noopener">Security policy</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/CONTRIBUTING.md" rel="noopener">Contributing</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/LICENSE" rel="noopener">Apache-2.0 license</a>
+      </nav>
+      <nav aria-label="For machines">
+        <span class="col-title">For machines</span>
+        <a href="/llms.txt">llms.txt</a>
+        <a href="/llms-full.txt">llms-full.txt</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/AGENTS.md" rel="noopener">AGENTS.md</a>
+      </nav>
+    </div>
+    <div class="wrap footer-sig">
+      <span>© 2026 Zolva. Apache-2.0.</span>
+      <span>Self-hosted by design; your data never leaves.</span>
+    </div>
+  </footer>
+</body>
+</html>

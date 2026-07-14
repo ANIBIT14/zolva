@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CI-Gated Agent Releases | Zolva Playbooks</title>
+  <meta name="description" content="Production playbook: wire zolva validate and zolva eval --gate into GitHub Actions so no prompt, policy, or tool change ships without passing its worst cohort, plus a weekly drift run and the failure-to-regression loop." />
+  <link rel="canonical" href="https://zolva.ai/playbooks/ci-gated-releases/" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/mark-512.png" />
+  <meta name="theme-color" content="#08011A" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Zolva" />
+  <meta property="og:title" content="CI-gated agent releases: a Zolva playbook" />
+  <meta property="og:description" content="No prompt or policy change ships without passing its worst cohort. GitHub Actions workflows for validation, gating, and weekly drift." />
+  <meta property="og:url" content="https://zolva.ai/playbooks/ci-gated-releases/" />
+  <meta property="og:image" content="https://zolva.ai/mark-512.png" />
+  <meta name="twitter:card" content="summary" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "CI-gated agent releases: a Zolva playbook",
+    "description": "GitHub Actions workflows that gate every agent change on zolva validate and zolva eval --gate, with weekly drift detection.",
+    "url": "https://zolva.ai/playbooks/ci-gated-releases/",
+    "author": { "@type": "Organization", "name": "Zolva", "url": "https://zolva.ai" }
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links">menu</button>
+      <nav class="nav-links" id="nav-links" aria-label="Main">
+        <a href="/#why">Why Zolva</a>
+        <a href="/#platform">Platform</a>
+        <a href="/docs/">Docs</a>
+        <a href="/playbooks/" aria-current="page">Playbooks</a>
+        <a href="https://github.com/ANIBIT14/zolva" rel="noopener">GitHub</a>
+        <a class="nav-cta" href="/docs/#quickstart">pip install zolva</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="wrap docs-shell">
+    <aside class="docs-sidebar" aria-label="Playbook steps">
+      <p class="group">Playbook</p>
+      <a href="#overview">Overview</a>
+      <a href="#prerequisites">Prerequisites</a>
+      <p class="group">Steps</p>
+      <a href="#step-layout">1 · Repo layout</a>
+      <a href="#step-pr">2 · The PR gate</a>
+      <a href="#step-drift">3 · Weekly drift run</a>
+      <a href="#step-loop">4 · Failure → regression</a>
+      <p class="group">Reference</p>
+      <a href="#notes">Exit codes &amp; secrets</a>
+    </aside>
+
+    <main class="docs-main">
+      <section id="overview">
+        <p class="eyebrow" style="margin-bottom:1rem">Playbook 03 · CI</p>
+        <h1>CI-gated agent releases</h1>
+        <p><strong>Goal:</strong> no prompt, policy, tool, or model change reaches production
+        without passing its worst eval cohort. Two workflows do it: a PR gate that blocks the
+        merge, and a weekly cron that catches provider drift you didn't cause. Both are plain
+        GitHub Actions running two Zolva commands that exit 1 on failure, which is the entire
+        integration.</p>
+        <div class="callout">
+          <strong>Verification note.</strong> The <code>zolva</code> CLI flags here are taken
+          from the shipped CLI itself (<code>zolva validate</code>, <code>zolva eval
+          &lt;dir&gt; --app module:attr --gate --judge-provider --judge-model --out</code>,
+          <code>zolva scorecard</code>, <code>zolva triage --accept/--reject</code>,
+          <code>zolva export-dataset</code>). GitHub Actions steps use the current documented
+          major versions of the official actions.
+        </div>
+      </section>
+
+      <section id="prerequisites">
+        <h2>Prerequisites <a class="anchor-link" href="#prerequisites">#</a></h2>
+        <ul>
+          <li>Your agent repo: <code>agents/</code>, <code>evals/</code>, <code>tools.py</code>,
+          and an importable <code>AgentApp</code> (Step 1).</li>
+          <li>A model provider key stored as a GitHub Actions secret
+          (<code>OPENAI_API_KEY</code> or <code>ANTHROPIC_API_KEY</code>), never in the repo:
+          Zolva's config loader rejects inline credentials anyway.</li>
+          <li>Judge-graded cohorts also need a judge: pass <code>--judge-provider</code> and
+          <code>--judge-model</code>. Cohorts graded with <code>exact</code>,
+          <code>contains</code>, or <code>tool_called</code> need no judge.</li>
+        </ul>
+      </section>
+
+      <section id="step-layout">
+        <h2>Step 1 · Repo layout and the <code>--app</code> entry point <a class="anchor-link" href="#step-layout">#</a></h2>
+        <p><code>zolva eval</code> imports your app as <code>module:attr</code> from the
+        working directory, so expose one:</p>
+        <div class="code">
+          <div class="code-bar"><span>app.py</span><button class="copy-btn" data-copy="#c-app">copy</button></div>
+          <pre><code data-lang="python" id="c-app">"""CI entry point: `zolva eval evals/ --app app:app` imports this."""
+
+import tools  # noqa: F401  registers @zolva.tool functions
+
+from zolva import AgentApp
+
+app = AgentApp.from_config("agents/")</code></pre>
+        </div>
+        <div class="code">
+          <div class="code-bar"><span>layout</span></div>
+          <pre><code id="c-layout">your-repo/
+├── agents/
+│   ├── collections.yaml
+│   ├── collections.md
+│   └── policies/collections.yaml
+├── evals/
+│   ├── core.yaml            # grader: judge, min_pass_rate per cohort
+│   ├── refusals.yaml        # min_pass_rate: 1.0
+│   └── regressions.yaml     # grows via triage, never shrinks
+├── tools.py
+├── app.py
+└── .github/workflows/
+    ├── agent-gate.yml
+    └── agent-drift.yml</code></pre>
+        </div>
+        <p>Mock your tools for CI in <code>tools.py</code> (a fixtures flag or a staging base
+        URL): the gate should test agent behavior, not your core banking uptime.</p>
+      </section>
+
+      <section id="step-pr">
+        <h2>Step 2 · The PR gate <a class="anchor-link" href="#step-pr">#</a></h2>
+        <p>Config validation is free and instant; the eval gate exits 1 if any cohort misses
+        its <code>min_pass_rate</code>, and a great average never rescues a failing cohort:</p>
+        <div class="code">
+          <div class="code-bar"><span>.github/workflows/agent-gate.yml</span><button class="copy-btn" data-copy="#c-gate">copy</button></div>
+          <pre><code data-lang="yaml" id="c-gate">name: agent-gate
+on:
+  pull_request:
+    paths: ["agents/**", "evals/**", "tools.py", "app.py"]
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.12" }
+      - run: pip install zolva
+      - name: Validate config
+        run: zolva validate agents/
+      - name: Eval gate (worst cohort blocks the merge)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: >
+          zolva eval evals/ --app app:app --gate
+          --judge-provider openai --judge-model gpt-5
+          --out eval-report.json
+      - name: Keep the report on the PR
+        if: always()
+        uses: actions/upload-artifact@v7
+        with: { name: eval-report, path: eval-report.json }</code></pre>
+        </div>
+        <p>Make the <code>gate</code> job a required status check on your default branch and
+        the loop is closed: a failing refusals cohort is now physically unable to merge.</p>
+      </section>
+
+      <section id="step-drift">
+        <h2>Step 3 · Weekly drift run <a class="anchor-link" href="#step-drift">#</a></h2>
+        <p>Providers update models under you. The same command on a schedule catches behavior
+        drift you didn't cause, and the dated report gives you a git-diffable history:</p>
+        <div class="code">
+          <div class="code-bar"><span>.github/workflows/agent-drift.yml</span><button class="copy-btn" data-copy="#c-drift">copy</button></div>
+          <pre><code data-lang="yaml" id="c-drift">name: agent-drift
+on:
+  schedule:
+    - cron: "0 3 * * 1"      # every Monday 03:00 UTC
+  workflow_dispatch: {}       # allow manual runs
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.12" }
+      - run: pip install zolva
+      - name: Full eval sweep
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: >
+          zolva eval evals/ --app app:app --gate
+          --judge-provider openai --judge-model gpt-5
+          --out "drift-$(date +%F).json"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with: { name: drift-report, path: "drift-*.json" }</code></pre>
+        </div>
+        <p>A red Monday run with no code change is a provider drift signal: pin or adjust the
+        model in the agent YAML, and let the same gate prove the fix.</p>
+      </section>
+
+      <section id="step-loop">
+        <h2>Step 4 · Failure → permanent regression <a class="anchor-link" href="#step-loop">#</a></h2>
+        <p>Production failures land in the feedback queue (escalations automatically, thumbs-downs
+        via <code>record()</code>). Triage them into the eval set, and the bug can never
+        silently return:</p>
+        <div class="code">
+          <div class="code-bar"><span>shell</span><button class="copy-btn" data-copy="#c-triage">copy</button></div>
+          <pre><code data-lang="bash" id="c-triage">$ zolva triage failures.db
+#12  [thumbs_down]  agent=collections-agent  note='wrong due date'  last_user='when is my emi due?'
+1 pending failure(s)
+
+$ zolva triage failures.db --accept 12 --cohort evals/regressions.yaml \
+    --expect "states the correct due date from the ledger"
+failure 12 promoted to evals/regressions.yaml
+
+$ zolva export-dataset failures.db dataset.jsonl   # fine-tuning on-ramp, when you want it</code></pre>
+        </div>
+        <p>The promoted case rides the same PR gate forever. Commit
+        <code>evals/regressions.yaml</code> like the test file it is.</p>
+      </section>
+
+      <section id="notes">
+        <h2>Exit codes &amp; secrets <a class="anchor-link" href="#notes">#</a></h2>
+        <ul>
+          <li><code>zolva validate</code>: exit 1 on any config error, including inline
+          credentials.</li>
+          <li><code>zolva eval --gate</code>: exit 1 if any cohort misses its floor. Without
+          <code>--gate</code> it reports but never fails the build.</li>
+          <li><code>zolva scorecard audit.db</code>: exit 1 if the audit chain fails
+          verification, which makes chain integrity itself CI-checkable on an operations
+          schedule.</li>
+          <li>Keys live in Actions secrets and reach the process as environment variables;
+          agent YAML references them as <code>${ENV:VAR}</code> if needed, and the loader
+          rejects anything else that looks like a credential.</li>
+        </ul>
+        <p style="margin-top:1.5rem"><a href="/playbooks/">← All playbooks</a></p>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div class="wrap footer-sig">
+      <span>© 2026 Zolva. Apache-2.0.</span>
+      <span><a href="/">Home</a> · <a href="/docs/">Docs</a> · <a href="/playbooks/">Playbooks</a></span>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://zolva.ai/sitemap.xml
+
+# Agent-readable docs
+# https://zolva.ai/llms.txt
+# https://zolva.ai/llms-full.txt

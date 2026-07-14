@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Playbooks | Zolva</title>
+  <meta name="description" content="Copy-paste playbooks for deploying Zolva agents in production: voice CX with ElevenLabs, channel integrations, CI gating. Every provider call verified against official documentation." />
+  <link rel="canonical" href="https://zolva.ai/playbooks/" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/mark-512.png" />
+  <meta name="theme-color" content="#08011A" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Zolva" />
+  <meta property="og:title" content="Zolva Playbooks" />
+  <meta property="og:description" content="Production playbooks for Zolva agents. Every provider call verified against official documentation." />
+  <meta property="og:url" content="https://zolva.ai/playbooks/" />
+  <meta property="og:image" content="https://zolva.ai/mark-512.png" />
+  <meta name="twitter:card" content="summary" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links">menu</button>
+      <nav class="nav-links" id="nav-links" aria-label="Main">
+        <a href="/#why">Why Zolva</a>
+        <a href="/#platform">Platform</a>
+        <a href="/docs/">Docs</a>
+        <a href="/playbooks/" aria-current="page">Playbooks</a>
+        <a href="https://github.com/ANIBIT14/zolva" rel="noopener">GitHub</a>
+        <a class="nav-cta" href="/docs/#quickstart">pip install zolva</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="section">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="eyebrow">Playbooks</p>
+          <h2>End-to-end recipes you can run in a demo, then ship.</h2>
+          <p>Each playbook is a complete, working path from install to a gated production
+          rollout for one concrete use case. The rule for every playbook: real code with real
+          error handling, and every third-party call verified against the provider's official
+          documentation before it is published. Nothing illustrative, nothing invented.</p>
+        </div>
+
+        <div class="why-grid">
+          <a class="why-card" href="/playbooks/voice-cx-elevenlabs/" style="display:block">
+            <span class="num">01</span>
+            <h3>Voice CX with ElevenLabs</h3>
+            <p>Take call volume off your CX team with a voice agent: ElevenLabs handles speech,
+            Zolva is the brain, every turn guardrailed and audited, escalation to your human
+            team built in. Covers the agents-platform path and the raw TTS path.</p>
+            <p style="margin-top:0.8rem"><code>channels</code> · <code>guardrails</code> · <code>handover</code> · <code>scorecard</code></p>
+          </a>
+          <a class="why-card" href="/playbooks/whatsapp-collections/" style="display:block">
+            <span class="num">02</span>
+            <h3>WhatsApp collections via your gateway</h3>
+            <p>Repayment assistance on Meta's WhatsApp Cloud API through your own gateway:
+            RBI contact-window guardrails, payment-link tools, third-party disclosure hard
+            blocks, and every message on the audit chain.</p>
+            <p style="margin-top:0.8rem"><code>channels</code> · <code>guardrails</code> · <code>audit</code></p>
+          </a>
+          <a class="why-card" href="/playbooks/ci-gated-releases/" style="display:block">
+            <span class="num">03</span>
+            <h3>CI-gated agent releases</h3>
+            <p><code>zolva validate</code> and <code>zolva eval --gate</code> in GitHub Actions
+            so no prompt or policy change ships without passing its worst cohort, plus a weekly
+            drift run and the failure-to-regression loop.</p>
+            <p style="margin-top:0.8rem"><code>evals</code> · <code>feedback</code> · <code>scorecard</code></p>
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap footer-sig">
+      <span>© 2026 Zolva. Apache-2.0.</span>
+      <span><a href="/">Home</a> · <a href="/docs/">Docs</a> · <a href="/llms.txt">llms.txt</a></span>
+    </div>
+  </footer>
+</body>
+</html>

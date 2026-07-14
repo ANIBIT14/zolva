@@ -1,0 +1,11 @@
+{
+  // Cloudflare Workers static-asset hosting: `npm run deploy`
+  // (Cloudflare Pages works too: build command `npm run build`, output dir `dist`.)
+  "name": "zolva-website",
+  "compatibility_date": "2026-07-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "404-page",
+    "html_handling": "auto-trailing-slash"
+  }
+}

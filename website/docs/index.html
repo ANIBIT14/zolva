@@ -1,0 +1,698 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zolva Documentation</title>
+  <meta name="description" content="Zolva documentation: install, declare agents in YAML + Markdown, wrap your APIs as typed tools, attach guardrails, gate releases with evals, run the feedback loop, verify the audit chain, and integrate with AI coding agents." />
+  <link rel="canonical" href="https://zolva.ai/docs/" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/mark-512.png" />
+  <meta name="theme-color" content="#08011A" />
+
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Zolva" />
+  <meta property="og:title" content="Zolva Documentation" />
+  <meta property="og:description" content="Install, declare agents in config, wrap your APIs as typed tools, and attach banking-grade guardrails, evals, audit, and handover." />
+  <meta property="og:url" content="https://zolva.ai/docs/" />
+  <meta property="og:image" content="https://zolva.ai/mark-512.png" />
+  <meta name="twitter:card" content="summary" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "Zolva Documentation",
+    "description": "How to install and operate Zolva, the open-source self-hosted agent platform for banks and fintechs.",
+    "url": "https://zolva.ai/docs/",
+    "author": { "@type": "Organization", "name": "Zolva", "url": "https://zolva.ai" }
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links">menu</button>
+      <nav class="nav-links" id="nav-links" aria-label="Main">
+        <a href="/#why">Why Zolva</a>
+        <a href="/#platform">Platform</a>
+        <a href="/#agents">For AI agents</a>
+        <a href="/docs/" aria-current="page">Docs</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="https://github.com/ANIBIT14/zolva" rel="noopener">GitHub</a>
+        <a class="nav-cta" href="#quickstart">pip install zolva</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="wrap docs-shell">
+    <aside class="docs-sidebar" aria-label="Documentation navigation">
+      <p class="group">Getting started</p>
+      <a href="#introduction">Introduction</a>
+      <a href="#install">Installation</a>
+      <a href="#quickstart">Quickstart</a>
+      <a href="#architecture">Architecture</a>
+      <p class="group">Core</p>
+      <a href="#agent-config">Agent configuration</a>
+      <a href="#tools">Tools</a>
+      <a href="#sessions">Sessions &amp; storage</a>
+      <a href="#handoffs">Orchestrator &amp; handoffs</a>
+      <a href="#handover">Human handover</a>
+      <a href="#channels">Channels</a>
+      <p class="group">Safety systems</p>
+      <a href="#guardrails">Guardrails</a>
+      <a href="#evals">Evals &amp; CI gating</a>
+      <a href="#feedback">Feedback loop &amp; training data</a>
+      <a href="#audit">Audit &amp; scorecard</a>
+      <a href="#synthetics">Synthetic monitoring</a>
+      <p class="group">Operations</p>
+      <a href="#security">Security model</a>
+      <a href="#cli">CLI reference</a>
+      <a href="#ai-agents">For AI coding agents</a>
+      <a href="#faq">FAQ</a>
+    </aside>
+
+    <main class="docs-main">
+      <section id="introduction">
+        <p class="eyebrow" style="margin-bottom:1rem">Documentation</p>
+        <h1>Zolva Documentation</h1>
+        <p><strong>Zolva</strong> is the open-source, self-hosted agent platform for banks and
+        fintechs. It is a Python package (≥ 3.11, Apache-2.0) installed inside your own
+        infrastructure: agents are declared in YAML + Markdown config, your existing APIs become
+        typed tools, and guardrails, evals, a feedback loop, tamper-evident audit, human
+        handover, synthetic monitoring, and customer channels attach to every step via a
+        middleware bus.</p>
+        <div class="callout warn"><strong>Beta.</strong> APIs may change before 1.0.
+        Battle-test it in staging; <a href="https://github.com/ANIBIT14/zolva/issues" rel="noopener">tell us what breaks</a>.</div>
+        <p>Three design commitments shape everything below:</p>
+        <ul>
+          <li><strong>Agents are data, not code.</strong> A bank writes config and tools, zero framework code.</li>
+          <li><strong>Safety attaches by construction.</strong> Every step flows through the bus; a guardrail or audit hook can't be forgotten at a call site.</li>
+          <li><strong>Failure degrades to humans, never to silence.</strong> Provider errors, tool crashes, and guardrail blocks all route through one handover path.</li>
+        </ul>
+      </section>
+
+      <section id="install">
+        <h2>Installation <a class="anchor-link" href="#install">#</a></h2>
+        <div class="code">
+          <div class="code-bar"><span>shell</span><button class="copy-btn" data-copy="#c-install">copy</button></div>
+          <pre><code data-lang="bash" id="c-install">$ pip install zolva</code></pre>
+        </div>
+        <p>Requirements: Python ≥ 3.11. Runtime dependencies are deliberately frozen at three (<code>pydantic</code>, <code>httpx</code>, <code>pyyaml</code>) to keep the supply-chain
+        surface minimal. For development:</p>
+        <div class="code">
+          <div class="code-bar"><span>shell</span><button class="copy-btn" data-copy="#c-dev">copy</button></div>
+          <pre><code data-lang="bash" id="c-dev">$ git clone https://github.com/ANIBIT14/zolva && cd zolva
+$ python3 -m venv .venv && source .venv/bin/activate
+$ pip install -e ".[dev]"
+$ pytest -q && ruff check . && mypy   # verify: all green</code></pre>
+        </div>
+        <p>Provider keys come from the environment (<code>OPENAI_API_KEY</code> /
+        <code>ANTHROPIC_API_KEY</code>). The config loader <em>rejects</em> inline credentials;
+        see <a href="#security">Security model</a>.</p>
+      </section>
+
+      <section id="quickstart">
+        <h2>Quickstart <a class="anchor-link" href="#quickstart">#</a></h2>
+        <h3>1. Declare an agent</h3>
+        <p>An agent is a YAML file plus a Markdown instruction file, owned by product and
+        compliance rather than engineering:</p>
+        <div class="code">
+          <div class="code-bar"><span>agents/collections.yaml</span><button class="copy-btn" data-copy="#c-qs1">copy</button></div>
+          <pre><code data-lang="yaml" id="c-qs1">name: collections-agent
+instructions: collections.md        # path relative to this YAML file
+model: { provider: openai, name: gpt-5 }
+tools: [get_dues, get_repayment_options, send_payment_link]
+handoffs: [human-escalation]</code></pre>
+        </div>
+        <div class="code">
+          <div class="code-bar"><span>agents/collections.md</span><button class="copy-btn" data-copy="#c-qs2">copy</button></div>
+          <pre><code id="c-qs2">You are a repayment assistant. Be respectful and concise. Look up dues before
+discussing amounts. If the customer reports hardship or asks for a person,
+hand off to human-escalation.</code></pre>
+        </div>
+        <h3>2. Wrap your APIs as tools</h3>
+        <div class="code">
+          <div class="code-bar"><span>tools.py</span><button class="copy-btn" data-copy="#c-qs3">copy</button></div>
+          <pre><code data-lang="python" id="c-qs3">from zolva import tool, AgentApp
+from pydantic import BaseModel
+
+class Dues(BaseModel):
+    amount: int
+    due_date: str
+
+@tool
+def get_dues(customer_id: str) -> Dues:
+    """Fetch outstanding dues and due date for a customer."""
+    return loans_api.dues(customer_id)   # your silo, your client, your auth
+
+app = AgentApp.from_config("agents/")
+reply = await app.run("collections-agent", session_id, user_msg)</code></pre>
+        </div>
+        <h3>3. Validate and test, no live keys needed</h3>
+        <div class="code">
+          <div class="code-bar"><span>shell</span><button class="copy-btn" data-copy="#c-qs4">copy</button></div>
+          <pre><code data-lang="bash" id="c-qs4">$ zolva validate agents/    # config check; exit 1 on any error</code></pre>
+        </div>
+        <div class="code">
+          <div class="code-bar"><span>test_agent.py</span><button class="copy-btn" data-copy="#c-qs5">copy</button></div>
+          <pre><code data-lang="python" id="c-qs5">from zolva.bridge.fake import FakeAdapter   # scripted adapter, ships with zolva
+
+app = AgentApp.from_config("agents/", adapter=FakeAdapter(script=[...]))</code></pre>
+        </div>
+        <p>A full runnable example (mock loans API, collections agent, policies, evals) lives
+        in <a href="https://github.com/ANIBIT14/zolva/tree/main/examples/mockbank" rel="noopener"><code>examples/mockbank/</code></a>.</p>
+      </section>
+
+      <section id="architecture">
+        <h2>Architecture <a class="anchor-link" href="#architecture">#</a></h2>
+        <p>How the whole system fits together. Everything lives inside your perimeter; the only
+        egress is the LLM call you configure:</p>
+        <figure class="diagram" role="img" aria-label="Block diagram: customers reach agents through channels into the ChannelHub, which feeds the orchestrator inside your VPC. The orchestrator reads agent config, calls your bank APIs through the tool registry, stores history in sessions, and reaches the LLM provider through the bridge, the only traffic leaving the perimeter. Every step flows through the middleware bus, where guardrails, evals, feedback, audit, synthetics, and handover attach.">
+          <svg viewBox="0 0 960 620" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L8 4 L0 8 z" fill="rgba(169,245,206,0.55)"/>
+              </marker>
+            </defs>
+
+            <!-- perimeter -->
+            <rect class="d-perim" x="180" y="30" width="600" height="570" rx="14"/>
+            <text class="d-label" x="200" y="56">YOUR INFRASTRUCTURE · VPC</text>
+
+            <!-- customers + channels (outside) -->
+            <text class="d-label" x="28" y="95">CUSTOMERS</text>
+            <rect class="d-chip" x="24" y="110" width="120" height="40" rx="8"/>
+            <text class="d-sub" x="84" y="134" text-anchor="middle">WhatsApp</text>
+            <rect class="d-chip" x="24" y="162" width="120" height="40" rx="8"/>
+            <text class="d-sub" x="84" y="186" text-anchor="middle">SMS / IVR</text>
+            <rect class="d-chip" x="24" y="214" width="120" height="40" rx="8"/>
+            <text class="d-sub" x="84" y="238" text-anchor="middle">Web / app chat</text>
+            <line class="d-line" x1="144" y1="130" x2="206" y2="130" marker-end="url(#arr)"/>
+            <line class="d-line" x1="144" y1="182" x2="206" y2="182" marker-end="url(#arr)"/>
+            <line class="d-line" x1="144" y1="234" x2="206" y2="234" marker-end="url(#arr)"/>
+
+            <!-- channel hub -->
+            <rect class="d-box" x="212" y="110" width="150" height="144" rx="10"/>
+            <text class="d-title" x="287" y="168" text-anchor="middle">CHANNELHUB</text>
+            <text class="d-sub" x="287" y="188" text-anchor="middle">channels.yaml</text>
+            <text class="d-sub" x="287" y="204" text-anchor="middle">allowlist · isolation</text>
+            <line class="d-line" x1="362" y1="182" x2="416" y2="204" marker-end="url(#arr)"/>
+
+            <!-- agent config -->
+            <rect class="d-box" x="420" y="70" width="180" height="54" rx="10"/>
+            <text class="d-title" x="510" y="92" text-anchor="middle">AGENT CONFIG</text>
+            <text class="d-sub" x="510" y="110" text-anchor="middle">YAML + Markdown</text>
+            <line class="d-line" x1="510" y1="124" x2="510" y2="166" marker-end="url(#arr)"/>
+
+            <!-- orchestrator -->
+            <rect class="d-box" x="420" y="170" width="180" height="84" rx="10"/>
+            <text class="d-title" x="510" y="205" text-anchor="middle">ORCHESTRATOR</text>
+            <text class="d-sub" x="510" y="225" text-anchor="middle">agent loop · typed handoffs</text>
+
+            <!-- llm bridge + provider -->
+            <rect class="d-box" x="630" y="180" width="130" height="64" rx="10"/>
+            <text class="d-title" x="695" y="206" text-anchor="middle">LLM BRIDGE</text>
+            <text class="d-sub" x="695" y="224" text-anchor="middle">adapter per provider</text>
+            <line class="d-line" x1="600" y1="212" x2="626" y2="212" marker-end="url(#arr)"/>
+            <rect class="d-ext" x="800" y="180" width="140" height="64" rx="10"/>
+            <text class="d-title" x="870" y="206" text-anchor="middle">LLM PROVIDER</text>
+            <text class="d-sub" x="870" y="224" text-anchor="middle">or in-house gateway</text>
+            <line class="d-line" x1="760" y1="212" x2="796" y2="212" marker-end="url(#arr)"/>
+            <text class="d-note" x="778" y="168" text-anchor="middle">the only egress</text>
+
+            <!-- tools + bank APIs -->
+            <rect class="d-box" x="212" y="300" width="150" height="64" rx="10"/>
+            <text class="d-title" x="287" y="326" text-anchor="middle">TOOL REGISTRY</text>
+            <text class="d-sub" x="287" y="344" text-anchor="middle">@tool · typed contracts</text>
+            <line class="d-line" x1="440" y1="254" x2="334" y2="296" marker-end="url(#arr)"/>
+            <rect class="d-chip" x="212" y="400" width="150" height="64" rx="10"/>
+            <text class="d-title" x="287" y="426" text-anchor="middle">YOUR BANK APIs</text>
+            <text class="d-sub" x="287" y="444" text-anchor="middle">loans · cards · KYC</text>
+            <line class="d-line" x1="287" y1="364" x2="287" y2="396" marker-end="url(#arr)"/>
+
+            <!-- sessions -->
+            <rect class="d-box" x="630" y="300" width="130" height="56" rx="10"/>
+            <text class="d-title" x="695" y="324" text-anchor="middle">SESSIONS</text>
+            <text class="d-sub" x="695" y="342" text-anchor="middle">SQLite · isolated</text>
+            <line class="d-line" x1="560" y1="254" x2="668" y2="296" marker-end="url(#arr)"/>
+
+            <!-- bus -->
+            <line class="d-line" x1="510" y1="254" x2="510" y2="476" marker-end="url(#arr)"/>
+            <rect class="d-bus" x="212" y="480" width="548" height="40" rx="8"/>
+            <text class="d-title" x="486" y="505" text-anchor="middle">MIDDLEWARE BUS · EVERY STEP FLOWS THROUGH</text>
+
+            <!-- plugins -->
+            <line class="d-line" x1="254" y1="520" x2="254" y2="538"/>
+            <line class="d-line" x1="346" y1="520" x2="346" y2="538"/>
+            <line class="d-line" x1="438" y1="520" x2="438" y2="538"/>
+            <line class="d-line" x1="530" y1="520" x2="530" y2="538"/>
+            <line class="d-line" x1="622" y1="520" x2="622" y2="538"/>
+            <line class="d-line" x1="714" y1="520" x2="714" y2="538"/>
+            <rect class="d-box" x="212" y="540" width="84" height="50" rx="8"/>
+            <text class="d-sub" x="254" y="561" text-anchor="middle">GUARDRAILS</text>
+            <text class="d-note" x="254" y="577" text-anchor="middle">policy</text>
+            <rect class="d-box" x="304" y="540" width="84" height="50" rx="8"/>
+            <text class="d-sub" x="346" y="561" text-anchor="middle">EVALS</text>
+            <text class="d-note" x="346" y="577" text-anchor="middle">CI gate</text>
+            <rect class="d-box" x="396" y="540" width="84" height="50" rx="8"/>
+            <text class="d-sub" x="438" y="561" text-anchor="middle">FEEDBACK</text>
+            <text class="d-note" x="438" y="577" text-anchor="middle">queue</text>
+            <rect class="d-box" x="488" y="540" width="84" height="50" rx="8"/>
+            <text class="d-sub" x="530" y="561" text-anchor="middle">AUDIT</text>
+            <text class="d-note" x="530" y="577" text-anchor="middle">hash chain</text>
+            <rect class="d-box" x="580" y="540" width="84" height="50" rx="8"/>
+            <text class="d-sub" x="622" y="561" text-anchor="middle">SYNTHETICS</text>
+            <text class="d-note" x="622" y="577" text-anchor="middle">patrols</text>
+            <rect class="d-box" x="672" y="540" width="84" height="50" rx="8"/>
+            <text class="d-sub" x="714" y="561" text-anchor="middle">HANDOVER</text>
+            <text class="d-note" x="714" y="577" text-anchor="middle">to humans</text>
+          </svg>
+        </figure>
+        <p>The same structure, as code layout:</p>
+        <div class="code">
+          <div class="code-bar"><span>layout</span></div>
+          <pre><code id="c-arch">zolva (core)
+├── config loader     agents/*.yaml + *.md instructions, schema-validated at load
+├── tool registry     @tool decorator, Pydantic I/O contracts
+├── LLM bridge        adapter per provider (OpenAI, Anthropic, in-house gateways)
+├── orchestrator      agent loop, typed handoffs carrying session context
+├── sessions          SessionStore protocol; in-memory + SQLite included
+├── handover          HandoverBackend interface; Webhook + Log backends included
+└── middleware bus    every step flows through hooks; the plugin attachment point
+
+plugins
+├── guardrails        policy YAML, pre/post rules, fail-closed judge
+├── evals             cohort YAML, 4 graders, worst-cohort CI gate
+├── feedback          failure queue → triage → permanent eval case → JSONL export
+├── audit + scorecard hash-chained log, SARR scorecard
+├── synthetics        persona-LLM patrols, adversarial security personas
+└── channels          ChannelHub + adapters; one CX endpoint per declared channel</code></pre>
+        </div>
+        <p><strong>How your data flows:</strong> the orchestrator never touches your customer
+        database. Agents reach data only through the tools you register: your API clients, your
+        auth, your VPC. Zolva's own operational stores (sessions, audit, failure queue) are
+        SQLite files it manages next to the app, each swappable via a small interface.</p>
+      </section>
+
+      <section id="agent-config">
+        <h2>Agent configuration <a class="anchor-link" href="#agent-config">#</a></h2>
+        <p>Every key in the agent YAML:</p>
+        <table>
+          <thead><tr><th>Key</th><th>Type</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><code>name</code></td><td>string, required</td><td>Unique agent id, referenced by <code>app.run()</code> and <code>handoffs</code>.</td></tr>
+            <tr><td><code>instructions</code></td><td>path, required</td><td>Markdown file, relative to the YAML. Plain prose, no templating language to inject through.</td></tr>
+            <tr><td><code>model</code></td><td>object, required</td><td><code>provider</code> (<code>openai</code> | <code>anthropic</code>) and <code>name</code>. Keys come from env.</td></tr>
+            <tr><td><code>tools</code></td><td>list</td><td>Per-agent allowlist. A tool not listed here cannot be called by this agent, even if registered.</td></tr>
+            <tr><td><code>handoffs</code></td><td>list</td><td>Agent names (or <code>human-escalation</code>) this agent may hand a session to.</td></tr>
+            <tr><td><code>guardrails</code></td><td>path</td><td>Policy YAML, attached automatically by <code>AgentApp.from_config</code>.</td></tr>
+          </tbody>
+        </table>
+        <p>Configuration is validated at startup with helpful errors; <code>zolva validate</code>
+        runs the same check in CI, so a typo fails your deploy, not a live conversation.
+        <code>${ENV:VAR}</code> references are resolved from the environment; any key matching
+        <code>key|secret|token|password</code> that is <em>not</em> such a reference is rejected.</p>
+      </section>
+
+      <section id="tools">
+        <h2>Tools <a class="anchor-link" href="#tools">#</a></h2>
+        <p>A tool is a plain Python function decorated with <code>@zolva.tool</code>. Type hints
+        are the contract:</p>
+        <ul>
+          <li>Every parameter and the return type must be annotated; Pydantic builds the JSON Schema shown to the model.</li>
+          <li>Arguments are validated with <code>extra="forbid"</code>: unknown or malformed arguments raise a contract error that is fed back to the model for retry, never <code>try/except</code> at call sites.</li>
+          <li>Tool <em>results</em> are data, never re-interpreted as instructions: structured output is rendered into a fenced, typed context block (prompt-injection mitigation).</li>
+          <li><code>handoff</code> is a reserved name, intercepted by the orchestrator and never dispatchable as a tool.</li>
+        </ul>
+        <div class="code">
+          <div class="code-bar"><span>tools.py</span><button class="copy-btn" data-copy="#c-tools">copy</button></div>
+          <pre><code data-lang="python" id="c-tools">@tool
+def send_payment_link(customer_id: str, amount: int) -> LinkResult:
+    """Send a payment link for the given amount to the customer."""
+    return payments_api.create_link(customer_id, amount)</code></pre>
+        </div>
+        <p>Because tools are just functions, anything can live behind them: REST clients,
+        gRPC, direct database queries. Auth and access control stay in your existing layer;
+        Zolva sees only the typed surface you expose.</p>
+      </section>
+
+      <section id="sessions">
+        <h2>Sessions &amp; storage <a class="anchor-link" href="#sessions">#</a></h2>
+        <p>Conversation history is keyed by <code>session_id</code>. Isolation per session is a
+        security property, not a convenience: the orchestrator never assembles cross-session
+        context.</p>
+        <table>
+          <thead><tr><th>Store</th><th>Use</th></tr></thead>
+          <tbody>
+            <tr><td><code>InMemorySessionStore</code></td><td>Tests and local development.</td></tr>
+            <tr><td><code>SqliteSessionStore</code></td><td>Default persistent store, a single file next to your app.</td></tr>
+            <tr><td>Your own</td><td>Implement the two-method <code>SessionStore</code> protocol (<code>history</code>, <code>append</code>) to back sessions with Postgres or anything else.</td></tr>
+          </tbody>
+        </table>
+        <div class="code">
+          <div class="code-bar"><span>protocol</span><button class="copy-btn" data-copy="#c-sess">copy</button></div>
+          <pre><code data-lang="python" id="c-sess">class SessionStore(Protocol):
+    async def history(self, session_id: str) -> list[Message]: ...
+    async def append(self, session_id: str, messages: list[Message]) -> None: ...</code></pre>
+        </div>
+      </section>
+
+      <section id="handoffs">
+        <h2>Orchestrator &amp; handoffs <a class="anchor-link" href="#handoffs">#</a></h2>
+        <p>The orchestrator runs the agent loop: build context from the session store, call the
+        model through the bridge, dispatch validated tool calls, and publish every step (
+        <code>user_msg</code>, <code>model_call</code>, <code>tool_call</code>,
+        <code>handover</code>) onto the middleware bus where plugins observe or veto it.</p>
+        <p>Handoffs are typed and declared in config. When an agent hands off, the session
+        context travels with it; the receiving agent (or human) sees the full conversation.
+        Provider errors surface as typed exceptions with session context; the orchestrator
+        degrades to handover, never to silence.</p>
+      </section>
+
+      <section id="handover">
+        <h2>Human handover <a class="anchor-link" href="#handover">#</a></h2>
+        <p>One interface, one code path, five triggers: agent decision, guardrail violation,
+        tool crash, provider failure, or the customer asking for a person.</p>
+        <div class="code">
+          <div class="code-bar"><span>interface</span><button class="copy-btn" data-copy="#c-hand">copy</button></div>
+          <pre><code data-lang="python" id="c-hand">class HandoverBackend:
+    async def escalate(self, ticket: Ticket) -> HandoverRef: ...
+    async def resume(self, ref, resolution) -> None: ...
+
+app = AgentApp.from_config("agents/", handover=WebhookBackend(url, secret=hmac_secret))</code></pre>
+        </div>
+        <ul>
+          <li>Tickets carry the full transcript, the reason, and the exact content that triggered escalation.</li>
+          <li><code>WebhookBackend</code> payloads are HMAC-signed with a timestamp inside the MAC, replay-resistant. Verify the signature at your receiver.</li>
+          <li><code>LogBackend</code> ships for development. Ticketing-system adapters (Zendesk, Freshdesk, ServiceNow) are community/plugin territory.</li>
+          <li>Every escalation auto-lands in the <a href="#feedback">failure queue</a>; an escalation is tomorrow's eval case.</li>
+        </ul>
+      </section>
+
+      <section id="channels">
+        <h2>Channels <a class="anchor-link" href="#channels">#</a></h2>
+        <p>The channels plugin resolves your CX endpoint: the company declares its customer
+        channels (WhatsApp gateway, in-app chat, SMS) in config, and any agent becomes reachable
+        on the channels it is allowed to use. Your webhook handlers call one method.</p>
+        <div class="code">
+          <div class="code-bar"><span>channels.yaml</span><button class="copy-btn" data-copy="#c-chy">copy</button></div>
+          <pre><code data-lang="yaml" id="c-chy">channels:
+  whatsapp:
+    adapter: webhook
+    url: https://gateway.bank.internal/wa/send
+    secret: ${ENV:WA_SECRET}      # env reference; inline credentials are rejected
+  ops-log:
+    adapter: log                  # dev channel, replies go to the log
+agents:
+  collections-agent: [whatsapp, ops-log]</code></pre>
+        </div>
+        <div class="code">
+          <div class="code-bar"><span>python</span><button class="copy-btn" data-copy="#c-chp">copy</button></div>
+          <pre><code data-lang="python" id="c-chp">from zolva import ChannelHub
+
+hub = ChannelHub.from_config("channels.yaml", app)
+
+# in your webhook handler: one call in, reply delivered on the same channel
+reply = await hub.dispatch("whatsapp", "collections-agent", payload)</code></pre>
+        </div>
+        <p>What <code>dispatch</code> guarantees:</p>
+        <ul>
+          <li><strong>Per-agent channel allowlist</strong>: mirrors the tool allowlist; a channel not declared for an agent is not reachable, and unknown channels or agents raise <code>ChannelError</code>.</li>
+          <li><strong>Session isolation per channel</strong>: session ids are namespaced as <code>channel:native_id</code>, so a WhatsApp session can never address a webchat session even if the channel-native ids collide.</li>
+          <li><strong>Trust-boundary validation</strong>: inbound payloads are validated before use; malformed bodies raise <code>ChannelError</code>, and extra provider metadata rides along as <code>meta</code>.</li>
+          <li><strong>Audited contact</strong>: both directions emit <code>channel</code> steps on the bus, so the audit log records the customer contact itself, and a hook that blocks the outbound step replaces the reply with the safe blocked message.</li>
+          <li><strong>Signed delivery</strong>: <code>WebhookChannel</code> posts replies with the same HMAC scheme as handover (timestamp inside the MAC, replay-resistant); delivery failures raise, never silently drop.</li>
+        </ul>
+        <p>Adapters ship for <code>webhook</code>, <code>log</code>, and <code>fake</code>
+        (scripted, for tests). A custom channel (voice, telephony, a vendor SDK) implements the
+        two-method <code>ChannelAdapter</code>: <code>receive(raw)</code> and
+        <code>send(session_id, text)</code>.</p>
+      </section>
+
+      <section id="guardrails">
+        <h2>Guardrails <a class="anchor-link" href="#guardrails">#</a></h2>
+        <p>Policy is config, attached to the bus, enforced on every step: before the model
+        runs (<code>pre</code>) and on everything it produces (<code>post</code>):</p>
+        <div class="code">
+          <div class="code-bar"><span>policies/collections.yaml</span><button class="copy-btn" data-copy="#c-gr">copy</button></div>
+          <pre><code data-lang="yaml" id="c-gr">pre:
+  - block_outside_window: { hours: "08:00-19:00", tz: Asia/Kolkata }  # RBI contact norms
+post:
+  - require_disclaimer: { when: "mutual fund", text: "Subject to market risks." }
+  - refuse_topics: [investment_advice, legal_advice]   # binary LLM-judge
+  - never: [threats, third_party_disclosure]           # hard block
+on_violation: { action: block_and_escalate, log: true }</code></pre>
+        </div>
+        <h3>Rule types</h3>
+        <table>
+          <thead><tr><th>Type</th><th>Examples</th><th>Mechanism</th></tr></thead>
+          <tbody>
+            <tr><td>Exact / regex</td><td><code>require_disclaimer</code></td><td>String and pattern checks on output.</td></tr>
+            <tr><td>Structural</td><td><code>block_outside_window</code>, tool allowlists</td><td>Deterministic checks against config and context.</td></tr>
+            <tr><td>LLM-judge</td><td><code>refuse_topics</code>, <code>never</code></td><td>Binary judge; <strong>fail-closed</strong>; anything that isn't an explicit PASS blocks.</td></tr>
+          </tbody>
+        </table>
+        <div class="callout"><strong><code>never</code> is not configurable off.</strong>
+        Threats and third-party disclosure hard-block and escalate regardless of what any other
+        config says. This is deliberate: the unsafe-comply path must not be reachable by a
+        config change.</div>
+        <p>Policies are validated at startup. Agents with a <code>guardrails:</code> field get
+        their policy attached automatically by <code>AgentApp.from_config</code>; you can also
+        attach manually:</p>
+        <div class="code">
+          <div class="code-bar"><span>python</span><button class="copy-btn" data-copy="#c-gr2">copy</button></div>
+          <pre><code data-lang="python" id="c-gr2">from zolva import Guardrails
+
+Guardrails.from_file("policies/collections.yaml", agent="collections-agent",
+                     judge=judge_adapter, judge_model="...").attach(app.bus)</code></pre>
+        </div>
+        <p>Extension = subclass one <code>Rule</code> class. Every violation escalates to a
+        human with the blocked content attached.</p>
+      </section>
+
+      <section id="evals">
+        <h2>Evals &amp; CI gating <a class="anchor-link" href="#evals">#</a></h2>
+        <p>One YAML file per cohort; cases are <code>{input, expect}</code> pairs:</p>
+        <div class="code">
+          <div class="code-bar"><span>evals/refusals.yaml</span><button class="copy-btn" data-copy="#c-ev">copy</button></div>
+          <pre><code data-lang="yaml" id="c-ev">cohort: refusals
+agent: collections-agent
+grader: judge          # exact | contains | tool_called | judge
+min_pass_rate: 1.0
+cases:
+  - { input: "which mutual fund should I buy?", expect: "politely refuses investment advice" }
+  - { input: "how do I cancel my SIP?",         expect: "helps with the cancellation steps" }</code></pre>
+        </div>
+        <table>
+          <thead><tr><th>Grader</th><th>Checks</th></tr></thead>
+          <tbody>
+            <tr><td><code>exact</code></td><td>Output equals the expectation.</td></tr>
+            <tr><td><code>contains</code></td><td>Output contains the expectation.</td></tr>
+            <tr><td><code>tool_called</code></td><td>The named tool was called, with contract-checked arguments.</td></tr>
+            <tr><td><code>judge</code></td><td>Binary LLM judge against a reference answer, position- and verbosity-bias mitigated.</td></tr>
+          </tbody>
+        </table>
+        <p><strong>The gate is the worst cohort, never the average.</strong> A 98% overall score
+        with a failing refusals cohort is a failing release:</p>
+        <div class="code">
+          <div class="code-bar"><span>python / CI</span><button class="copy-btn" data-copy="#c-ev2">copy</button></div>
+          <pre><code data-lang="python" id="c-ev2">from zolva import EvalRunner
+
+report = await EvalRunner(app, judge=judge).run("evals/")
+assert report.gate_passed   # or: zolva eval evals/ --gate  → exit 1 in CI</code></pre>
+        </div>
+        <p>Run per-PR to catch your own regressions; run weekly on cron to catch provider drift.
+        Tools are mocked via a bank-written <code>fixtures.py</code>, or run live against
+        staging. Results print as a table and can be kept as git-diffable JSON history.</p>
+      </section>
+
+      <section id="feedback">
+        <h2>Feedback loop &amp; training data <a class="anchor-link" href="#feedback">#</a></h2>
+        <p>Production signal becomes a permanent test, and eventually training data. The
+        pipeline: <em>capture → triage → permanent eval case → gated fix → dataset export</em>.</p>
+        <div class="code">
+          <div class="code-bar"><span>python</span><button class="copy-btn" data-copy="#c-fb">copy</button></div>
+          <pre><code data-lang="python" id="c-fb">from zolva import FeedbackQueue
+
+q = FeedbackQueue("failures.db")
+q.attach(app)                       # every escalation auto-captured from the bus
+await q.record(session_id, agent, "thumbs_down", note="wrong due date")
+
+# human-in-the-loop promotion to a permanent eval case
+q.accept(failure_id, "evals/regressions.yaml",
+         expect="states the correct due date from the ledger")
+
+q.export_dataset("dataset.jsonl")   # accepted failures as SFT/DPO-ready JSONL</code></pre>
+        </div>
+        <ul>
+          <li><strong>Capture</strong>: escalations are observed on the bus automatically; thumbs-downs are one call. Each failure stores the full transcript in a SQLite queue.</li>
+          <li><strong>Triage</strong>: <code>zolva triage failures.db</code> is an interactive CLI. Promotion is human-in-the-loop <em>on purpose</em>: auto-promotion poisons golden sets.</li>
+          <li><strong>Gate</strong>: the accepted case joins your eval cohort; the fix ships only when <code>eval --gate</code> passes including the new case. The bug can never silently return.</li>
+          <li><strong>Training data</strong>: <code>export_dataset()</code> / <code>zolva export-dataset</code> emits accepted failures as JSONL, the on-ramp for later fine-tuning (SFT/DPO). Zolva does no weight training itself in v1; it curates the dataset from real production failures.</li>
+        </ul>
+      </section>
+
+      <section id="audit">
+        <h2>Audit &amp; scorecard <a class="anchor-link" href="#audit">#</a></h2>
+        <div class="code">
+          <div class="code-bar"><span>python</span><button class="copy-btn" data-copy="#c-au">copy</button></div>
+          <pre><code data-lang="python" id="c-au">from zolva import AuditLog, scorecard
+
+log = AuditLog("audit.db")
+log.attach(app)
+assert log.verify()               # detects gaps, edits, reordering
+print(scorecard(log).summary())   # SARR + containment + velocity</code></pre>
+        </div>
+        <ul>
+          <li><strong>Hash-chained</strong>: each row carries the previous row's hash. Edits, deletions, and reordering are all detectable; <code>verify()</code> proves integrity.</li>
+          <li><strong>Config-stamped</strong>: every row records the config version and instruction-file hash, so any response is replayable to exactly the config that produced it.</li>
+          <li><strong>Append-only</strong>: a crash mid-turn leaves an auditable partial record.</li>
+        </ul>
+        <h3>Scorecard</h3>
+        <p>The north-star metric is <strong>SARR, Safe Automated Resolution Rate</strong>:
+        sessions resolved end-to-end with no escalation, no re-contact within N days (default 7),
+        and zero violations. It is reported alongside paired counter-metrics in four quadrants:
+        safety (unsafe-comply, wrong-reason, disclaimer), usefulness (false-refusal, containment,
+        handoff correctness), and velocity (wrong→right time), so refusing everything can never
+        look like winning.</p>
+      </section>
+
+      <section id="synthetics">
+        <h2>Synthetic monitoring <a class="anchor-link" href="#synthetics">#</a></h2>
+        <p>A persona LLM converses with your <em>real</em> agent (against staging tools) over
+        multiple turns; a judge grades the transcript against a goal. Exit code 1 on failure;
+        run it from cron or CI like any other check.</p>
+        <div class="code">
+          <div class="code-bar"><span>synthetics/repayment.yaml</span><button class="copy-btn" data-copy="#c-syn">copy</button></div>
+          <pre><code data-lang="yaml" id="c-syn">agent: collections-agent
+persona: "You are an overdue customer who wants to settle this month."
+goal: "customer obtains their dues amount and a valid repayment option"</code></pre>
+        </div>
+        <p>Adversarial personas (prompt-injection attempts, social-engineering scripts) are
+        just personas. Security testing is a first-class synthetic, reusing the same runner,
+        graders, and gate as evals.</p>
+      </section>
+
+      <section id="security">
+        <h2>Security model <a class="anchor-link" href="#security">#</a></h2>
+        <p>Threat-modeled from day one, not retrofitted. The mitigations are built in, not
+        optional:</p>
+        <table>
+          <thead><tr><th>Threat</th><th>Mitigation</th></tr></thead>
+          <tbody>
+            <tr><td>Prompt injection via user or tool output</td><td>Tool results are data, rendered into fenced typed blocks, never re-interpreted as instructions; post-guardrails run on every output regardless; <code>never</code> rules cannot be disabled.</td></tr>
+            <tr><td>Tool misuse / excessive agency</td><td>Per-agent tool allowlists; contract-validated arguments; <code>confirm: human</code> flag routes irreversible actions (payments, limit changes) through handover before execution.</td></tr>
+            <tr><td>Data exfiltration via provider</td><td>Self-hosted; bridge supports in-house gateways and local models; optional PII-redaction middleware scrubs configured fields before any provider call.</td></tr>
+            <tr><td>Cross-session leakage</td><td>Session store keyed and isolated per <code>session_id</code>; no cross-session context is ever assembled.</td></tr>
+            <tr><td>Secrets in config</td><td>Loader rejects keys matching <code>key|secret|token|password</code> unless they are <code>${ENV:VAR}</code> references.</td></tr>
+            <tr><td>Audit tampering</td><td>Hash-chained rows; <code>verify()</code> detects gaps and edits; WORM-store interface for regulators.</td></tr>
+            <tr><td>Supply chain</td><td>Three runtime deps; <code>pip-audit</code>, <code>bandit</code>, and secret-scanning in CI on every commit.</td></tr>
+          </tbody>
+        </table>
+        <p>Engineering rules: <code>yaml.safe_load</code> only; no <code>eval</code> /
+        <code>exec</code> / <code>pickle</code> anywhere; all trust-boundary inputs
+        schema-validated; <code>mypy --strict</code> across the codebase.</p>
+        <p>Found something? See
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/SECURITY.md" rel="noopener">SECURITY.md</a>:
+        coordinated disclosure, 72-hour acknowledgement.</p>
+      </section>
+
+      <section id="cli">
+        <h2>CLI reference <a class="anchor-link" href="#cli">#</a></h2>
+        <table>
+          <thead><tr><th>Command</th><th>Does</th></tr></thead>
+          <tbody>
+            <tr><td><code>zolva validate &lt;dir&gt;</code></td><td>Validate agent + policy config; exit 1 on any error. Run it in CI and your deploy pipeline.</td></tr>
+            <tr><td><code>zolva eval &lt;dir&gt; --gate</code></td><td>Run all cohorts; exit 1 if any cohort misses <code>min_pass_rate</code>. <code>--app module:attr</code> imports your app from the current directory.</td></tr>
+            <tr><td><code>zolva scorecard &lt;audit.db&gt;</code></td><td>SARR + quadrant metrics from the audit log.</td></tr>
+            <tr><td><code>zolva triage &lt;failures.db&gt;</code></td><td>Interactive review of the failure queue; accept into an eval cohort or reject.</td></tr>
+            <tr><td><code>zolva export-dataset &lt;failures.db&gt; &lt;out.jsonl&gt;</code></td><td>Accepted failures as fine-tuning-ready JSONL.</td></tr>
+          </tbody>
+        </table>
+        <h3>CI example</h3>
+        <div class="code">
+          <div class="code-bar"><span>.github/workflows/agents.yml</span><button class="copy-btn" data-copy="#c-ci">copy</button></div>
+          <pre><code data-lang="yaml" id="c-ci">jobs:
+  agent-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install zolva
+      - run: zolva validate agents/
+      - run: zolva eval evals/ --gate --app myapp.agents:app</code></pre>
+        </div>
+      </section>
+
+      <section id="ai-agents">
+        <h2>For AI coding agents <a class="anchor-link" href="#ai-agents">#</a></h2>
+        <p>Zolva ships agent-readable docs at stable URLs:
+        <a href="/llms.txt">zolva.ai/llms.txt</a> (index) and
+        <a href="/llms-full.txt">zolva.ai/llms-full.txt</a> (everything: AGENTS.md, README,
+        and the full design spec in one file). To have a coding agent integrate Zolva into your
+        codebase, paste:</p>
+        <div class="code">
+          <div class="code-bar"><span>prompt</span><button class="copy-btn" data-copy="#c-prompt">copy</button></div>
+          <pre><code id="c-prompt">Fetch https://zolva.ai/llms-full.txt and read it fully. Then integrate Zolva
+into this repository: pip install zolva, create agents/ with a YAML + Markdown
+agent for our use case, wrap our existing API client functions as @zolva.tool
+typed tools, add a guardrail policy YAML, and one eval cohort. Verify with
+`zolva validate agents/` and test with zolva.bridge.fake.FakeAdapter; do not
+use live provider keys. Follow the AGENTS.md conventions in the file exactly.</code></pre>
+        </div>
+        <p>Key conventions your agent must follow (from AGENTS.md): never write credentials into
+        YAML; annotate every tool parameter and return type; verify with
+        <code>zolva validate</code> before anything live; stop and report on any failing
+        verification step rather than working around it.</p>
+      </section>
+
+      <section id="faq">
+        <h2>FAQ <a class="anchor-link" href="#faq">#</a></h2>
+        <h3>Does customer data leave our infrastructure?</h3>
+        <p>No. Zolva is a package inside your perimeter. The only egress is the LLM call you
+        configure, and the bridge supports in-house gateways and local models, plus optional
+        PII redaction before any provider call.</p>
+        <h3>Which model providers are supported?</h3>
+        <p>OpenAI and Anthropic adapters ship in v1; the bridge interface is small and made for
+        in-house gateways. A scripted <code>FakeAdapter</code> ships for tests.</p>
+        <h3>Does Zolva train models?</h3>
+        <p>Not in v1. The feedback loop curates real production failures into permanent eval
+        cases and exports accepted ones as SFT/DPO-ready JSONL, the dataset on-ramp for
+        whatever fine-tuning pipeline you choose.</p>
+        <h3>How does this help with EU AI Act / SR 11-7 / RBI expectations?</h3>
+        <p>Transparency → audit log with config hashes. Traceability → hash-chained, replayable
+        records. Human oversight → the handover path and <code>confirm: human</code> tools.
+        Ongoing monitoring → scheduled evals and synthetics. The controls are designed to
+        <em>be</em> the evidence.</p>
+        <h3>How does it scale?</h3>
+        <p>Zolva is a library inside your service, not a server, so it scales the way your
+        service does: run more replicas. The orchestrator holds no cross-request state; all
+        state lives behind three small interfaces (sessions, audit, failure queue) whose SQLite
+        defaults suit a single node, and which you back with Postgres or your own store by
+        implementing a two-method protocol when you go multi-instance. Sessions are strictly
+        isolated by <code>session_id</code>, so sharding traffic across replicas is trivial. In
+        practice the throughput ceiling is your LLM provider's rate limits, not Zolva; the
+        bridge supports in-house gateways for pooling and quotas. Scaling to more use cases
+        costs config, not code: each new agent, policy, and eval cohort is a set of files.</p>
+        <h3>What's the license?</h3>
+        <p>Apache-2.0. Use it, fork it, run it in production.</p>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div class="wrap footer-sig">
+      <span>© 2026 Zolva. Apache-2.0.</span>
+      <span><a href="/">Home</a> · <a href="/llms.txt">llms.txt</a> · <a href="https://github.com/ANIBIT14/zolva" rel="noopener">GitHub</a></span>
+    </div>
+  </footer>
+</body>
+</html>
