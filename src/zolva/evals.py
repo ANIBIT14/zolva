@@ -99,6 +99,8 @@ def load_cohorts_from_agents(config_dir: str | Path) -> list[Cohort]:
         if p.is_dir():
             declared = load_cohorts(p)
         else:
+            if not p.is_file():
+                raise ConfigError(f"agent {cfg.name!r}: evals path not found: {p}")
             raw = yaml.safe_load(p.read_text())
             if not isinstance(raw, dict):
                 raise ConfigError(f"{p}: top level must be a mapping")
@@ -113,6 +115,9 @@ def load_cohorts_from_agents(config_dir: str | Path) -> list[Cohort]:
                     f"{cohort.agent!r}, declared by {cfg.name!r}"
                 )
         cohorts.extend(declared)
+    if not cohorts:
+        # a vacuously green --gate is worse than a loud failure
+        raise ConfigError(f"no evals: declared by any agent in {config_dir}")
     return cohorts
 
 

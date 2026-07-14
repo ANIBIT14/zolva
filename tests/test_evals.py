@@ -176,6 +176,23 @@ async def test_load_cohorts_from_agents_happy_path(tmp_path: Path) -> None:
     assert cohorts[0].agent == AGENT
 
 
+async def test_load_cohorts_from_agents_requires_at_least_one_declaration(tmp_path: Path) -> None:
+    agents = tmp_path / "agents"
+    agents.mkdir(parents=True)
+    (agents / "cx.md").write_text("Collect politely.")
+    (agents / "cx.yaml").write_text(
+        f"name: {AGENT}\ninstructions: cx.md\nmodel: {{ provider: test, name: m }}\n"
+    )
+    with pytest.raises(ConfigError, match="no evals"):
+        load_cohorts_from_agents(agents)
+
+
+async def test_load_cohorts_from_agents_missing_path_fails_loudly(tmp_path: Path) -> None:
+    agents_dir = write_agent_with_evals(tmp_path, "missing.yaml")
+    with pytest.raises(ConfigError, match="not found"):
+        load_cohorts_from_agents(agents_dir)
+
+
 async def test_load_cohorts_from_agents_rejects_agent_mismatch(tmp_path: Path) -> None:
     agents_dir = write_agent_with_evals(tmp_path, "cohorts")
     write_cohort(
