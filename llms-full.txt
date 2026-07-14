@@ -240,7 +240,7 @@ persona: "You are an overdue customer who wants to settle this month."
 goal: "customer obtains their dues amount and a valid repayment option"
 ```
 
-A persona LLM converses with your *real* agent (staging tools); a judge grades the transcript. Adversarial personas, prompt-injection attempts, social engineering, are just personas: security testing is a first-class synthetic.
+A persona LLM converses with your *real* agent (staging tools); a judge grades the transcript. Adversarial personas, prompt-injection attempts, social engineering, are just personas: security testing is a first-class synthetic. Run the same patrol from the CLI or cron: `zolva synthetics synthetics/ --app app:app --driver-provider openai --judge-provider openai --gate`.
 
 ### Human handover, one interface, your ticketing system
 
@@ -289,7 +289,7 @@ Point your agent at [`llms.txt`](llms.txt) / [`llms-full.txt`](llms-full.txt), o
 
 ## Status & roadmap
 
-**Beta.** Core runtime, all six plugins (guardrails, evals, feedback, audit, synthetics, channels), and the CLI (`zolva validate | eval --gate | scorecard | triage | export-dataset`) are implemented and tested (132 tests, `mypy --strict`, 3-version CI matrix). Agents with a `guardrails:` or `evals:` field in their YAML get them wired automatically by `AgentApp.from_config`.
+**Beta.** Core runtime, all six plugins (guardrails, evals, feedback, audit, synthetics, channels), and the CLI (`zolva validate | eval --gate | synthetics --gate | scorecard | triage | export-dataset`) are implemented and tested (132 tests, `mypy --strict`, 3-version CI matrix). Agents with a `guardrails:` or `evals:` field in their YAML get them wired automatically by `AgentApp.from_config`.
 
 Before 1.0:
 

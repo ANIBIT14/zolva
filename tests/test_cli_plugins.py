@@ -129,6 +129,95 @@ def test_eval_cli_evals_dir_and_agents_are_mutually_exclusive(
     assert main(["eval", "--app", app_module]) == 1
 
 
+def test_synthetics_cli_gate_pass(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (tmp_path / "synthapp.py").write_text(
+        "from zolva.orchestrator import AgentApp\n"
+        "from zolva.bridge import LLMResponse, register_adapter\n"
+        "from zolva.bridge.fake import FakeAdapter\n"
+        "from zolva.config import AgentConfig, ModelConfig\n"
+        "from zolva.tools import ToolRegistry\n"
+        "register_adapter('synthdrv', lambda: FakeAdapter(script=[\n"
+        "    LLMResponse(text='what do I owe?'), LLMResponse(text='DONE')]))\n"
+        "register_adapter('synthjdg', lambda: FakeAdapter(script=[LLMResponse(text='PASS')]))\n"
+        "cfg = AgentConfig(name='collections-agent', instructions='x',\n"
+        "                  model=ModelConfig(provider='test', name='m'))\n"
+        "app = AgentApp({'collections-agent': cfg}, registry=ToolRegistry(),\n"
+        "               adapter=FakeAdapter(script=[LLMResponse(text='You owe 4200.')]))\n"
+    )
+    monkeypatch.syspath_prepend(str(tmp_path))
+    monkeypatch.delitem(sys.modules, "synthapp", raising=False)
+    sdir = tmp_path / "synthetics"
+    sdir.mkdir()
+    (sdir / "dues.yaml").write_text(
+        f"agent: {AGENT}\npersona: overdue customer\n"
+        'goal: "customer learns their dues"\nmax_turns: 3\n'
+    )
+    out = tmp_path / "synth-report.json"
+    code = main(
+        [
+            "synthetics",
+            str(sdir),
+            "--app",
+            "synthapp:app",
+            "--driver-provider",
+            "synthdrv",
+            "--judge-provider",
+            "synthjdg",
+            "--gate",
+            "--out",
+            str(out),
+        ]
+    )
+    assert code == 0
+    stdout = capsys.readouterr().out
+    assert "PASS" in stdout
+    assert "GATE: PASS" in stdout
+    data = json.loads(out.read_text())
+    assert len(data) == 1
+    assert data[0]["passed"] is True
+
+
+def test_synthetics_cli_gate_fail_exits_1(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (tmp_path / "synthapp2.py").write_text(
+        "from zolva.orchestrator import AgentApp\n"
+        "from zolva.bridge import LLMResponse, register_adapter\n"
+        "from zolva.bridge.fake import FakeAdapter\n"
+        "from zolva.config import AgentConfig, ModelConfig\n"
+        "from zolva.tools import ToolRegistry\n"
+        "register_adapter('synthdrv2', lambda: FakeAdapter(script=[\n"
+        "    LLMResponse(text='what do I owe?'), LLMResponse(text='DONE')]))\n"
+        "register_adapter('synthjdg2', lambda: FakeAdapter(script=[LLMResponse(text='FAIL')]))\n"
+        "cfg = AgentConfig(name='collections-agent', instructions='x',\n"
+        "                  model=ModelConfig(provider='test', name='m'))\n"
+        "app = AgentApp({'collections-agent': cfg}, registry=ToolRegistry(),\n"
+        "               adapter=FakeAdapter(script=[LLMResponse(text='You owe 4200.')]))\n"
+    )
+    monkeypatch.syspath_prepend(str(tmp_path))
+    monkeypatch.delitem(sys.modules, "synthapp2", raising=False)
+    sdir = tmp_path / "synthetics"
+    sdir.mkdir()
+    (sdir / "dues.yaml").write_text(
+        f"agent: {AGENT}\npersona: overdue customer\n"
+        'goal: "customer learns their dues"\nmax_turns: 3\n'
+    )
+    code = main(
+        [
+            "synthetics",
+            str(sdir),
+            "--app",
+            "synthapp2:app",
+            "--driver-provider",
+            "synthdrv2",
+            "--judge-provider",
+            "synthjdg2",
+            "--gate",
+        ]
+    )
+    assert code == 1
+
+
 def test_eval_cli_imports_app_from_cwd(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

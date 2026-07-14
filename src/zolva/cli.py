@@ -1,4 +1,4 @@
-"""zolva CLI: validate, eval, scorecard, triage, export-dataset."""
+"""zolva CLI: validate, eval, synthetics, scorecard, triage, export-dataset."""
 
 from __future__ import annotations
 
@@ -71,6 +71,31 @@ def _cmd_eval(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_synthetics(args: argparse.Namespace) -> int:
+    from zolva.bridge import get_adapter
+    from zolva.synthetics import SyntheticRunner, gate_passed, results_to_json
+
+    app = _load_app(args.app)
+    runner = SyntheticRunner(
+        app,
+        driver=get_adapter(args.driver_provider),
+        judge=get_adapter(args.judge_provider),
+        driver_model=args.driver_model,
+        judge_model=args.judge_model,
+    )
+    results = asyncio.run(runner.run(args.synthetics_dir))
+    for r in results:
+        print(f"{r.name:24s} {'PASS' if r.passed else 'FAIL'}")
+    print(f"GATE: {'PASS' if gate_passed(results) else 'FAIL'}")
+    if args.out:
+        with open(args.out, "w") as f:
+            json.dump(results_to_json(results), f, indent=2)
+        print(f"wrote {args.out}")
+    if args.gate and not gate_passed(results):
+        return 1
+    return 0
+
+
 def _cmd_scorecard(args: argparse.Namespace) -> int:
     from zolva.audit import AuditLog, scorecard
 
@@ -133,6 +158,16 @@ def main(argv: list[str] | None = None) -> int:
     p_eval.add_argument("--judge-model", default="", help="model name for the judge")
     p_eval.add_argument("--out", default="", help="write full report JSON to this path")
 
+    p_synth = sub.add_parser("synthetics", help="run synthetic conversations against your app")
+    p_synth.add_argument("synthetics_dir")
+    p_synth.add_argument("--app", required=True, help="import path to your AgentApp: module:attr")
+    p_synth.add_argument("--driver-provider", required=True, help="bridge provider for the driver")
+    p_synth.add_argument("--driver-model", default="", help="model name for the driver")
+    p_synth.add_argument("--judge-provider", required=True, help="bridge provider for the judge")
+    p_synth.add_argument("--judge-model", default="", help="model name for the judge")
+    p_synth.add_argument("--gate", action="store_true", help="exit 1 if any synthetic fails")
+    p_synth.add_argument("--out", default="", help="write full results JSON to this path")
+
     p_score = sub.add_parser("scorecard", help="verify the audit chain and print SARR")
     p_score.add_argument("audit_db")
 
@@ -151,6 +186,7 @@ def main(argv: list[str] | None = None) -> int:
     commands: dict[str, Any] = {
         "validate": _cmd_validate,
         "eval": _cmd_eval,
+        "synthetics": _cmd_synthetics,
         "scorecard": _cmd_scorecard,
         "triage": _cmd_triage,
         "export-dataset": _cmd_export_dataset,
