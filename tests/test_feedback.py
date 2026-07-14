@@ -94,6 +94,54 @@ async def test_accept_promotes_to_eval_cohort(tmp_path: Path) -> None:
     assert len(load_cohorts(tmp_path / "evals")[0].cases) == 2
 
 
+async def test_accept_rejects_non_mapping_cohort_file(tmp_path: Path) -> None:
+    app = make_app([LLMResponse(text="wrong answer")])
+    q = FeedbackQueue(tmp_path / "fb.db")
+    q.attach(app)
+    await app.run(AGENT, "s1", "what is my due date?")
+    await q.record("s1", AGENT, "thumbs_down")
+    fid = q.pending()[0].id
+    cohort_file = tmp_path / "evals" / "regressions.yaml"
+    cohort_file.parent.mkdir(parents=True, exist_ok=True)
+    original = "- just\n- a list\n"
+    cohort_file.write_text(original)
+    with pytest.raises(ConfigError):
+        q.accept(fid, cohort_file, expect="x")
+    assert len(q.pending()) == 1
+    assert cohort_file.read_text() == original
+
+
+async def test_accept_rejects_invalid_cohort_file(tmp_path: Path) -> None:
+    app = make_app([LLMResponse(text="wrong answer")])
+    q = FeedbackQueue(tmp_path / "fb.db")
+    q.attach(app)
+    await app.run(AGENT, "s1", "what is my due date?")
+    await q.record("s1", AGENT, "thumbs_down")
+    fid = q.pending()[0].id
+    cohort_file = tmp_path / "evals" / "regressions.yaml"
+    cohort_file.parent.mkdir(parents=True, exist_ok=True)
+    original = "cohort: x\n"
+    cohort_file.write_text(original)
+    with pytest.raises(ConfigError):
+        q.accept(fid, cohort_file, expect="x")
+    assert len(q.pending()) == 1
+    assert cohort_file.read_text() == original
+
+
+async def test_accepted_cohort_loads_via_load_cohorts(tmp_path: Path) -> None:
+    app = make_app([LLMResponse(text="wrong answer")])
+    q = FeedbackQueue(tmp_path / "fb.db")
+    q.attach(app)
+    await app.run(AGENT, "s1", "what is my due date?")
+    await q.record("s1", AGENT, "thumbs_down")
+    fid = q.pending()[0].id
+    cohort_file = tmp_path / "evals2" / "regressions.yaml"
+    q.accept(fid, cohort_file, expect="states the correct due date from the ledger")
+    cohorts = load_cohorts(tmp_path / "evals2")
+    assert len(cohorts) == 1
+    assert len(cohorts[0].cases) == 1
+
+
 async def test_reject_and_unknown_id(tmp_path: Path) -> None:
     q = FeedbackQueue(tmp_path / "fb.db")
     await q.record("s1", AGENT, "thumbs_down")
