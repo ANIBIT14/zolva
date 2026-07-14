@@ -68,16 +68,20 @@ class OpenAIAdapter:
             r.raise_for_status()
         except httpx.HTTPError as e:
             raise BridgeError(f"openai: {e}") from e
-        msg = r.json()["choices"][0]["message"]
-        calls = [
-            ToolCall(
-                id=tc["id"],
-                name=tc["function"]["name"],
-                args=json.loads(tc["function"]["arguments"]),
-            )
-            for tc in (msg.get("tool_calls") or [])
-        ]
-        return LLMResponse(text=msg.get("content") or "", tool_calls=calls)
+        try:
+            msg = r.json()["choices"][0]["message"]
+            calls = [
+                ToolCall(
+                    id=tc["id"],
+                    name=tc["function"]["name"],
+                    args=json.loads(tc["function"]["arguments"]),
+                )
+                for tc in (msg.get("tool_calls") or [])
+            ]
+            text = msg.get("content") or ""
+        except (KeyError, IndexError, TypeError, ValueError) as e:
+            raise BridgeError(f"openai: unexpected response: {e!r}") from e
+        return LLMResponse(text=text, tool_calls=calls)
 
 
 register_adapter("openai", OpenAIAdapter)

@@ -64,6 +64,36 @@ async def test_http_error_wrapped_as_bridge_error() -> None:
         await a.complete(model="m", system="s", messages=[], tools=[])
 
 
+async def test_unexpected_response_shape_wrapped_as_bridge_error() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={})
+
+    a = OpenAIAdapter(api_key="k", transport=httpx.MockTransport(handler))
+    with pytest.raises(BridgeError):
+        await a.complete(model="m", system="s", messages=[], tools=[])
+
+
+async def test_malformed_tool_arguments_wrapped_as_bridge_error() -> None:
+    payload = {
+        "choices": [
+            {
+                "message": {
+                    "content": None,
+                    "tool_calls": [
+                        {
+                            "id": "call_1",
+                            "function": {"name": "get_dues", "arguments": "not json {"},
+                        }
+                    ],
+                }
+            }
+        ]
+    }
+    a = OpenAIAdapter(api_key="k", transport=transport(payload, {}))
+    with pytest.raises(BridgeError):
+        await a.complete(model="m", system="s", messages=[], tools=[])
+
+
 def test_missing_key_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     with pytest.raises(BridgeError, match="OPENAI_API_KEY"):
