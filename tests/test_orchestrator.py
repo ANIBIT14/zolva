@@ -1,4 +1,4 @@
-from zolva.bridge import LLMResponse, ToolCall
+from zolva.bridge import LLMResponse, ToolCall, register_adapter
 from zolva.bridge.fake import FakeAdapter
 from zolva.bus import Bus, Step, Verdict
 from zolva.config import AgentConfig, ModelConfig
@@ -103,6 +103,21 @@ async def test_undeclared_tool_not_dispatched() -> None:
     tool_msgs = [m for m in history if m.role == "tool"]
     assert tool_msgs[0].content.startswith("TOOL_ERROR:")
     assert "undeclared" in tool_msgs[0].content
+
+
+async def test_adapter_reused_per_provider() -> None:
+    counter = {"n": 0}
+
+    def factory() -> FakeAdapter:
+        counter["n"] += 1
+        return FakeAdapter(script=[LLMResponse(text="ok"), LLMResponse(text="ok")])
+
+    register_adapter("counting-prov-002", factory)
+    cfg = make_cfg(model=ModelConfig(provider="counting-prov-002", name="m"), tools=[])
+    app = AgentApp({"collections-agent": cfg}, registry=ToolRegistry())
+    assert await app.run("collections-agent", "s1", "hi") == "ok"
+    assert await app.run("collections-agent", "s2", "hi") == "ok"
+    assert counter["n"] == 1
 
 
 async def test_blocked_response_escalates() -> None:

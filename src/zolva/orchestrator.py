@@ -53,6 +53,7 @@ class AgentApp:
         self._sessions: SessionStore = sessions if sessions is not None else InMemorySessionStore()
         self.bus = bus if bus is not None else Bus()
         self._adapter = adapter
+        self._provider_adapters: dict[str, LLMAdapter] = {}
 
     @classmethod
     def from_config(
@@ -84,7 +85,13 @@ class AgentApp:
         return self._sessions
 
     def _adapter_for(self, cfg: AgentConfig) -> LLMAdapter:
-        return self._adapter if self._adapter is not None else get_adapter(cfg.model.provider)
+        if self._adapter is not None:
+            return self._adapter
+        provider = cfg.model.provider
+        if provider not in self._provider_adapters:
+            # one adapter (one httpx client/connection pool) per provider per app
+            self._provider_adapters[provider] = get_adapter(provider)
+        return self._provider_adapters[provider]
 
     async def run(self, agent_name: str, session_id: str, user_msg: str) -> str:
         try:
