@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Security Policy | Zolva</title>
-  <meta name="description" content="Zolva security policy: how to report a vulnerability (security@zolva.ai, 72-hour acknowledgement, coordinated disclosure), what is in scope, supported versions, and the platform's threat model." />
+  <meta name="description" content="Zolva security policy: how to report a vulnerability (private GitHub reporting, 72-hour acknowledgement, coordinated disclosure), what is in scope, supported versions, and the platform's threat model." />
   <link rel="canonical" href="https://zolva.ai/security/" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="apple-touch-icon" href="/mark-512.png" />
@@ -49,7 +49,9 @@
 
         <h2 style="margin-top:2rem">Reporting a vulnerability</h2>
         <div class="callout warn"><strong>Do not open a public issue.</strong>
-        Email <a href="mailto:security@zolva.ai">security@zolva.ai</a>.</div>
+        Report privately through GitHub:
+        <a href="https://github.com/ANIBIT14/zolva/security/advisories/new" target="_blank" rel="noopener noreferrer">Report a vulnerability</a>
+        (the Security tab on the repository). Only the maintainers can see it.</div>
         <p>Include:</p>
         <ul>
           <li>A description of the issue and the affected component (config loader, tool
@@ -100,9 +102,38 @@
   </div>
 
   <footer>
+    <div class="wrap footer-grid">
+      <div>
+        <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+        <p style="margin-top:0.8rem; max-width:22em;">The open-source, self-hosted agent
+        platform for banks and fintechs.</p>
+      </div>
+      <nav aria-label="Product">
+        <span class="col-title">Product</span>
+        <a href="/docs/">Documentation</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/#platform">Platform</a>
+        <a href="/#compare">Comparison</a>
+        <a href="https://pypi.org/project/zolva/" target="_blank" rel="noopener noreferrer">PyPI</a>
+      </nav>
+      <nav aria-label="Project">
+        <span class="col-title">Project</span>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="/security/">Security policy</a>
+        <a href="/contributing/">Contributing</a>
+        <a href="/legal/">Trust &amp; legal</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Apache-2.0 license</a>
+      </nav>
+      <nav aria-label="For machines">
+        <span class="col-title">For machines</span>
+        <a href="/llms.txt">llms.txt</a>
+        <a href="/llms-full.txt">llms-full.txt</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/AGENTS.md" target="_blank" rel="noopener noreferrer">AGENTS.md</a>
+      </nav>
+    </div>
     <div class="wrap footer-sig">
       <span>© 2026 Zolva. Apache-2.0.</span>
-      <span><a href="/">Home</a> · <a href="/docs/">Docs</a> · <a href="/contributing/">Contributing</a></span>
+      <span>Self-hosted by design; your data never leaves.</span>
     </div>
   </footer>
 </body>

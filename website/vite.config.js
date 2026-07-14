@@ -15,6 +15,7 @@ export default defineConfig({
         "playbook-ci": resolve(import.meta.dirname, "playbooks/ci-gated-releases/index.html"),
         security: resolve(import.meta.dirname, "security/index.html"),
         contributing: resolve(import.meta.dirname, "contributing/index.html"),
+        legal: resolve(import.meta.dirname, "legal/index.html"),
         404: resolve(import.meta.dirname, "404.html"),
       },
     },

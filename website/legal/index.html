@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trust &amp; Legal | Zolva</title>
+  <meta name="description" content="Zolva trust and legal posture for procurement and due-diligence teams: data flows, the compliance mapping (EU AI Act, SR 11-7, RBI digital lending), supply-chain integrity, licensing, and what Zolva is and is not." />
+  <link rel="canonical" href="https://zolva.ai/legal/" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/mark-512.png" />
+  <meta name="theme-color" content="#08011A" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Zolva" />
+  <meta property="og:title" content="Zolva Trust &amp; Legal" />
+  <meta property="og:description" content="Data flows, compliance mapping, supply-chain integrity, and licensing, stated plainly for due-diligence teams." />
+  <meta property="og:url" content="https://zolva.ai/legal/" />
+  <meta property="og:image" content="https://zolva.ai/mark-512.png" />
+  <meta name="twitter:card" content="summary" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links">menu</button>
+      <nav class="nav-links" id="nav-links" aria-label="Main">
+        <a href="/#why">Why Zolva</a>
+        <a href="/#platform">Platform</a>
+        <a href="/docs/">Docs</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a class="nav-cta" href="/docs/#quickstart">pip install zolva</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="wrap" style="display:flex; justify-content:center;">
+    <main class="docs-main" style="padding-top:2.5rem;">
+      <section id="trust">
+        <p class="eyebrow" style="margin-bottom:1rem">Project</p>
+        <h1>Trust &amp; Legal</h1>
+        <p>Written for the people who evaluate software before a bank is allowed to run it:
+        procurement, vendor risk, model risk, and legal. Plain statements, no theater.</p>
+
+        <h2 style="margin-top:2rem">What Zolva is, and is not</h2>
+        <ul>
+          <li>Zolva is <strong>open-source software</strong> (Apache-2.0) that you install and
+          operate inside your own infrastructure. It is a Python package, not a hosted
+          service.</li>
+          <li>There is <strong>no Zolva cloud, no Zolva account, and no telemetry</strong>. The
+          project cannot see your deployments, your prompts, or your customers.</li>
+          <li>Because there is no hosted service, there is <strong>no SOC 2 report for
+          Zolva itself</strong>: there is nothing of ours holding your data to audit. Your
+          deployment inherits <em>your</em> controls: your VPC, your IAM, your monitoring, and
+          the platform's built-in controls below.</li>
+          <li>Zolva is not a law firm and this page is <strong>not legal or compliance
+          advice</strong>. It describes technical controls that your compliance function can
+          map to its own obligations.</li>
+        </ul>
+
+        <h2 style="margin-top:2rem">Data flows</h2>
+        <ul>
+          <li><strong>Customer data:</strong> reaches agents only through the tools you
+          register (your API clients, your auth). Zolva's operational stores (sessions, audit
+          log, failure queue) are files or databases in your infrastructure.</li>
+          <li><strong>The only egress</strong> is the LLM call you configure. The bridge
+          supports in-house gateways and local models, and optional PII redaction before any
+          provider call. Your data-processing agreement is with your model provider, not with
+          Zolva.</li>
+          <li><strong>Channels:</strong> messages transit the channel providers you declare
+          (for example Meta's WhatsApp Cloud API or a speech vendor). Those are deliberate,
+          per-channel decisions recorded in config your reviewers can read.</li>
+        </ul>
+
+        <h2 style="margin-top:2rem">Compliance mapping</h2>
+        <p>Regulatory frameworks for high-risk AI converge on four demands. Zolva's controls
+        are designed so that operating the platform <em>produces</em> the evidence:</p>
+        <table>
+          <thead><tr><th>Expectation</th><th>Raised by</th><th>Platform control that evidences it</th></tr></thead>
+          <tbody>
+            <tr><td>Transparency</td><td>EU AI Act; SR 11-7</td><td>Audit log stamped with config version and instruction-file hash: any response is replayable to exactly the configuration that produced it.</td></tr>
+            <tr><td>Traceability</td><td>EU AI Act; SR 11-7</td><td>Append-only, hash-chained audit records; edits, deletions, and reordering are detectable by <code>verify()</code>.</td></tr>
+            <tr><td>Human oversight</td><td>EU AI Act; RBI digital-lending norms</td><td>One handover path for agent decisions, guardrail violations, tool crashes, provider failures, and customer requests; irreversible actions can require human confirmation.</td></tr>
+            <tr><td>Ongoing monitoring</td><td>SR 11-7; EU AI Act</td><td>CI-gated evals on the worst cohort, scheduled drift runs, synthetic patrols including adversarial personas, and the SARR scorecard.</td></tr>
+            <tr><td>Conduct rules</td><td>RBI digital-lending norms</td><td>Contact-hour windows, mandatory disclaimers, and refusal rules enforced as config; <code>never</code> rules cannot be disabled.</td></tr>
+          </tbody>
+        </table>
+        <p class="muted">Mapping a control to your specific legal obligation remains your
+        compliance function's judgment; the platform's job is to make the evidence exist.</p>
+
+        <h2 style="margin-top:2rem">Supply chain &amp; release integrity</h2>
+        <ul>
+          <li>Three runtime dependencies: <code>pydantic</code>, <code>httpx</code>,
+          <code>pyyaml</code>. The dependency policy is frozen and enforced in review.</li>
+          <li><code>bandit</code>, <code>pip-audit</code>, lint, strict typing, and the full
+          test suite run in CI on every commit, on a three-version Python matrix.</li>
+          <li>Releases are tagged on GitHub with the exact source; install pinned versions
+          (<code>pip install zolva==X.Y.Z</code>) and verify with your own artifact scanning,
+          as you would any dependency.</li>
+          <li>Vulnerability handling: coordinated disclosure with a 72-hour acknowledgement.
+          See the <a href="/security/">security policy</a>.</li>
+        </ul>
+
+        <h2 style="margin-top:2rem">License &amp; warranty</h2>
+        <p>Zolva is licensed under
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Apache-2.0</a>:
+        you may use, modify, and run it commercially, including in production at a regulated
+        institution. Per the license, the software is provided "as is", without warranties or
+        conditions of any kind; the full text governs.</p>
+
+        <h2 style="margin-top:2rem">Contact</h2>
+        <p>Security reports:
+        <a href="https://github.com/ANIBIT14/zolva/security/advisories/new" target="_blank" rel="noopener noreferrer">private vulnerability reporting on GitHub</a>
+        (see the <a href="/security/">policy</a>). Everything else:
+        <a href="https://github.com/ANIBIT14/zolva/issues" target="_blank" rel="noopener noreferrer">GitHub issues</a>.</p>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div class="wrap footer-grid">
+      <div>
+        <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+        <p style="margin-top:0.8rem; max-width:22em;">The open-source, self-hosted agent
+        platform for banks and fintechs.</p>
+      </div>
+      <nav aria-label="Product">
+        <span class="col-title">Product</span>
+        <a href="/docs/">Documentation</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/#platform">Platform</a>
+        <a href="/#compare">Comparison</a>
+        <a href="https://pypi.org/project/zolva/" target="_blank" rel="noopener noreferrer">PyPI</a>
+      </nav>
+      <nav aria-label="Project">
+        <span class="col-title">Project</span>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="/security/">Security policy</a>
+        <a href="/contributing/">Contributing</a>
+        <a href="/legal/">Trust &amp; legal</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Apache-2.0 license</a>
+      </nav>
+      <nav aria-label="For machines">
+        <span class="col-title">For machines</span>
+        <a href="/llms.txt">llms.txt</a>
+        <a href="/llms-full.txt">llms-full.txt</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/AGENTS.md" target="_blank" rel="noopener noreferrer">AGENTS.md</a>
+      </nav>
+    </div>
+    <div class="wrap footer-sig">
+      <span>© 2026 Zolva. Apache-2.0.</span>
+      <span>Self-hosted by design; your data never leaves.</span>
+    </div>
+  </footer>
+</body>
+</html>

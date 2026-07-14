@@ -4,7 +4,9 @@ Zolva is built for banks and fintechs; security reports get priority over everyt
 
 ## Reporting a vulnerability
 
-**Do not open a public issue.** Email **security@zolva.ai** with:
+**Do not open a public issue.** Use GitHub's private vulnerability reporting:
+[github.com/ANIBIT14/zolva/security/advisories/new](https://github.com/ANIBIT14/zolva/security/advisories/new)
+("Report a vulnerability" under the repo's Security tab). Include:
 
 - A description of the issue and the affected component (config loader, tool registry, bridge, orchestrator, handover, CLI)
 - Reproduction steps or a proof-of-concept
