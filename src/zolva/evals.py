@@ -10,6 +10,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 from typing import Any, Literal
+from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict
 
@@ -110,7 +111,7 @@ class EvalRunner:
         for cohort in cohorts:
             results = []
             for i, case in enumerate(cohort.cases):
-                session_id = f"eval-{cohort.cohort}-{i}"
+                session_id = f"eval-{cohort.cohort}-{i}-{uuid4().hex[:8]}"
                 response = await self._app.run(cohort.agent, session_id, case.input)
                 passed = await self._grade(cohort.grader, case, response, session_id)
                 results.append(CaseResult(input=case.input, passed=passed, response=response))

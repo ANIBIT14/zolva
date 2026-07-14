@@ -40,6 +40,26 @@ cases:
     assert report.gate_passed and report.cohorts[0].pass_rate == 1.0
 
 
+async def test_rerun_does_not_inherit_prior_session_history(tmp_path: Path) -> None:
+    write_cohort(
+        tmp_path / "evals" / "dues.yaml",
+        f"""
+cohort: dues
+agent: {AGENT}
+grader: contains
+min_pass_rate: 1.0
+cases:
+  - {{ input: "what do I owe?", expect: "a" }}
+""",
+    )
+    adapter = FakeAdapter(script=[LLMResponse(text="a"), LLMResponse(text="a")])
+    app = AgentApp({AGENT: make_cfg()}, registry=make_registry(), adapter=adapter)
+    runner = EvalRunner(app)
+    await runner.run(tmp_path / "evals")
+    await runner.run(tmp_path / "evals")
+    assert len(adapter.calls[1]["messages"]) == 1
+
+
 async def test_worst_cohort_fails_gate_despite_good_average(tmp_path: Path) -> None:
     write_cohort(
         tmp_path / "evals" / "a-good.yaml",
