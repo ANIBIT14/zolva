@@ -42,3 +42,16 @@ def test_missing_policy_file_fails_startup(tmp_path: Path) -> None:
     agents_dir = write_config(tmp_path, policy=False)
     with pytest.raises(ConfigError, match="policy file not found"):
         AgentApp.from_config(agents_dir)
+
+
+def test_missing_evals_path_fails_startup(tmp_path: Path) -> None:
+    agents = tmp_path / "agents"
+    agents.mkdir(parents=True)
+    (agents / "cx.md").write_text("Help customers.")
+    (agents / "cx.yaml").write_text(
+        "name: cx-agent\ninstructions: cx.md\n"
+        "model: { provider: test, name: m }\n"
+        "evals: missing.yaml\n"
+    )
+    with pytest.raises(ConfigError, match="evals"):
+        AgentApp.from_config(agents)

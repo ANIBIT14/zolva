@@ -80,6 +80,55 @@ def test_eval_cli_bad_app_spec(tmp_path: Path) -> None:
     assert main(["eval", str(tmp_path / "e"), "--app", "nocolon"]) == 1
 
 
+def test_eval_cli_agents_mode(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (tmp_path / "bankapp3.py").write_text(
+        "from zolva.orchestrator import AgentApp\n"
+        "from zolva.bridge import LLMResponse\n"
+        "from zolva.bridge.fake import FakeAdapter\n"
+        "from zolva.config import AgentConfig, ModelConfig\n"
+        "from zolva.tools import ToolRegistry\n"
+        "cfg = AgentConfig(name='collections-agent', instructions='x',\n"
+        "                  model=ModelConfig(provider='test', name='m'))\n"
+        "app = AgentApp({'collections-agent': cfg}, registry=ToolRegistry(),\n"
+        "               adapter=FakeAdapter(script=[LLMResponse(text='You owe 4200.')]))\n"
+    )
+    monkeypatch.syspath_prepend(str(tmp_path))
+    monkeypatch.delitem(sys.modules, "bankapp3", raising=False)
+    config_dir = tmp_path / "config"
+    agents = config_dir / "agents"
+    agents.mkdir(parents=True)
+    (agents / "cx.md").write_text("Collect politely.")
+    (agents / "cx.yaml").write_text(
+        f"name: {AGENT}\ninstructions: cx.md\n"
+        "model: { provider: test, name: m }\n"
+        "evals: cohorts\n"
+    )
+    (agents / "cohorts").mkdir()
+    (agents / "cohorts" / "dues.yaml").write_text(
+        f"cohort: dues\nagent: {AGENT}\ngrader: contains\nmin_pass_rate: 1.0\n"
+        'cases:\n  - { input: "q", expect: "4200" }\n'
+    )
+    code = main(["eval", "--agents", str(agents), "--app", "bankapp3:app", "--gate"])
+    assert code == 0
+    assert "GATE: PASS" in capsys.readouterr().out
+
+
+def test_eval_cli_evals_dir_and_agents_are_mutually_exclusive(
+    tmp_path: Path, app_module: str
+) -> None:
+    (tmp_path / "e").mkdir()
+    (tmp_path / "a").mkdir()
+    # both given
+    assert (
+        main(["eval", str(tmp_path / "e"), "--agents", str(tmp_path / "a"), "--app", app_module])
+        == 1
+    )
+    # neither given
+    assert main(["eval", "--app", app_module]) == 1
+
+
 def test_eval_cli_imports_app_from_cwd(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

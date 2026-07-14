@@ -6,7 +6,7 @@ from tests.test_orchestrator import make_cfg, make_registry
 from zolva.bridge import LLMResponse, ToolCall
 from zolva.bridge.fake import FakeAdapter
 from zolva.config import ConfigError
-from zolva.evals import EvalRunner, load_cohorts
+from zolva.evals import EvalRunner, load_cohorts, load_cohorts_from_agents
 from zolva.orchestrator import AgentApp
 
 AGENT = "collections-agent"
@@ -21,6 +21,18 @@ def make_app(script: list[LLMResponse]) -> AgentApp:
     return AgentApp(
         {AGENT: make_cfg()}, registry=make_registry(), adapter=FakeAdapter(script=script)
     )
+
+
+def write_agent_with_evals(root: Path, evals_rel: str) -> Path:
+    agents = root / "agents"
+    agents.mkdir(parents=True, exist_ok=True)
+    (agents / "cx.md").write_text("Collect politely.")
+    (agents / "cx.yaml").write_text(
+        f"name: {AGENT}\ninstructions: cx.md\n"
+        "model: { provider: test, name: m }\n"
+        f"evals: {evals_rel}\n"
+    )
+    return agents
 
 
 async def test_contains_grader_and_gate_pass(tmp_path: Path) -> None:
@@ -149,3 +161,27 @@ def test_load_cohorts_errors(tmp_path: Path) -> None:
     (tmp_path / "bad" / "c.yaml").write_text("cohort: x\nbogus: 1\n")
     with pytest.raises(ConfigError):
         load_cohorts(tmp_path / "bad")
+
+
+async def test_load_cohorts_from_agents_happy_path(tmp_path: Path) -> None:
+    agents_dir = write_agent_with_evals(tmp_path, "cohorts")
+    write_cohort(
+        agents_dir / "cohorts" / "dues.yaml",
+        f"cohort: dues\nagent: {AGENT}\ngrader: contains\nmin_pass_rate: 1.0\n"
+        'cases:\n  - { input: "q", expect: "4200" }\n',
+    )
+    cohorts = load_cohorts_from_agents(agents_dir)
+    assert len(cohorts) == 1
+    assert cohorts[0].cohort == "dues"
+    assert cohorts[0].agent == AGENT
+
+
+async def test_load_cohorts_from_agents_rejects_agent_mismatch(tmp_path: Path) -> None:
+    agents_dir = write_agent_with_evals(tmp_path, "cohorts")
+    write_cohort(
+        agents_dir / "cohorts" / "dues.yaml",
+        "cohort: dues\nagent: some-other-agent\ngrader: contains\nmin_pass_rate: 1.0\n"
+        'cases:\n  - { input: "q", expect: "4200" }\n',
+    )
+    with pytest.raises(ConfigError, match="some-other-agent"):
+        load_cohorts_from_agents(agents_dir)

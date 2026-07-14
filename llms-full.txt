@@ -204,7 +204,7 @@ report = await EvalRunner(app, judge=judge).run("evals/")
 assert report.gate_passed        # exit-1 this in CI; a great average never rescues a failing cohort
 ```
 
-Run weekly on cron to catch provider drift; run per-PR to catch your own regressions.
+Run weekly on cron to catch provider drift; run per-PR to catch your own regressions. Agents can also declare `evals: evals/` in their YAML; `zolva eval --agents agents/ --app app:app --gate` runs every cohort the config declares, checked at startup so a missing or mismatched cohort fails your deploy, not a later CI run.
 
 ### Feedback loop, every failure becomes a permanent test
 
@@ -289,13 +289,13 @@ Point your agent at [`llms.txt`](llms.txt) / [`llms-full.txt`](llms-full.txt), o
 
 ## Status & roadmap
 
-**Beta.** Core runtime, all six plugins (guardrails, evals, feedback, audit, synthetics, channels), and the CLI (`zolva validate | eval --gate | scorecard | triage | export-dataset`) are implemented and tested (132 tests, `mypy --strict`, 3-version CI matrix). Agents with a `guardrails:` field in their YAML get their policy attached automatically by `AgentApp.from_config`.
+**Beta.** Core runtime, all six plugins (guardrails, evals, feedback, audit, synthetics, channels), and the CLI (`zolva validate | eval --gate | scorecard | triage | export-dataset`) are implemented and tested (132 tests, `mypy --strict`, 3-version CI matrix). Agents with a `guardrails:` or `evals:` field in their YAML get them wired automatically by `AgentApp.from_config`.
 
 Before 1.0:
 
 - Docs site at [zolva.ai](https://zolva.ai)
 - More `ChannelAdapter` implementations (Twilio, telephony) and ticketing-system handover backends (the interfaces and an ElevenLabs voice adapter ship; more adapters welcome)
-- Auto-wiring `evals:` from agent YAML; judge model configured per policy
+- Judge model configured per policy
 
 Design docs: [`docs/specs/`](docs/specs/) · Full architecture, threat model, and competitive positioning included.
 

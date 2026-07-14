@@ -78,6 +78,10 @@ class AgentApp:
                 Guardrails.from_file(
                     policy_path, agent=cfg.name, judge=judge, judge_model=judge_model
                 ).attach(app.bus)
+            if cfg.evals:
+                evals_path = Path(config_dir) / cfg.evals
+                if not (evals_path.is_file() or evals_path.is_dir()):
+                    raise ConfigError(f"agent {cfg.name!r}: evals path not found: {evals_path}")
         return app
 
     @property

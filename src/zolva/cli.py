@@ -48,12 +48,19 @@ def _cmd_validate(args: argparse.Namespace) -> int:
 
 def _cmd_eval(args: argparse.Namespace) -> int:
     from zolva.bridge import get_adapter
-    from zolva.evals import EvalRunner
+    from zolva.evals import EvalRunner, load_cohorts_from_agents
+
+    if bool(args.evals_dir) == bool(args.agents):
+        print("eval: pass exactly one of evals_dir or --agents", file=sys.stderr)
+        return 1
 
     app = _load_app(args.app)
     judge = get_adapter(args.judge_provider) if args.judge_provider else None
     runner = EvalRunner(app, judge=judge, judge_model=args.judge_model)
-    report = asyncio.run(runner.run(args.evals_dir))
+    if args.agents:
+        report = asyncio.run(runner.run_cohorts(load_cohorts_from_agents(args.agents)))
+    else:
+        report = asyncio.run(runner.run(args.evals_dir))
     print(report.summary())
     if args.out:
         with open(args.out, "w") as f:
@@ -114,7 +121,12 @@ def main(argv: list[str] | None = None) -> int:
     p_validate.add_argument("config_dir")
 
     p_eval = sub.add_parser("eval", help="run eval cohorts against your app")
-    p_eval.add_argument("evals_dir")
+    p_eval.add_argument("evals_dir", nargs="?", default="")
+    p_eval.add_argument(
+        "--agents",
+        default="",
+        help="agent config dir; run the cohorts its YAMLs declare via evals:",
+    )
     p_eval.add_argument("--app", required=True, help="import path to your AgentApp: module:attr")
     p_eval.add_argument("--gate", action="store_true", help="exit 1 if the worst cohort fails")
     p_eval.add_argument("--judge-provider", default="", help="bridge provider for the judge")
