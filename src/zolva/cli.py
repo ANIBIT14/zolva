@@ -10,6 +10,7 @@ import os
 import sys
 from typing import Any
 
+from zolva.bridge import BridgeError
 from zolva.config import ConfigError, load_agents
 from zolva.orchestrator import AgentApp
 
@@ -147,4 +148,7 @@ def main(argv: list[str] | None = None) -> int:
         return result
     except ConfigError as e:
         print(f"config error: {e}", file=sys.stderr)
+        return 1
+    except BridgeError as e:
+        print(f"error: {e}", file=sys.stderr)
         return 1

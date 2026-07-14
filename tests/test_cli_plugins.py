@@ -61,6 +61,20 @@ def test_eval_cli_gate_fail_exits_1(tmp_path: Path, app_module: str) -> None:
     assert main(["eval", str(evals), "--app", app_module, "--gate"]) == 1
 
 
+def test_eval_cli_unknown_judge_provider(
+    tmp_path: Path, app_module: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    evals = tmp_path / "evals"
+    evals.mkdir()
+    (evals / "d.yaml").write_text(
+        f"cohort: d\nagent: {AGENT}\ngrader: contains\nmin_pass_rate: 1.0\n"
+        'cases:\n  - { input: "q", expect: "4200" }\n'
+    )
+    code = main(["eval", str(evals), "--app", app_module, "--judge-provider", "nope"])
+    assert code == 1
+    assert "unknown provider" in capsys.readouterr().err
+
+
 def test_eval_cli_bad_app_spec(tmp_path: Path) -> None:
     (tmp_path / "e").mkdir()
     assert main(["eval", str(tmp_path / "e"), "--app", "nocolon"]) == 1
