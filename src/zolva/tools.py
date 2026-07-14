@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import inspect
 from typing import Any, Callable
 
@@ -66,9 +67,13 @@ class ToolRegistry:
             params = t.params_model(**args)
         except (ValidationError, TypeError) as e:
             raise ToolContractError(f"{name}: invalid arguments: {e}") from e
+        kwargs = {k: getattr(params, k) for k in t.params_model.model_fields}
         # getattr, not model_dump(): a deep dump would turn Pydantic-typed params into dicts
-        result = t.fn(**{k: getattr(params, k) for k in t.params_model.model_fields})
-        if inspect.isawaitable(result):
+        if inspect.iscoroutinefunction(t.fn):
+            return await t.fn(**kwargs)
+        # sync bank clients must not stall every concurrent session
+        result = await asyncio.to_thread(t.fn, **kwargs)
+        if inspect.isawaitable(result):  # e.g. a sync wrapper returning a coroutine
             result = await result
         return result
 
