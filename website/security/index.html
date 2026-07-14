@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Security Policy | Zolva</title>
+  <meta name="description" content="Zolva security policy: how to report a vulnerability (security@zolva.ai, 72-hour acknowledgement, coordinated disclosure), what is in scope, supported versions, and the platform's threat model." />
+  <link rel="canonical" href="https://zolva.ai/security/" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/mark-512.png" />
+  <meta name="theme-color" content="#08011A" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Zolva" />
+  <meta property="og:title" content="Zolva Security Policy" />
+  <meta property="og:description" content="Coordinated disclosure, 72-hour acknowledgement, and the threat model behind the platform." />
+  <meta property="og:url" content="https://zolva.ai/security/" />
+  <meta property="og:image" content="https://zolva.ai/mark-512.png" />
+  <meta name="twitter:card" content="summary" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links">menu</button>
+      <nav class="nav-links" id="nav-links" aria-label="Main">
+        <a href="/#why">Why Zolva</a>
+        <a href="/#platform">Platform</a>
+        <a href="/docs/">Docs</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a class="nav-cta" href="/docs/#quickstart">pip install zolva</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="wrap" style="display:flex; justify-content:center;">
+    <main class="docs-main" style="padding-top:2.5rem;">
+      <section id="policy">
+        <p class="eyebrow" style="margin-bottom:1rem">Project</p>
+        <h1>Security Policy</h1>
+        <p>Zolva is built for banks and fintechs; security reports get priority over
+        everything else.</p>
+
+        <h2 style="margin-top:2rem">Reporting a vulnerability</h2>
+        <div class="callout warn"><strong>Do not open a public issue.</strong>
+        Email <a href="mailto:security@zolva.ai">security@zolva.ai</a>.</div>
+        <p>Include:</p>
+        <ul>
+          <li>A description of the issue and the affected component (config loader, tool
+          registry, bridge, orchestrator, channels, handover, CLI).</li>
+          <li>Reproduction steps or a proof-of-concept.</li>
+          <li>The version or commit you tested against.</li>
+        </ul>
+        <p>You will get an <strong>acknowledgement within 72 hours</strong> and a remediation
+        timeline within 7 days. We ask for coordinated disclosure: give us 90 days (or an
+        agreed timeline) before publishing.</p>
+
+        <h2 style="margin-top:2rem">Scope</h2>
+        <ul>
+          <li>Zolva is self-hosted: the runtime never sends data anywhere except the LLM
+          provider the operator configures. Reports about provider-side handling are out of
+          scope.</li>
+          <li>Prompt-injection findings against the orchestrator's tool-result handling,
+          guardrail bypasses, channel-payload validation, and secrets handling in the config
+          loader are all firmly in scope.</li>
+        </ul>
+
+        <h2 style="margin-top:2rem">Supported versions</h2>
+        <p>Pre-1.0: only the latest release receives security fixes.</p>
+
+        <h2 style="margin-top:2rem">How the platform defends itself</h2>
+        <p>The full threat model, mitigation by mitigation, lives in the
+        <a href="/docs/#security">documentation's security model</a>. The short form:</p>
+        <ul>
+          <li>Tool results are data, never re-interpreted as instructions; <code>never</code>
+          guardrails cannot be configured off.</li>
+          <li>Per-agent tool and channel allowlists; Pydantic-validated I/O with
+          <code>extra="forbid"</code>.</li>
+          <li>No secrets in config: the loader rejects anything credential-shaped that is not
+          a <code>${ENV:VAR}</code> reference.</li>
+          <li><code>yaml.safe_load</code> only; no <code>eval</code>, <code>exec</code>, or
+          <code>pickle</code> anywhere.</li>
+          <li>Sessions isolated per <code>session_id</code> and namespaced per channel; no
+          cross-session context is ever assembled.</li>
+          <li>Hash-chained audit log; edits, deletions, and reordering are detectable.</li>
+          <li>Three runtime dependencies; <code>bandit</code> and <code>pip-audit</code> run
+          in CI on every commit.</li>
+        </ul>
+        <p style="margin-top:1.5rem" class="muted">This page mirrors
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/SECURITY.md" target="_blank" rel="noopener noreferrer">SECURITY.md</a>
+        in the repository; if they ever disagree, the repository file is authoritative.</p>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div class="wrap footer-sig">
+      <span>© 2026 Zolva. Apache-2.0.</span>
+      <span><a href="/">Home</a> · <a href="/docs/">Docs</a> · <a href="/contributing/">Contributing</a></span>
+    </div>
+  </footer>
+</body>
+</html>

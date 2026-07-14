@@ -13,6 +13,8 @@ export default defineConfig({
         "playbook-voice": resolve(import.meta.dirname, "playbooks/voice-cx-elevenlabs/index.html"),
         "playbook-whatsapp": resolve(import.meta.dirname, "playbooks/whatsapp-collections/index.html"),
         "playbook-ci": resolve(import.meta.dirname, "playbooks/ci-gated-releases/index.html"),
+        security: resolve(import.meta.dirname, "security/index.html"),
+        contributing: resolve(import.meta.dirname, "contributing/index.html"),
         404: resolve(import.meta.dirname, "404.html"),
       },
     },

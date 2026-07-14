@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contributing | Zolva</title>
+  <meta name="description" content="How to contribute to Zolva: TDD with four green gates (pytest, ruff, ruff format, mypy), conventional commits, frozen runtime dependencies, and good first contributions like handover backends and bridge adapters." />
+  <link rel="canonical" href="https://zolva.ai/contributing/" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/mark-512.png" />
+  <meta name="theme-color" content="#08011A" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Zolva" />
+  <meta property="og:title" content="Contributing to Zolva" />
+  <meta property="og:description" content="TDD, four green gates, conventional commits. The contract binds human and AI contributors alike." />
+  <meta property="og:url" content="https://zolva.ai/contributing/" />
+  <meta property="og:image" content="https://zolva.ai/mark-512.png" />
+  <meta name="twitter:card" content="summary" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links">menu</button>
+      <nav class="nav-links" id="nav-links" aria-label="Main">
+        <a href="/#why">Why Zolva</a>
+        <a href="/#platform">Platform</a>
+        <a href="/docs/">Docs</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a class="nav-cta" href="/docs/#quickstart">pip install zolva</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="wrap" style="display:flex; justify-content:center;">
+    <main class="docs-main" style="padding-top:2.5rem;">
+      <section id="contributing">
+        <p class="eyebrow" style="margin-bottom:1rem">Project</p>
+        <h1>Contributing</h1>
+        <p>Thanks for helping build the open agent platform for banks and fintechs.</p>
+
+        <h2 style="margin-top:2rem">The short version</h2>
+        <ol>
+          <li>Fork, branch, and make your change with a failing test first (TDD).</li>
+          <li>All four gates must be green before you open a PR:</li>
+        </ol>
+        <div class="code">
+          <div class="code-bar"><span>shell</span><button class="copy-btn" data-copy="#c-gates">copy</button></div>
+          <pre><code data-lang="bash" id="c-gates">$ pytest -q && ruff check . && ruff format --check . && mypy</code></pre>
+        </div>
+        <ol start="3">
+          <li>Conventional commits: <code>feat:</code>, <code>fix:</code>, <code>test:</code>,
+          <code>docs:</code>, <code>chore:</code>.</li>
+          <li>Open the PR. CI runs the same gates plus <code>bandit</code> and
+          <code>pip-audit</code>.</li>
+        </ol>
+        <p>The full contract (setup commands, conventions, what NOT to do) lives in
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/AGENTS.md" target="_blank" rel="noopener noreferrer">AGENTS.md</a>.
+        It binds human and AI contributors alike; if you use an AI coding agent, point it at
+        that file first.</p>
+
+        <h2 style="margin-top:2rem">Hard rules</h2>
+        <ul>
+          <li>Runtime dependencies are frozen: <code>pydantic</code>, <code>httpx</code>,
+          <code>pyyaml</code>. PRs adding a runtime dependency will be declined unless the
+          maintainers agreed first.</li>
+          <li><code>yaml.safe_load</code> only. No <code>eval</code>, <code>exec</code>, or
+          <code>pickle</code>, anywhere, ever.</li>
+          <li>A bugfix PR includes the failing test that reproduces the bug.</li>
+          <li>Test output must be pristine: no warnings, no stray prints.</li>
+          <li>Public interfaces are typed; <code>mypy --strict</code> stays clean.</li>
+        </ul>
+
+        <h2 style="margin-top:2rem">Good first contributions</h2>
+        <ul>
+          <li>Handover backends for ticketing systems (Freshdesk, Zendesk, Salesforce):
+          subclass one <code>HandoverBackend</code> class, roughly 50 lines each.</li>
+          <li><code>ChannelAdapter</code> implementations for more customer channels (Twilio,
+          telephony stacks): two methods, <code>receive</code> and <code>send</code>.</li>
+          <li>Bridge adapters for additional LLM providers or internal gateways.</li>
+          <li>Eval cohorts and adversarial synthetic personas for common banking flows.</li>
+        </ul>
+
+        <h2 style="margin-top:2rem">Security issues</h2>
+        <p>Do not open a public issue. See the <a href="/security/">security policy</a>.</p>
+
+        <h2 style="margin-top:2rem">License</h2>
+        <p>Zolva is
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Apache-2.0</a>.
+        By contributing you agree your work is licensed under Apache-2.0.</p>
+        <p style="margin-top:1.5rem" class="muted">This page mirrors
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">CONTRIBUTING.md</a>
+        in the repository; if they ever disagree, the repository file is authoritative.</p>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div class="wrap footer-sig">
+      <span>© 2026 Zolva. Apache-2.0.</span>
+      <span><a href="/">Home</a> · <a href="/docs/">Docs</a> · <a href="/security/">Security</a></span>
+    </div>
+  </footer>
+</body>
+</html>
