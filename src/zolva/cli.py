@@ -1,4 +1,4 @@
-"""zolva CLI: validate, eval, synthetics, scorecard, triage, export-dataset."""
+"""zolva CLI: validate, eval, synthetics, scorecard, dashboard, triage, export-dataset."""
 
 from __future__ import annotations
 
@@ -36,13 +36,26 @@ def _load_app(spec: str) -> AgentApp:
 
 
 def _cmd_validate(args: argparse.Namespace) -> int:
+    from pathlib import Path
+
+    from zolva.evals import load_cohorts_from_agents
+    from zolva.guardrails import validate_policy_file
+
     agents = load_agents(args.config_dir)
     for cfg in agents.values():
+        # same checks the runtime performs at startup: a config that passes
+        # `zolva validate` in CI must not fail AgentApp.from_config later
+        if cfg.guardrails:
+            policy_path = Path(args.config_dir) / cfg.guardrails
+            if not policy_path.is_file():
+                raise ConfigError(f"agent {cfg.name!r}: policy file not found: {policy_path}")
+            validate_policy_file(policy_path)
         print(
             f"{cfg.name}  {cfg.model.provider}/{cfg.model.name}  "
             f"tools={len(cfg.tools)}  handoffs={cfg.handoffs}"
         )
-    print(f"OK: {len(agents)} agent(s) valid")
+    cohorts = load_cohorts_from_agents(args.config_dir, required=False)
+    print(f"OK: {len(agents)} agent(s) valid, {len(cohorts)} eval cohort(s) parsed")
     return 0
 
 
@@ -130,6 +143,21 @@ def _cmd_triage(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_dashboard(args: argparse.Namespace) -> int:
+    from importlib.util import find_spec
+
+    if find_spec("fastapi") is None or find_spec("uvicorn") is None:
+        print(
+            'dashboard requires the optional extra: pip install "zolva[dashboard]"',
+            file=sys.stderr,
+        )
+        return 1
+    from zolva import dashboard
+
+    dashboard.serve(args.config_dir, args.audit, host=args.host, port=args.port)
+    return 0
+
+
 def _cmd_export_dataset(args: argparse.Namespace) -> int:
     from zolva.feedback import FeedbackQueue
 
@@ -171,6 +199,12 @@ def main(argv: list[str] | None = None) -> int:
     p_score = sub.add_parser("scorecard", help="verify the audit chain and print SARR")
     p_score.add_argument("audit_db")
 
+    p_dash = sub.add_parser("dashboard", help="serve the local read-only dashboard UI")
+    p_dash.add_argument("config_dir", nargs="?", default=None, help="agent config dir (topology)")
+    p_dash.add_argument("--audit", default="audit.sqlite", help="audit DB path (opened read-only)")
+    p_dash.add_argument("--host", default="127.0.0.1", help="bind address (default localhost)")
+    p_dash.add_argument("--port", type=int, default=8600)
+
     p_triage = sub.add_parser("triage", help="list/promote/reject pending failures")
     p_triage.add_argument("failures_db")
     p_triage.add_argument("--accept", type=int, default=None, metavar="ID")
@@ -188,6 +222,7 @@ def main(argv: list[str] | None = None) -> int:
         "eval": _cmd_eval,
         "synthetics": _cmd_synthetics,
         "scorecard": _cmd_scorecard,
+        "dashboard": _cmd_dashboard,
         "triage": _cmd_triage,
         "export-dataset": _cmd_export_dataset,
     }

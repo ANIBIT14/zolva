@@ -36,6 +36,56 @@ _KNOWN_RULES = {"block_outside_window", "require_disclaimer", "refuse_topics", "
 _JUDGE_RULES = {"refuse_topics", "never"}
 
 
+def _load_policy_file(path: str | Path) -> dict[str, Any]:
+    raw = yaml.safe_load(Path(path).read_text())
+    if not isinstance(raw, dict):
+        raise ConfigError(f"{path}: policy must be a mapping")
+    return raw
+
+
+def validate_policy_file(path: str | Path) -> None:
+    """Shape-check a policy file without constructing adapters (CI validate)."""
+    validate_policy(_load_policy_file(path))
+
+
+def validate_policy(policy: dict[str, Any], *, judge_available: bool = True) -> None:
+    """Shape-check a policy mapping; raises ConfigError on the first problem.
+
+    `judge_available=True` skips the judge-adapter requirement so `zolva
+    validate` can check shapes without constructing adapters; Guardrails
+    passes the real availability at attach time."""
+    for section in (policy.get("pre") or [], policy.get("post") or []):
+        for rule in section:
+            for name, spec in rule.items():
+                if name not in _KNOWN_RULES:
+                    raise ConfigError(f"unknown guardrail rule {name!r}")
+                if name in _JUDGE_RULES:
+                    if not judge_available:
+                        raise ConfigError(f"guardrails: rule {name!r} requires a judge adapter")
+                    if not isinstance(spec, list):
+                        raise ConfigError(
+                            f"guardrails: {name} must be a LIST of topics, got {spec!r}"
+                        )
+                if name == "block_outside_window":
+                    if not isinstance(spec, dict) or "hours" not in spec or "tz" not in spec:
+                        raise ConfigError(f"block_outside_window needs {{hours, tz}}, got {spec!r}")
+                    parts = str(spec["hours"]).split("-")
+                    if len(parts) != 2 or not all(re.fullmatch(r"\d{2}:\d{2}", p) for p in parts):
+                        raise ConfigError(
+                            "block_outside_window hours must be zero-padded "
+                            f"'HH:MM-HH:MM', got {spec['hours']!r}"
+                        )
+                if name == "require_disclaimer":
+                    if not isinstance(spec, dict) or "when" not in spec or "text" not in spec:
+                        raise ConfigError(f"require_disclaimer needs {{when, text}}, got {spec!r}")
+                    try:
+                        re.compile(str(spec["when"]))
+                    except re.error as e:
+                        raise ConfigError(
+                            f"require_disclaimer 'when' is an invalid regex: {e}"
+                        ) from e
+
+
 class Guardrails:
     def __init__(
         self,
@@ -53,49 +103,11 @@ class Guardrails:
         self._judge_model = judge_model
         self._now = now if now is not None else (lambda tz: datetime.now(tz))
         # validate at load time: a policy typo must fail startup, not crash a live run
-        for section in (self._pre, self._post):
-            for rule in section:
-                for name, spec in rule.items():
-                    if name not in _KNOWN_RULES:
-                        raise ConfigError(f"unknown guardrail rule {name!r}")
-                    if name in _JUDGE_RULES:
-                        if judge is None:
-                            raise ConfigError(f"guardrails: rule {name!r} requires a judge adapter")
-                        if not isinstance(spec, list):
-                            raise ConfigError(
-                                f"guardrails: {name} must be a LIST of topics, got {spec!r}"
-                            )
-                    if name == "block_outside_window":
-                        if not isinstance(spec, dict) or "hours" not in spec or "tz" not in spec:
-                            raise ConfigError(
-                                f"block_outside_window needs {{hours, tz}}, got {spec!r}"
-                            )
-                        parts = str(spec["hours"]).split("-")
-                        if len(parts) != 2 or not all(
-                            re.fullmatch(r"\d{2}:\d{2}", p) for p in parts
-                        ):
-                            raise ConfigError(
-                                "block_outside_window hours must be zero-padded "
-                                f"'HH:MM-HH:MM', got {spec['hours']!r}"
-                            )
-                    if name == "require_disclaimer":
-                        if not isinstance(spec, dict) or "when" not in spec or "text" not in spec:
-                            raise ConfigError(
-                                f"require_disclaimer needs {{when, text}}, got {spec!r}"
-                            )
-                        try:
-                            re.compile(str(spec["when"]))
-                        except re.error as e:
-                            raise ConfigError(
-                                f"require_disclaimer 'when' is an invalid regex: {e}"
-                            ) from e
+        validate_policy(policy, judge_available=judge is not None)
 
     @classmethod
     def from_file(cls, path: str | Path, **kwargs: Any) -> Guardrails:
-        raw = yaml.safe_load(Path(path).read_text())
-        if not isinstance(raw, dict):
-            raise ConfigError(f"{path}: policy must be a mapping")
-        return cls(raw, **kwargs)
+        return cls(_load_policy_file(path), **kwargs)
 
     def attach(self, bus: Bus) -> None:
         bus.on(self._hook)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from importlib import import_module
 from typing import Any, Callable, Literal, Protocol
 
 from pydantic import BaseModel
@@ -45,6 +46,13 @@ def register_adapter(provider: str, factory: Callable[[], LLMAdapter]) -> None:
 
 
 def get_adapter(provider: str) -> LLMAdapter:
+    if provider not in _ADAPTERS:
+        # built-in adapters register on import; load zolva.bridge.<provider> lazily
+        # so get_adapter("openai") works without a manual side-effect import
+        try:
+            import_module(f"zolva.bridge.{provider}")
+        except ModuleNotFoundError:
+            pass
     try:
         return _ADAPTERS[provider]()
     except KeyError:

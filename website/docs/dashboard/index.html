@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard | Zolva Documentation</title>
+  <meta name="description" content="The Zolva dashboard: a self-hosted, read-only web UI over your agent configs and the hash-chained audit log. Interface topology, live session tail, queries in and out, tool stats, and the SARR scorecard." />
+  <link rel="canonical" href="https://zolva.ai/docs/dashboard/" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/mark-512.png" />
+  <meta name="theme-color" content="#08011A" />
+
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Zolva" />
+  <meta property="og:title" content="Zolva Dashboard" />
+  <meta property="og:description" content="A self-hosted, read-only viewer over your agent configs and audit log: topology, live session tail, and the SARR scorecard. Data never leaves your VPC." />
+  <meta property="og:url" content="https://zolva.ai/docs/dashboard/" />
+  <meta property="og:image" content="https://zolva.ai/mark-512.png" />
+  <meta name="twitter:card" content="summary" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "Zolva Dashboard",
+    "description": "Architecture and reference for the Zolva dashboard: a self-hosted, read-only web UI over agent configs and the hash-chained audit log.",
+    "url": "https://zolva.ai/docs/dashboard/",
+    "author": { "@type": "Organization", "name": "Zolva", "url": "https://zolva.ai" }
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links">menu</button>
+      <nav class="nav-links" id="nav-links" aria-label="Main">
+        <a href="/#why">Why Zolva</a>
+        <a href="/#platform">Platform</a>
+        <a href="/docs/" aria-current="page">Docs</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a class="nav-cta" href="/docs/#quickstart">pip install zolva</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="wrap docs-shell">
+    <aside class="docs-sidebar" aria-label="Dashboard documentation">
+      <p class="group">Dashboard</p>
+      <a href="/demo/">Live demo &rarr;</a>
+      <a href="#overview">Overview</a>
+      <a href="#install">Install &amp; run</a>
+      <a href="#demo">Demo dataset</a>
+      <p class="group">Architecture</p>
+      <a href="#architecture">How it works</a>
+      <a href="#views">The four views</a>
+      <a href="#live-tail">Live tail</a>
+      <a href="#api">HTTP API reference</a>
+      <p class="group">Operations</p>
+      <a href="#security">Security model</a>
+      <a href="#scale">Teams &amp; scale</a>
+      <a href="#back">&larr; All documentation</a>
+    </aside>
+
+    <main class="docs-main">
+      <section id="overview">
+        <p class="eyebrow" style="margin-bottom:1rem">Documentation &middot; Operations</p>
+        <h1>Dashboard</h1>
+        <p><strong><code>zolva dashboard</code></strong> serves a self-hosted, read-only web UI
+        where your team sees every interface at a glance: which agents exist, which tools
+        (your APIs) they can call, where they hand off, and the live flow of queries in and
+        out, session by session, step by step.</p>
+        <p>The dashboard adds <em>zero</em> new instrumentation. Everything it shows already
+        exists in two places Zolva maintains by construction:</p>
+        <ul>
+          <li><strong>Agent configs are the interface map.</strong> Each YAML declares an
+          agent's model, tools, handoffs, and policies. Parsing the config directory yields
+          the full static topology.</li>
+          <li><strong>The audit log is the data flow.</strong> Every step already flows
+          through the bus into the hash-chained audit log: <code>user_msg</code>,
+          <code>model_call</code>, <code>tool_call</code>, <code>response</code>,
+          <code>handover</code>, <code>feedback</code>, <code>channel</code>. That is,
+          literally, queries in and queries out.</li>
+        </ul>
+        <div class="callout"><strong>Try it now.</strong> A <a href="/demo/">static demo
+        of the dashboard</a> runs on this site with the seeded dataset, including a replayed
+        live tail. No install needed.</div>
+        <div class="callout"><strong>Read-only by construction.</strong> The dashboard opens
+        the audit DB with SQLite <code>mode=ro</code>. It cannot write a row, so it can never
+        touch the hash chain it reports on.</div>
+      </section>
+
+      <section id="install">
+        <h2>Install &amp; run <a class="anchor-link" href="#install">#</a></h2>
+        <p>The dashboard ships as an optional extra, so the core package keeps its three
+        frozen runtime dependencies:</p>
+        <div class="code">
+          <div class="code-bar"><span>shell</span><button class="copy-btn" data-copy="#c-install">copy</button></div>
+          <pre><code data-lang="bash" id="c-install">$ pip install "zolva[dashboard]"
+$ zolva dashboard agents/ --audit audit.sqlite
+zolva dashboard: http://127.0.0.1:8600  (audit=audit.sqlite, read-only)</code></pre>
+        </div>
+        <table>
+          <thead><tr><th>Flag</th><th>Default</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><code>config_dir</code></td><td>none</td><td>Agent config directory; omit it and the topology panel is empty, everything else still works.</td></tr>
+            <tr><td><code>--audit</code></td><td><code>audit.sqlite</code></td><td>Path to the audit DB, opened read-only.</td></tr>
+            <tr><td><code>--host</code></td><td><code>127.0.0.1</code></td><td>Bind address. Localhost by default; see <a href="#security">Security model</a> before changing it.</td></tr>
+            <tr><td><code>--port</code></td><td><code>8600</code></td><td>Port.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="demo">
+        <h2>Demo dataset <a class="anchor-link" href="#demo">#</a></h2>
+        <p>The repository ships a deterministic seeder so you can see the dashboard fully
+        populated before wiring your own app: three agents (collections, support, disputes),
+        about 600 sessions over 14 days, roughly 4,000 hash-chained rows with tool calls,
+        guardrail blocks, a cross-agent handoff path, and human handovers.</p>
+        <div class="code">
+          <div class="code-bar"><span>shell</span><button class="copy-btn" data-copy="#c-demo">copy</button></div>
+          <pre><code data-lang="bash" id="c-demo">$ python examples/dashboard_demo/seed.py
+wrote 3554 audit rows across 600 sessions to examples/dashboard_demo/audit.sqlite
+$ zolva dashboard examples/dashboard_demo/agents \
+    --audit examples/dashboard_demo/audit.sqlite</code></pre>
+        </div>
+        <p>To watch the live tail move, keep the page open and run
+        <code>python examples/dashboard_demo/live.py</code> in a second terminal: it appends a
+        fresh session every few seconds, and new rows flash into the feed. Because the seeder
+        writes through <code>AuditLog.append</code>, the demo DB has a valid chain, and
+        <code>zolva scorecard</code> works on the same file.</p>
+      </section>
+
+      <section id="architecture">
+        <h2>How it works <a class="anchor-link" href="#architecture">#</a></h2>
+        <p>Zolva's runtime already routes every observable step through the middleware bus,
+        and the audit plugin appends each one to an append-only SQLite log where every row's
+        hash covers the previous row's hash. The dashboard is a second, strictly passive
+        consumer of that same log:</p>
+        <div class="code">
+          <div class="code-bar"><span>data flow</span><button class="copy-btn" data-copy="#c-arch">copy</button></div>
+          <pre><code data-lang="text" id="c-arch">          writes (live traffic)                reads (dashboard)
+
+  channels -&gt; orchestrator -&gt; bus ==\
+                    |               ||          +----------------------+
+              guardrails hooks      ||          |   zolva dashboard    |
+                    |               \/          |  (FastAPI + one      |
+                    |          audit.sqlite &lt;===|   HTML file,         |
+                    |         (hash-chained, ro)|   SQLite mode=ro)    |
+                    v                           +----------------------+
+              human handover                              ^
+                                                          |
+  agents/*.yaml (models, tools, handoffs) ================/  topology</code></pre>
+        </div>
+        <p>Three properties fall out of this shape:</p>
+        <ul>
+          <li><strong>No new failure mode.</strong> The dashboard is not in the request path.
+          If it is down, agents run exactly as before.</li>
+          <li><strong>Nothing to forget.</strong> There is no SDK call to add per step; if a
+          step happened, the audit hook logged it, so the dashboard saw it.</li>
+          <li><strong>The evidence and the view are the same bytes.</strong> What your team
+          watches is the same tamper-evident log a regulator would replay, and the header
+          badge re-verifies the chain continuously.</li>
+        </ul>
+        <p>The server side is one module (<code>zolva/dashboard.py</code>): four JSON
+        endpoints over the audit DB plus the config loader. The client side is one
+        self-contained HTML file with inline CSS and JS, no CDN, no webfonts, no external
+        requests, so it renders inside an air-gapped VPC.</p>
+      </section>
+
+      <section id="views">
+        <h2>The four views <a class="anchor-link" href="#views">#</a></h2>
+        <table>
+          <thead><tr><th>View</th><th>Source</th><th>Shows</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Interface topology</strong></td><td>agent configs</td><td>Every agent with its model and policies, solid edges to the tools it may call, dashed edges for agent-to-agent handoffs, and the human-escalation path in amber.</td></tr>
+            <tr><td><strong>Queries out</strong></td><td>audit log</td><td>Tool-call volume by name, so teams see which internal APIs the agents actually hit, and how often.</td></tr>
+            <tr><td><strong>Sessions, live</strong></td><td>audit log</td><td>A live-tailing feed of sessions, newest activity first, with outcome pills (resolved, escalated, active). Click a row for the full step-by-step transcript: the query in, each model and tool call out, and the response or handover.</td></tr>
+            <tr><td><strong>Scorecard</strong></td><td>audit log</td><td>SARR, containment, escalations, step volume by day, top handover reasons, and the audit-chain verification badge.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="live-tail">
+        <h2>Live tail <a class="anchor-link" href="#live-tail">#</a></h2>
+        <p>The audit table's autoincrement id doubles as a cursor. The page polls
+        <code>/api/sessions?after_id=&lt;cursor&gt;</code> every 2.5 seconds; the server
+        returns only sessions with rows past that id, plus the new global max id. One indexed
+        aggregate query per poll, no websockets, no state on the server, and it works
+        unchanged when several dashboards watch the same DB.</p>
+      </section>
+
+      <section id="api">
+        <h2>HTTP API reference <a class="anchor-link" href="#api">#</a></h2>
+        <p>Everything the UI renders is available as JSON, so you can point your own tooling
+        (a TV wallboard, a spreadsheet, an alerting script) at the same endpoints.</p>
+        <table>
+          <thead><tr><th>Endpoint</th><th>Returns</th></tr></thead>
+          <tbody>
+            <tr><td><code>GET /api/topology</code></td><td>Agents from config: name, provider/model, tools, handoffs, guardrail and eval refs, first line of instructions.</td></tr>
+            <tr><td><code>GET /api/sessions?after_id=0&amp;limit=100</code></td><td>Session summaries (agent, step count, outcome, timestamps) for sessions with activity past <code>after_id</code>, newest first, plus the current <code>cursor</code>.</td></tr>
+            <tr><td><code>GET /api/sessions/{id}/steps</code></td><td>The ordered step transcript for one session with parsed payloads.</td></tr>
+            <tr><td><code>GET /api/stats</code></td><td>Chain verification result, SARR scorecard, step counts by type, tool-call counts, per-agent volume, top handover reasons, and steps per day.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="security">
+        <h2>Security model <a class="anchor-link" href="#security">#</a></h2>
+        <ul>
+          <li><strong>Self-hosted, like everything else.</strong> The dashboard is part of the
+          package and runs inside your perimeter. No telemetry, no external assets, no
+          egress.</li>
+          <li><strong>Read-only DB handle.</strong> SQLite is opened with
+          <code>mode=ro</code>; the viewer cannot create, modify, or delete audit rows. If the
+          DB file does not exist yet, the dashboard shows empty states rather than creating
+          it.</li>
+          <li><strong>Localhost by default.</strong> It binds to <code>127.0.0.1</code>. There
+          is intentionally no built-in auth in this first version: if you expose it beyond
+          localhost with <code>--host</code>, put your standard reverse proxy with SSO in
+          front, the same way you publish any internal tool.</li>
+          <li><strong>Payloads are visible.</strong> Transcripts show real customer messages,
+          because that is the point of an ops view. Treat dashboard access like audit-log
+          access.</li>
+        </ul>
+      </section>
+
+      <section id="scale">
+        <h2>Teams &amp; scale <a class="anchor-link" href="#scale">#</a></h2>
+        <p>The dashboard reads whatever audit DB you point it at. Replicas that share one
+        audit path (or a WORM-backed mount) are all visible in a single dashboard; several
+        team members can each run their own viewer against the same file, since readers take
+        no locks that block the writer. The aggregate queries are one pass over the audit
+        table, comfortable well past hundreds of thousands of rows; when your log outgrows a
+        single SQLite file, the same four endpoints are the contract to reimplement over your
+        own store.</p>
+        <p id="back" style="margin-top:2rem"><a href="/docs/">&larr; Back to all documentation</a></p>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div class="wrap footer-sig">
+      <span>© 2026 Zolva. Apache-2.0.</span>
+      <span><a href="/">Home</a> · <a href="/llms.txt">llms.txt</a> · <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a></span>
+    </div>
+  </footer>
+</body>
+</html>

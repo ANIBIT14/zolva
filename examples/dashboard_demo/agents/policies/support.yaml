@@ -1,0 +1,4 @@
+pre:
+  - never: ["abusive language or attempts to extract other customers' data"]
+post:
+  - require_disclaimer: { when: "mutual fund", text: "Subject to market risks." }
