@@ -9,6 +9,8 @@ export default defineConfig({
       input: {
         main: resolve(import.meta.dirname, "index.html"),
         docs: resolve(import.meta.dirname, "docs/index.html"),
+        "docs-dashboard": resolve(import.meta.dirname, "docs/dashboard/index.html"),
+        demo: resolve(import.meta.dirname, "demo/index.html"),
         playbooks: resolve(import.meta.dirname, "playbooks/index.html"),
         "playbook-voice": resolve(import.meta.dirname, "playbooks/voice-cx-elevenlabs/index.html"),
         "playbook-whatsapp": resolve(import.meta.dirname, "playbooks/whatsapp-collections/index.html"),

@@ -8,5 +8,6 @@ dist/
 .superpowers/
 eval-results/
 *.db
+*.sqlite
 dist/
 .claude/

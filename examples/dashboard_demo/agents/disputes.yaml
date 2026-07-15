@@ -1,0 +1,5 @@
+name: disputes-agent
+instructions: disputes.md
+model: { provider: openai, name: gpt-5 }
+tools: [get_transaction, file_dispute, get_dispute_status]
+handoffs: [human-escalation]

@@ -1,0 +1,4 @@
+pre:
+  - block_outside_window: { hours: "08:00-20:00", tz: "Asia/Kolkata" }
+post:
+  - never: ["threatening or coercive language toward the customer"]
