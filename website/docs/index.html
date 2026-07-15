@@ -393,7 +393,7 @@ app = AgentApp.from_config("agents/", handover=WebhookBackend(url, secret=hmac_s
         </div>
         <ul>
           <li>Tickets carry the full transcript, the reason, and the exact content that triggered escalation.</li>
-          <li><code>WebhookBackend</code> payloads are HMAC-signed with a timestamp inside the MAC, replay-resistant. Verify the signature at your receiver.</li>
+          <li><code>WebhookBackend</code> payloads are HMAC-signed with a timestamp inside the MAC, replay-resistant. Verify at your receiver with <code>zolva.verify_zolva_signature(body, sig, ts, secret)</code>; constant-time compare and timestamp tolerance are handled for you.</li>
           <li><code>LogBackend</code> ships for development. Ticketing-system adapters (Zendesk, Freshdesk, ServiceNow) are community/plugin territory.</li>
           <li>Every escalation auto-lands in the <a href="#feedback">failure queue</a>; an escalation is tomorrow's eval case.</li>
         </ul>
@@ -514,6 +514,11 @@ assert report.gate_passed   # or: zolva eval evals/ --gate  → exit 1 in CI</co
         <p>Run per-PR to catch your own regressions; run weekly on cron to catch provider drift.
         Tools are mocked via a bank-written <code>fixtures.py</code>, or run live against
         staging. Results print as a table and can be kept as git-diffable JSON history.</p>
+        <p>Agents can declare their cohorts directly: an <code>evals:</code> field in the agent
+        YAML is validated at startup by <code>AgentApp.from_config</code> (a missing or
+        mismatched cohort fails your deploy), and <code>zolva eval --agents agents/</code> runs
+        every cohort the config declares. Zero declared cohorts fails loudly; a vacuously green
+        gate is worse than a failing one.</p>
       </section>
 
       <section id="feedback">
@@ -571,7 +576,8 @@ print(scorecard(log).summary())   # SARR + containment + velocity</code></pre>
         <h2>Synthetic monitoring <a class="anchor-link" href="#synthetics">#</a></h2>
         <p>A persona LLM converses with your <em>real</em> agent (against staging tools) over
         multiple turns; a judge grades the transcript against a goal. Exit code 1 on failure;
-        run it from cron or CI like any other check.</p>
+        run <code>zolva synthetics synthetics/ --gate</code> from cron or CI like any other
+        check.</p>
         <div class="code">
           <div class="code-bar"><span>synthetics/repayment.yaml</span><button class="copy-btn" data-copy="#c-syn">copy</button></div>
           <pre><code data-lang="yaml" id="c-syn">agent: collections-agent
@@ -613,7 +619,8 @@ goal: "customer obtains their dues amount and a valid repayment option"</code></
           <thead><tr><th>Command</th><th>Does</th></tr></thead>
           <tbody>
             <tr><td><code>zolva validate &lt;dir&gt;</code></td><td>Validate agent + policy config; exit 1 on any error. Run it in CI and your deploy pipeline.</td></tr>
-            <tr><td><code>zolva eval &lt;dir&gt; --gate</code></td><td>Run all cohorts; exit 1 if any cohort misses <code>min_pass_rate</code>. <code>--app module:attr</code> imports your app from the current directory.</td></tr>
+            <tr><td><code>zolva eval &lt;dir&gt; --gate</code></td><td>Run all cohorts; exit 1 if any cohort misses <code>min_pass_rate</code>. <code>--app module:attr</code> imports your app from the current directory; <code>--agents agents/</code> runs the cohorts declared by <code>evals:</code> in agent YAML instead of a directory.</td></tr>
+            <tr><td><code>zolva synthetics &lt;dir&gt; --gate</code></td><td>Run persona patrols against your real agent; exit 1 if any synthetic fails. <code>--driver-provider</code>/<code>--judge-provider</code> pick the bridge adapters.</td></tr>
             <tr><td><code>zolva scorecard &lt;audit.db&gt;</code></td><td>SARR + quadrant metrics from the audit log.</td></tr>
             <tr><td><code>zolva triage &lt;failures.db&gt;</code></td><td>Interactive review of the failure queue; accept into an eval cohort or reject.</td></tr>
             <tr><td><code>zolva export-dataset &lt;failures.db&gt; &lt;out.jsonl&gt;</code></td><td>Accepted failures as fine-tuning-ready JSONL.</td></tr>
