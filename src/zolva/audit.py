@@ -36,9 +36,7 @@ class AuditLog:
             )
             # session lookups and per-session grouping (scorecard, dashboard)
             # must not full-scan a log that only ever grows
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_audit_session ON audit(session_id)"
-            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_session ON audit(session_id)")
 
     def _conn(self, *, immediate: bool = False) -> AbstractContextManager[sqlite3.Connection]:
         return sqlite_conn(self._path, immediate=immediate)

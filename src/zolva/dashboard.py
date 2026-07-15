@@ -135,9 +135,7 @@ def stats(audit_db: str) -> dict[str, Any]:
         }
     with closing(_ro_conn(audit_db)) as conn:
         (total_steps,) = conn.execute("SELECT COUNT(*) FROM audit").fetchone()
-        step_types = dict(
-            conn.execute("SELECT type, COUNT(*) FROM audit GROUP BY type").fetchall()
-        )
+        step_types = dict(conn.execute("SELECT type, COUNT(*) FROM audit GROUP BY type").fetchall())
         tools = [
             {"name": name, "calls": calls}
             for name, calls in conn.execute(

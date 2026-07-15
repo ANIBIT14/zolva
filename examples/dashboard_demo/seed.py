@@ -77,8 +77,13 @@ def _dues_inquiry(rng: random.Random) -> list[Row]:
         ("model_call", dict(_OPENAI)),
         ("tool_call", {"name": "get_dues", "args": {"customer_id": cid}}),
         ("model_call", dict(_OPENAI)),
-        ("response", {"text": f"Your outstanding amount is INR {amt}, due on the 20th. "
-                              "Would you like a payment link?"}),
+        (
+            "response",
+            {
+                "text": f"Your outstanding amount is INR {amt}, due on the 20th. "
+                "Would you like a payment link?"
+            },
+        ),
     ]
 
 
@@ -91,10 +96,18 @@ def _payment_plan(rng: random.Random) -> list[Row]:
         ("model_call", dict(_OPENAI)),
         ("tool_call", {"name": "get_repayment_options", "args": {"customer_id": cid}}),
         ("model_call", dict(_OPENAI)),
-        ("tool_call", {"name": "send_payment_link", "args": {"customer_id": cid, "amount": amt // 2}}),
+        (
+            "tool_call",
+            {"name": "send_payment_link", "args": {"customer_id": cid, "amount": amt // 2}},
+        ),
         ("model_call", dict(_OPENAI)),
-        ("response", {"text": f"Done. I've sent a link for a part payment of INR {amt // 2}; "
-                              "the rest is due next cycle. No extra charges."}),
+        (
+            "response",
+            {
+                "text": f"Done. I've sent a link for a part payment of INR {amt // 2}; "
+                "the rest is due next cycle. No extra charges."
+            },
+        ),
     ]
 
 
@@ -122,8 +135,13 @@ def _card_block(rng: random.Random) -> list[Row]:
         ("model_call", dict(_ANTHROPIC)),
         ("tool_call", {"name": "block_card", "args": {"customer_id": cid, "confirm": True}}),
         ("model_call", dict(_ANTHROPIC)),
-        ("response", {"text": "Your card is blocked. A replacement ships in 3-5 working days; "
-                              "the hotlisting reference is on its way by SMS."}),
+        (
+            "response",
+            {
+                "text": "Your card is blocked. A replacement ships in 3-5 working days; "
+                "the hotlisting reference is on its way by SMS."
+            },
+        ),
     ]
 
 
@@ -134,8 +152,13 @@ def _balance_check(rng: random.Random) -> list[Row]:
         ("model_call", dict(_ANTHROPIC)),
         ("tool_call", {"name": "get_account_summary", "args": {"customer_id": cid}}),
         ("model_call", dict(_ANTHROPIC)),
-        ("response", {"text": "Your available balance is INR 18,240. The last credit was a "
-                              "salary deposit yesterday."}),
+        (
+            "response",
+            {
+                "text": "Your available balance is INR 18,240. The last credit was a "
+                "salary deposit yesterday."
+            },
+        ),
     ]
 
 
@@ -163,11 +186,21 @@ def _dispute_filed(rng: random.Random) -> list[Row]:
         ("model_call", dict(_OPENAI)),
         ("tool_call", {"name": "get_transaction", "args": {"customer_id": cid, "txn_id": txn}}),
         ("model_call", dict(_OPENAI)),
-        ("tool_call", {"name": "file_dispute", "args": {"customer_id": cid, "txn_id": txn,
-                                                        "reason": "unauthorized charge"}}),
+        (
+            "tool_call",
+            {
+                "name": "file_dispute",
+                "args": {"customer_id": cid, "txn_id": txn, "reason": "unauthorized charge"},
+            },
+        ),
         ("model_call", dict(_OPENAI)),
-        ("response", {"text": f"Dispute filed for {txn}. Provisional credit, if applicable, is "
-                              "issued within 10 working days per network rules."}),
+        (
+            "response",
+            {
+                "text": f"Dispute filed for {txn}. Provisional credit, if applicable, is "
+                "issued within 10 working days per network rules."
+            },
+        ),
     ]
 
 
@@ -178,8 +211,13 @@ def _dispute_status(rng: random.Random) -> list[Row]:
         ("model_call", dict(_OPENAI)),
         ("tool_call", {"name": "get_dispute_status", "args": {"customer_id": cid}}),
         ("model_call", dict(_OPENAI)),
-        ("response", {"text": "Your dispute is with the card network; the merchant has until "
-                              "Friday to respond. You'll get an SMS either way."}),
+        (
+            "response",
+            {
+                "text": "Your dispute is with the card network; the merchant has until "
+                "Friday to respond. You'll get an SMS either way."
+            },
+        ),
     ]
 
 
@@ -211,13 +249,20 @@ def _dispute_handoff(rng: random.Random) -> list[Row]:
     return [
         ("user_msg", {"text": rng.choice(_DISPUTE_Q)}),
         ("model_call", dict(_ANTHROPIC)),
-        ("tool_call", {"name": "handoff", "args": {"to": "disputes-agent",
-                                                   "reason": "transaction dispute"}}),
+        (
+            "tool_call",
+            {"name": "handoff", "args": {"to": "disputes-agent", "reason": "transaction dispute"}},
+        ),
         ("model_call", dict(_OPENAI)),
         ("tool_call", {"name": "get_transaction", "args": {"customer_id": cid, "txn_id": txn}}),
         ("model_call", dict(_OPENAI)),
-        ("response", {"text": f"I've taken over your dispute for {txn} and filed it. "
-                              "Provisional credit rules apply."}),
+        (
+            "response",
+            {
+                "text": f"I've taken over your dispute for {txn} and filed it. "
+                "Provisional credit rules apply."
+            },
+        ),
     ]
 
 
@@ -244,12 +289,15 @@ def seed(db_path: Path = DB, n_sessions: int = 600, days: int = 14, rng_seed: in
         for step_type, data in fn(rng):  # type: ignore[operator]
             # after a cross-agent handoff, remaining steps belong to the target agent
             if step_type == "tool_call" and data.get("name") == "handoff":
-                log.append(Step(type="tool_call", session_id=sid, agent=agent, data=data),
-                           ts=t.isoformat())
+                log.append(
+                    Step(type="tool_call", session_id=sid, agent=agent, data=data), ts=t.isoformat()
+                )
                 agent = str(data["args"]["to"])  # type: ignore[index]
             else:
-                log.append(Step(type=step_type, session_id=sid, agent=agent, data=data),  # type: ignore[arg-type]
-                           ts=t.isoformat())
+                log.append(
+                    Step(type=step_type, session_id=sid, agent=agent, data=data),  # type: ignore[arg-type]
+                    ts=t.isoformat(),
+                )
             rows += 1
             t += timedelta(seconds=rng.uniform(1.5, 14))
     return rows
@@ -262,4 +310,4 @@ if __name__ == "__main__":
     assert log.verify(), "seeded chain must verify"
     print(f"wrote {rows} audit rows across {n} sessions to {DB}")
     print(scorecard(log).summary())
-    print(f'\nnext: zolva dashboard {HERE / "agents"} --audit {DB}')
+    print(f"\nnext: zolva dashboard {HERE / 'agents'} --audit {DB}")

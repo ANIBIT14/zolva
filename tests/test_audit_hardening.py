@@ -128,7 +128,9 @@ def _write_agent(d: Path, *, guardrails: str | None = None, evals: str | None = 
     (d / "collections.md").write_text("Be polite.")
 
 
-def test_validate_rejects_bad_policy_shape(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_validate_rejects_bad_policy_shape(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     _write_agent(tmp_path, guardrails="policies/policy.yaml")
     (tmp_path / "policies").mkdir(exist_ok=True)
     (tmp_path / "policies/policy.yaml").write_text(
