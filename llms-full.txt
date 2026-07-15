@@ -148,7 +148,7 @@ app = AgentApp.from_config("agents/")
 reply = await app.run("collections-agent", session_id, user_msg)
 ```
 
-Malformed model calls are rejected at the contract and fed back for retry, never `try/except` at call sites. Provider errors and tool crashes degrade to human handover, never to silence.
+Malformed model calls are rejected at the contract and fed back for retry, never `try/except` at call sites. Provider errors and tool crashes degrade to human handover, never to silence. Sync tools run on worker threads so a slow bank API never stalls other conversations; make them thread-safe, or declare them `async def` to run on the event loop.
 
 **3. Validate and test**, no live keys needed:
 
