@@ -71,7 +71,7 @@ app = AgentApp.from_config("agents/")
 reply = await app.run("collections-agent", session_id, user_msg)
 ```
 
-Malformed model calls are rejected at the contract and fed back for retry, never `try/except` at call sites. Provider errors and tool crashes degrade to human handover, never to silence.
+Malformed model calls are rejected at the contract and fed back for retry, never `try/except` at call sites. Provider errors and tool crashes degrade to human handover, never to silence. Sync tools run on worker threads so a slow bank API never stalls other conversations; make them thread-safe, or declare them `async def` to run on the event loop.
 
 **3. Validate and test**, no live keys needed:
 
@@ -127,7 +127,7 @@ report = await EvalRunner(app, judge=judge).run("evals/")
 assert report.gate_passed        # exit-1 this in CI; a great average never rescues a failing cohort
 ```
 
-Run weekly on cron to catch provider drift; run per-PR to catch your own regressions.
+Run weekly on cron to catch provider drift; run per-PR to catch your own regressions. Agents can also declare `evals: evals/` in their YAML; `zolva eval --agents agents/ --app app:app --gate` runs every cohort the config declares, checked at startup so a missing or mismatched cohort fails your deploy, not a later CI run.
 
 ### Feedback loop, every failure becomes a permanent test
 
@@ -163,7 +163,7 @@ persona: "You are an overdue customer who wants to settle this month."
 goal: "customer obtains their dues amount and a valid repayment option"
 ```
 
-A persona LLM converses with your *real* agent (staging tools); a judge grades the transcript. Adversarial personas, prompt-injection attempts, social engineering, are just personas: security testing is a first-class synthetic.
+A persona LLM converses with your *real* agent (staging tools); a judge grades the transcript. Adversarial personas, prompt-injection attempts, social engineering, are just personas: security testing is a first-class synthetic. Run the same patrol from the CLI or cron: `zolva synthetics synthetics/ --app app:app --driver-provider openai --judge-provider openai --gate`.
 
 ### Human handover, one interface, your ticketing system
 
@@ -172,7 +172,7 @@ from zolva import HandoverBackend, WebhookBackend
 app = AgentApp.from_config("agents/", handover=WebhookBackend(url, secret=hmac_secret))
 ```
 
-Triggered by agent decision, guardrail violation, tool crash, provider failure, or the customer asking, one code path. Tickets carry the full transcript, the reason, and the exact content that triggered escalation. Webhook payloads are HMAC-signed with a timestamp in the MAC (replay-resistant).
+Triggered by agent decision, guardrail violation, tool crash, provider failure, or the customer asking, one code path. Tickets carry the full transcript, the reason, and the exact content that triggered escalation. Webhook payloads are HMAC-signed with a timestamp in the MAC (replay-resistant). Receivers verify with `zolva.verify_zolva_signature(body, sig, ts, secret)`.
 
 ### Channels, one CX endpoint, every declared channel
 
@@ -212,13 +212,13 @@ Point your agent at [`llms.txt`](llms.txt) / [`llms-full.txt`](llms-full.txt), o
 
 ## Status & roadmap
 
-**Beta.** Core runtime, all six plugins (guardrails, evals, feedback, audit, synthetics, channels), and the CLI (`zolva validate | eval --gate | scorecard | triage | export-dataset`) are implemented and tested (132 tests, `mypy --strict`, 3-version CI matrix). Agents with a `guardrails:` field in their YAML get their policy attached automatically by `AgentApp.from_config`.
+**Beta.** Core runtime, all six plugins (guardrails, evals, feedback, audit, synthetics, channels), and the CLI (`zolva validate | eval --gate | synthetics --gate | scorecard | triage | export-dataset`) are implemented and tested (163 tests, `mypy --strict`, 3-version CI matrix). Agents with a `guardrails:` or `evals:` field in their YAML get them wired automatically by `AgentApp.from_config`.
 
 Before 1.0:
 
 - Docs site at [zolva.ai](https://zolva.ai)
 - More `ChannelAdapter` implementations (Twilio, telephony) and ticketing-system handover backends (the interfaces and an ElevenLabs voice adapter ship; more adapters welcome)
-- Auto-wiring `evals:` from agent YAML; judge model configured per policy
+- Judge model configured per policy
 
 Design docs: [`docs/specs/`](docs/specs/) · Full architecture, threat model, and competitive positioning included.
 

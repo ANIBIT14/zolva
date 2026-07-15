@@ -1,4 +1,4 @@
-from zolva.bridge import LLMResponse, ToolCall
+from zolva.bridge import LLMResponse, ToolCall, register_adapter
 from zolva.bridge.fake import FakeAdapter
 from zolva.bus import Bus, Step, Verdict
 from zolva.config import AgentConfig, ModelConfig
@@ -72,6 +72,52 @@ async def test_contract_error_fed_back_to_model() -> None:
     await app.run("collections-agent", "s1", "dues?")
     tool_msgs = [m for m in fake.calls[1]["messages"] if m.role == "tool"]
     assert tool_msgs[0].content.startswith("TOOL_ERROR:")
+
+
+async def test_undeclared_tool_not_dispatched() -> None:
+    reg = ToolRegistry()
+    executed = {"undeclared": False}
+
+    @reg.register
+    def declared() -> dict[str, str]:
+        """Declared tool."""
+        return {"ok": "yes"}
+
+    @reg.register
+    def undeclared() -> dict[str, str]:
+        """Undeclared tool."""
+        executed["undeclared"] = True
+        return {"ok": "yes"}
+
+    fake = FakeAdapter(
+        script=[
+            LLMResponse(tool_calls=[ToolCall(id="1", name="undeclared", args={})]),
+            LLMResponse(text="done"),
+        ]
+    )
+    app = AgentApp({"collections-agent": make_cfg(tools=["declared"])}, registry=reg, adapter=fake)
+    result = await app.run("collections-agent", "s1", "hi")
+    assert result == "done"
+    assert executed["undeclared"] is False
+    history = await app.sessions.history("s1")
+    tool_msgs = [m for m in history if m.role == "tool"]
+    assert tool_msgs[0].content.startswith("TOOL_ERROR:")
+    assert "undeclared" in tool_msgs[0].content
+
+
+async def test_adapter_reused_per_provider() -> None:
+    counter = {"n": 0}
+
+    def factory() -> FakeAdapter:
+        counter["n"] += 1
+        return FakeAdapter(script=[LLMResponse(text="ok"), LLMResponse(text="ok")])
+
+    register_adapter("counting-prov-002", factory)
+    cfg = make_cfg(model=ModelConfig(provider="counting-prov-002", name="m"), tools=[])
+    app = AgentApp({"collections-agent": cfg}, registry=ToolRegistry())
+    assert await app.run("collections-agent", "s1", "hi") == "ok"
+    assert await app.run("collections-agent", "s2", "hi") == "ok"
+    assert counter["n"] == 1
 
 
 async def test_blocked_response_escalates() -> None:

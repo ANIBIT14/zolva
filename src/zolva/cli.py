@@ -1,4 +1,4 @@
-"""zolva CLI: validate, eval, scorecard, triage, export-dataset."""
+"""zolva CLI: validate, eval, synthetics, scorecard, triage, export-dataset."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ import os
 import sys
 from typing import Any
 
+from zolva.bridge import BridgeError
 from zolva.config import ConfigError, load_agents
 from zolva.orchestrator import AgentApp
 
@@ -47,12 +48,19 @@ def _cmd_validate(args: argparse.Namespace) -> int:
 
 def _cmd_eval(args: argparse.Namespace) -> int:
     from zolva.bridge import get_adapter
-    from zolva.evals import EvalRunner
+    from zolva.evals import EvalRunner, load_cohorts_from_agents
+
+    if bool(args.evals_dir) == bool(args.agents):
+        print("eval: pass exactly one of evals_dir or --agents", file=sys.stderr)
+        return 1
 
     app = _load_app(args.app)
     judge = get_adapter(args.judge_provider) if args.judge_provider else None
     runner = EvalRunner(app, judge=judge, judge_model=args.judge_model)
-    report = asyncio.run(runner.run(args.evals_dir))
+    if args.agents:
+        report = asyncio.run(runner.run_cohorts(load_cohorts_from_agents(args.agents)))
+    else:
+        report = asyncio.run(runner.run(args.evals_dir))
     print(report.summary())
     if args.out:
         with open(args.out, "w") as f:
@@ -60,6 +68,31 @@ def _cmd_eval(args: argparse.Namespace) -> int:
         print(f"wrote {args.out}")
     if args.gate and not report.gate_passed:
         return 1  # the CI story: any CI can run a command that exits 1
+    return 0
+
+
+def _cmd_synthetics(args: argparse.Namespace) -> int:
+    from zolva.bridge import get_adapter
+    from zolva.synthetics import SyntheticRunner, gate_passed, results_to_json
+
+    app = _load_app(args.app)
+    runner = SyntheticRunner(
+        app,
+        driver=get_adapter(args.driver_provider),
+        judge=get_adapter(args.judge_provider),
+        driver_model=args.driver_model,
+        judge_model=args.judge_model,
+    )
+    results = asyncio.run(runner.run(args.synthetics_dir))
+    for r in results:
+        print(f"{r.name:24s} {'PASS' if r.passed else 'FAIL'}")
+    print(f"GATE: {'PASS' if gate_passed(results) else 'FAIL'}")
+    if args.out:
+        with open(args.out, "w") as f:
+            json.dump(results_to_json(results), f, indent=2)
+        print(f"wrote {args.out}")
+    if args.gate and not gate_passed(results):
+        return 1
     return 0
 
 
@@ -113,12 +146,27 @@ def main(argv: list[str] | None = None) -> int:
     p_validate.add_argument("config_dir")
 
     p_eval = sub.add_parser("eval", help="run eval cohorts against your app")
-    p_eval.add_argument("evals_dir")
+    p_eval.add_argument("evals_dir", nargs="?", default="")
+    p_eval.add_argument(
+        "--agents",
+        default="",
+        help="agent config dir; run the cohorts its YAMLs declare via evals:",
+    )
     p_eval.add_argument("--app", required=True, help="import path to your AgentApp: module:attr")
     p_eval.add_argument("--gate", action="store_true", help="exit 1 if the worst cohort fails")
     p_eval.add_argument("--judge-provider", default="", help="bridge provider for the judge")
     p_eval.add_argument("--judge-model", default="", help="model name for the judge")
     p_eval.add_argument("--out", default="", help="write full report JSON to this path")
+
+    p_synth = sub.add_parser("synthetics", help="run synthetic conversations against your app")
+    p_synth.add_argument("synthetics_dir")
+    p_synth.add_argument("--app", required=True, help="import path to your AgentApp: module:attr")
+    p_synth.add_argument("--driver-provider", required=True, help="bridge provider for the driver")
+    p_synth.add_argument("--driver-model", default="", help="model name for the driver")
+    p_synth.add_argument("--judge-provider", required=True, help="bridge provider for the judge")
+    p_synth.add_argument("--judge-model", default="", help="model name for the judge")
+    p_synth.add_argument("--gate", action="store_true", help="exit 1 if any synthetic fails")
+    p_synth.add_argument("--out", default="", help="write full results JSON to this path")
 
     p_score = sub.add_parser("scorecard", help="verify the audit chain and print SARR")
     p_score.add_argument("audit_db")
@@ -138,6 +186,7 @@ def main(argv: list[str] | None = None) -> int:
     commands: dict[str, Any] = {
         "validate": _cmd_validate,
         "eval": _cmd_eval,
+        "synthetics": _cmd_synthetics,
         "scorecard": _cmd_scorecard,
         "triage": _cmd_triage,
         "export-dataset": _cmd_export_dataset,
@@ -147,4 +196,7 @@ def main(argv: list[str] | None = None) -> int:
         return result
     except ConfigError as e:
         print(f"config error: {e}", file=sys.stderr)
+        return 1
+    except BridgeError as e:
+        print(f"error: {e}", file=sys.stderr)
         return 1

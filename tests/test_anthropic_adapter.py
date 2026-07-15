@@ -62,6 +62,15 @@ async def test_tool_use_parse_and_tool_result_mapping() -> None:
     assert wire[2]["content"][0]["tool_use_id"] == "tu_0"
 
 
+async def test_unexpected_response_shape_wrapped_as_bridge_error() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={})
+
+    a = AnthropicAdapter(api_key="ak", transport=httpx.MockTransport(handler))
+    with pytest.raises(BridgeError):
+        await a.complete(model="m", system="s", messages=[], tools=[])
+
+
 def test_missing_key_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     with pytest.raises(BridgeError, match="ANTHROPIC_API_KEY"):

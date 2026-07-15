@@ -10,13 +10,15 @@ from __future__ import annotations
 import re
 from pathlib import Path
 from typing import Any, Literal
+from uuid import uuid4
 
+import yaml
 from pydantic import BaseModel, ConfigDict
 
 from zolva._judge import judge_passes
 from zolva.bridge import LLMAdapter
 from zolva.bus import Step, Verdict
-from zolva.config import ConfigError, load_yaml_dir
+from zolva.config import ConfigError, load_agents, load_yaml_dir
 from zolva.orchestrator import AgentApp
 
 _JUDGE_SYSTEM = (
@@ -86,6 +88,39 @@ def load_cohorts(evals_dir: str | Path) -> list[Cohort]:
     return cohorts
 
 
+def load_cohorts_from_agents(config_dir: str | Path) -> list[Cohort]:
+    """Collect every cohort declared via `evals:` in agent YAML (paths relative
+    to config_dir; a file loads one cohort, a directory loads all)."""
+    cohorts: list[Cohort] = []
+    for cfg in load_agents(config_dir).values():
+        if not cfg.evals:
+            continue
+        p = Path(config_dir) / cfg.evals
+        if p.is_dir():
+            declared = load_cohorts(p)
+        else:
+            if not p.is_file():
+                raise ConfigError(f"agent {cfg.name!r}: evals path not found: {p}")
+            raw = yaml.safe_load(p.read_text())
+            if not isinstance(raw, dict):
+                raise ConfigError(f"{p}: top level must be a mapping")
+            try:
+                declared = [Cohort(**raw)]
+            except Exception as e:
+                raise ConfigError(f"{p}: {e}") from e
+        for cohort in declared:
+            if cohort.agent != cfg.name:
+                raise ConfigError(
+                    f"{cfg.evals}: cohort {cohort.cohort!r} is for agent "
+                    f"{cohort.agent!r}, declared by {cfg.name!r}"
+                )
+        cohorts.extend(declared)
+    if not cohorts:
+        # a vacuously green --gate is worse than a loud failure
+        raise ConfigError(f"no evals: declared by any agent in {config_dir}")
+    return cohorts
+
+
 class EvalRunner:
     def __init__(
         self, app: AgentApp, *, judge: LLMAdapter | None = None, judge_model: str = ""
@@ -102,15 +137,17 @@ class EvalRunner:
         return None
 
     async def run(self, evals_dir: str | Path) -> EvalReport:
+        return await self.run_cohorts(load_cohorts(evals_dir))
+
+    async def run_cohorts(self, cohorts: list[Cohort]) -> EvalReport:
         self._tool_calls.clear()  # stale observations from a prior run must not grade this one
-        cohorts = load_cohorts(evals_dir)
         if any(c.grader == "judge" for c in cohorts) and self._judge is None:
             raise ConfigError("evals: judge grader requires a judge adapter")  # fail before running
         cohort_results = []
         for cohort in cohorts:
             results = []
             for i, case in enumerate(cohort.cases):
-                session_id = f"eval-{cohort.cohort}-{i}"
+                session_id = f"eval-{cohort.cohort}-{i}-{uuid4().hex[:8]}"
                 response = await self._app.run(cohort.agent, session_id, case.input)
                 passed = await self._grade(cohort.grader, case, response, session_id)
                 results.append(CaseResult(input=case.input, passed=passed, response=response))

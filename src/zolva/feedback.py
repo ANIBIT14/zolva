@@ -14,12 +14,13 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from zolva._db import sqlite_conn
 from zolva.bridge import Message
 from zolva.bus import Step, Verdict
 from zolva.config import ConfigError
+from zolva.evals import Cohort
 from zolva.orchestrator import AgentApp
 
 
@@ -117,6 +118,8 @@ class FeedbackQueue:
         path = Path(cohort_path)
         if path.exists():
             cohort: dict[str, Any] = yaml.safe_load(path.read_text())
+            if not isinstance(cohort, dict):
+                raise ConfigError(f"{path}: existing cohort file must be a mapping")
         else:
             cohort = {
                 "cohort": path.stem,
@@ -126,6 +129,10 @@ class FeedbackQueue:
                 "cases": [],
             }
         cohort.setdefault("cases", []).append({"input": user_msgs[-1], "expect": expect})
+        try:
+            Cohort(**cohort)
+        except ValidationError as e:
+            raise ConfigError(f"{path}: refusing to write an invalid cohort: {e}") from e
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(yaml.safe_dump(cohort, sort_keys=False, allow_unicode=True))
         self._set_status(failure_id, "accepted")

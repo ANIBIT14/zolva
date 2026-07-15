@@ -78,13 +78,16 @@ class AnthropicAdapter:
             r.raise_for_status()
         except httpx.HTTPError as e:
             raise BridgeError(f"anthropic: {e}") from e
-        text = ""
-        calls: list[ToolCall] = []
-        for block in r.json()["content"]:
-            if block["type"] == "text":
-                text += block["text"]
-            elif block["type"] == "tool_use":
-                calls.append(ToolCall(id=block["id"], name=block["name"], args=block["input"]))
+        try:
+            text = ""
+            calls: list[ToolCall] = []
+            for block in r.json()["content"]:
+                if block["type"] == "text":
+                    text += block["text"]
+                elif block["type"] == "tool_use":
+                    calls.append(ToolCall(id=block["id"], name=block["name"], args=block["input"]))
+        except (KeyError, IndexError, TypeError, ValueError) as e:
+            raise BridgeError(f"anthropic: unexpected response: {e!r}") from e
         return LLMResponse(text=text, tool_calls=calls)
 
 

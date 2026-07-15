@@ -53,6 +53,7 @@ class AgentApp:
         self._sessions: SessionStore = sessions if sessions is not None else InMemorySessionStore()
         self.bus = bus if bus is not None else Bus()
         self._adapter = adapter
+        self._provider_adapters: dict[str, LLMAdapter] = {}
 
     @classmethod
     def from_config(
@@ -77,6 +78,10 @@ class AgentApp:
                 Guardrails.from_file(
                     policy_path, agent=cfg.name, judge=judge, judge_model=judge_model
                 ).attach(app.bus)
+            if cfg.evals:
+                evals_path = Path(config_dir) / cfg.evals
+                if not (evals_path.is_file() or evals_path.is_dir()):
+                    raise ConfigError(f"agent {cfg.name!r}: evals path not found: {evals_path}")
         return app
 
     @property
@@ -84,7 +89,13 @@ class AgentApp:
         return self._sessions
 
     def _adapter_for(self, cfg: AgentConfig) -> LLMAdapter:
-        return self._adapter if self._adapter is not None else get_adapter(cfg.model.provider)
+        if self._adapter is not None:
+            return self._adapter
+        provider = cfg.model.provider
+        if provider not in self._provider_adapters:
+            # one adapter (one httpx client/connection pool) per provider per app
+            self._provider_adapters[provider] = get_adapter(provider)
+        return self._provider_adapters[provider]
 
     async def run(self, agent_name: str, session_id: str, user_msg: str) -> str:
         try:
@@ -135,6 +146,9 @@ class AgentApp:
                     ],
                 )
                 batch_agent = cfg.name  # bus attribution stays with the agent that made the calls
+                batch_allowed = set(
+                    cfg.tools
+                )  # the batch belongs to the agent that requested it, even across a mid-batch handoff
                 for i, tc in enumerate(response.tool_calls):
                     verdict = await self.bus.emit(
                         Step(
@@ -185,6 +199,10 @@ class AgentApp:
                         )
                         continue
                     try:
+                        if tc.name not in batch_allowed:
+                            # undeclared == unknown to this agent; same error as an
+                            # unregistered tool so nothing leaks about other agents' tools
+                            raise ToolContractError(f"unknown tool {tc.name!r}")
                         result = await self._registry.call(tc.name, tc.args)
                         if isinstance(result, BaseModel):
                             content = result.model_dump_json()

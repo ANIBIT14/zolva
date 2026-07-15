@@ -1,3 +1,5 @@
+import threading
+
 import pytest
 
 from zolva.tools import ToolContractError, ToolRegistry
@@ -48,6 +50,40 @@ def test_unknown_spec_name_raises() -> None:
     reg = ToolRegistry()
     with pytest.raises(ToolContractError, match="unknown tool"):
         reg.specs(["ghost"])
+
+
+async def test_sync_tool_runs_off_event_loop() -> None:
+    reg = ToolRegistry()
+
+    @reg.register
+    def on_main_thread() -> bool:
+        """Check thread."""
+        return threading.current_thread() is threading.main_thread()
+
+    assert await reg.call("on_main_thread", {}) is False
+
+
+async def test_async_tool_stays_on_loop() -> None:
+    reg = ToolRegistry()
+
+    @reg.register
+    async def on_main_thread() -> bool:
+        """Check thread."""
+        return threading.current_thread() is threading.main_thread()
+
+    assert await reg.call("on_main_thread", {}) is True
+
+
+async def test_sync_tool_exception_propagates() -> None:
+    reg = ToolRegistry()
+
+    @reg.register
+    def boom() -> None:
+        """Raise."""
+        raise RuntimeError("boom")
+
+    with pytest.raises(RuntimeError):
+        await reg.call("boom", {})
 
 
 def test_default_registry_decorator() -> None:

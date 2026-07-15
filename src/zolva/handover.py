@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import hashlib
-import hmac
 import logging
-import time
 import uuid
 from abc import ABC, abstractmethod
 
@@ -13,6 +10,7 @@ import httpx
 from pydantic import BaseModel
 
 from zolva.bridge import Message
+from zolva.signing import sign_payload
 
 logger = logging.getLogger("zolva.handover")
 
@@ -56,14 +54,13 @@ class WebhookBackend(HandoverBackend):
         self, url: str, secret: str, transport: httpx.AsyncBaseTransport | None = None
     ) -> None:
         self._url = url
-        self._secret = secret.encode()
+        self._secret = secret
         self._client = httpx.AsyncClient(transport=transport, timeout=30.0)
 
     async def escalate(self, ticket: Ticket) -> HandoverRef:
         body = ticket.model_dump_json().encode()
-        ts = str(int(time.time()))
         # timestamp inside the MAC so a captured request can't be replayed later
-        sig = hmac.new(self._secret, ts.encode() + b"." + body, hashlib.sha256).hexdigest()
+        ts, sig = sign_payload(self._secret, body)
         try:
             r = await self._client.post(
                 self._url,

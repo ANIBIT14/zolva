@@ -35,8 +35,8 @@ class AuditLog:
                 "data TEXT NOT NULL, prev_hash TEXT NOT NULL, hash TEXT NOT NULL)"
             )
 
-    def _conn(self) -> AbstractContextManager[sqlite3.Connection]:
-        return sqlite_conn(self._path)
+    def _conn(self, *, immediate: bool = False) -> AbstractContextManager[sqlite3.Connection]:
+        return sqlite_conn(self._path, immediate=immediate)
 
     def attach(self, app: AgentApp) -> None:
         if self._attached:
@@ -51,7 +51,7 @@ class AuditLog:
     def append(self, step: Step) -> None:
         ts = datetime.now(timezone.utc).isoformat()
         payload = json.dumps(step.data, sort_keys=True, default=str)
-        with self._conn() as conn:
+        with self._conn(immediate=True) as conn:
             row = conn.execute("SELECT hash FROM audit ORDER BY id DESC LIMIT 1").fetchone()
             prev = row[0] if row else _GENESIS
             digest = hashlib.sha256(
