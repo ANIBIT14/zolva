@@ -330,6 +330,7 @@ plugins
         <ul>
           <li>Every parameter and the return type must be annotated; Pydantic builds the JSON Schema shown to the model.</li>
           <li>Arguments are validated with <code>extra="forbid"</code>: unknown or malformed arguments raise a contract error that is fed back to the model for retry, never <code>try/except</code> at call sites.</li>
+          <li>Sync tools run on worker threads, so one slow bank API call never stalls other conversations. Make them thread-safe, or declare them <code>async def</code> to run on the event loop.</li>
           <li>Tool <em>results</em> are data, never re-interpreted as instructions: structured output is rendered into a fenced, typed context block (prompt-injection mitigation).</li>
           <li><code>handoff</code> is a reserved name, intercepted by the orchestrator and never dispatchable as a tool.</li>
         </ul>
