@@ -17,6 +17,7 @@ Entry points: `zolva.AgentApp.from_config("agents/")`, `@zolva.tool`, CLI `zolva
 - [README.md](README.md): quickstart and public API
 - [docs/specs/2026-07-12-zolva-design.md](docs/specs/2026-07-12-zolva-design.md): full architecture, security model, competitive positioning
 - [examples/mockbank/](examples/mockbank/): runnable end-to-end example (config + tools + orchestrator)
+- [examples/dashboard_demo/](examples/dashboard_demo/): seeded demo for `zolva dashboard` (600 sessions, verifiable audit chain)
 
 ## Optional
 
@@ -231,6 +232,15 @@ assert log.verify()
 print(scorecard(log).summary())  # SARR (Safe Automated Resolution Rate) + containment
 ```
 
+### Dashboard, see every interface and query, live
+
+```bash
+pip install "zolva[dashboard]"
+zolva dashboard agents/ --audit audit.sqlite   # http://127.0.0.1:8600
+```
+
+A self-hosted, read-only web UI over the config + audit log: agent/tool/handoff topology, a live-tailing session feed with full transcripts, tool-call stats, and the SARR scorecard with a continuous chain-verification badge. Zero new instrumentation; the audit DB is opened read-only. Seeded demo: `python examples/dashboard_demo/seed.py`. Full architecture: [zolva.ai/docs/dashboard](https://zolva.ai/docs/dashboard/).
+
 ### Synthetics, patrol every critical path
 
 ```yaml
@@ -289,7 +299,7 @@ Point your agent at [`llms.txt`](llms.txt) / [`llms-full.txt`](llms-full.txt), o
 
 ## Status & roadmap
 
-**Beta.** Core runtime, all six plugins (guardrails, evals, feedback, audit, synthetics, channels), and the CLI (`zolva validate | eval --gate | synthetics --gate | scorecard | triage | export-dataset`) are implemented and tested (163 tests, `mypy --strict`, 3-version CI matrix). Agents with a `guardrails:` or `evals:` field in their YAML get them wired automatically by `AgentApp.from_config`.
+**Beta.** Core runtime, all six plugins (guardrails, evals, feedback, audit, synthetics, channels), and the CLI (`zolva validate | eval --gate | synthetics --gate | scorecard | dashboard | triage | export-dataset`) are implemented and tested (188 tests, `mypy --strict`, 3-version CI matrix). Agents with a `guardrails:` or `evals:` field in their YAML get them wired automatically by `AgentApp.from_config`.
 
 Before 1.0:
 
