@@ -93,24 +93,23 @@ def main() -> None:
         "topology": topology(str(ROOT / "examples/dashboard_demo/agents")),
         "stats": stats(db),
         "sessions": sess,
-        "steps": {
-            s["session_id"]: session_steps(db, s["session_id"]) for s in sess["sessions"]
-        },
+        "steps": {s["session_id"]: session_steps(db, s["session_id"]) for s in sess["sessions"]},
     }
 
     html = (ROOT / "src/zolva/dashboard.html").read_text()
-    html = html.replace("<title>Zolva Dashboard</title>",
-                        "<title>Zolva Dashboard Demo</title>", 1)
+    html = html.replace("<title>Zolva Dashboard</title>", "<title>Zolva Dashboard Demo</title>", 1)
     html = html.replace("</header>", "</header>" + RIBBON, 1)
     shim = SHIM.replace("__DEMO_JSON__", json.dumps(data, separators=(",", ":")))
-    html = html.replace("<script>\n\"use strict\";", shim + "<script>\n\"use strict\";", 1)
+    html = html.replace('<script>\n"use strict";', shim + '<script>\n"use strict";', 1)
     assert shim in html, "shim injection point not found in dashboard.html"
 
     out = ROOT / "website/demo/index.html"
     out.parent.mkdir(exist_ok=True)
     out.write_text(html)
-    print(f"wrote {out} ({out.stat().st_size / 1024:.0f} KB, "
-          f"{len(sess['sessions'])} sessions, {REPLAY} replayed live)")
+    print(
+        f"wrote {out} ({out.stat().st_size / 1024:.0f} KB, "
+        f"{len(sess['sessions'])} sessions, {REPLAY} replayed live)"
+    )
 
 
 if __name__ == "__main__":

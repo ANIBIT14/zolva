@@ -49,7 +49,9 @@ def audit_db(tmp_path: Path) -> Path:
     # s1: resolved with a tool call
     step("s1", "collections-agent", "user_msg", {"text": "dues?"})
     step("s1", "collections-agent", "model_call", {"provider": "openai", "model": "gpt-5"})
-    step("s1", "collections-agent", "tool_call", {"name": "get_dues", "args": {"customer_id": "c1"}})
+    step(
+        "s1", "collections-agent", "tool_call", {"name": "get_dues", "args": {"customer_id": "c1"}}
+    )
     step("s1", "collections-agent", "response", {"text": "You owe 4200."})
     # s2: escalated
     step("s2", "support-agent", "user_msg", {"text": "let me talk to a human"})
@@ -125,7 +127,7 @@ def test_stats_scorecard_tools_and_chain(client: TestClient) -> None:
 
 def test_stats_detects_tampering(client: TestClient, audit_db: Path) -> None:
     with sqlite3.connect(audit_db) as conn:
-        conn.execute("UPDATE audit SET data = '{\"text\": \"FORGED\"}' WHERE id = 1")
+        conn.execute('UPDATE audit SET data = \'{"text": "FORGED"}\' WHERE id = 1')
     assert client.get("/api/stats").json()["chain_ok"] is False
 
 
