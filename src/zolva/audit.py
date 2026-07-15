@@ -34,6 +34,11 @@ class AuditLog:
                 "session_id TEXT NOT NULL, agent TEXT NOT NULL, type TEXT NOT NULL, "
                 "data TEXT NOT NULL, prev_hash TEXT NOT NULL, hash TEXT NOT NULL)"
             )
+            # session lookups and per-session grouping (scorecard, dashboard)
+            # must not full-scan a log that only ever grows
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_audit_session ON audit(session_id)"
+            )
 
     def _conn(self, *, immediate: bool = False) -> AbstractContextManager[sqlite3.Connection]:
         return sqlite_conn(self._path, immediate=immediate)
@@ -48,8 +53,11 @@ class AuditLog:
         self.append(step)
         return None
 
-    def append(self, step: Step) -> None:
-        ts = datetime.now(timezone.utc).isoformat()
+    def append(self, step: Step, *, ts: str | None = None) -> None:
+        """`ts` override is for backfill/import (e.g. demo seeders); live steps
+        always stamp now. Forged timestamps are still chain-covered."""
+        if ts is None:
+            ts = datetime.now(timezone.utc).isoformat()
         payload = json.dumps(step.data, sort_keys=True, default=str)
         with self._conn(immediate=True) as conn:
             row = conn.execute("SELECT hash FROM audit ORDER BY id DESC LIMIT 1").fetchone()

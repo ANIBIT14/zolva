@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,8 @@ from zolva.config import AgentConfig, ConfigError, load_agents
 from zolva.handover import HandoverBackend, LogBackend, Ticket
 from zolva.sessions import InMemorySessionStore, SessionStore
 from zolva.tools import ToolContractError, ToolRegistry, ToolSpec, default_registry
+
+logger = logging.getLogger("zolva.orchestrator")
 
 BLOCKED_MESSAGE = "I can't help with that here, I've connected you with a human teammate."
 MAX_TURNS = 10
@@ -49,6 +52,13 @@ class AgentApp:
     ) -> None:
         self._agents = agents
         self._registry = registry if registry is not None else default_registry
+        for cfg in agents.values():
+            # fail fast: a declared-but-unregistered tool must break startup,
+            # not raise out of run() mid-conversation
+            try:
+                self._registry.specs(cfg.tools)
+            except ToolContractError as e:
+                raise ConfigError(f"agent {cfg.name!r}: {e}") from e
         self._handover = handover if handover is not None else LogBackend()
         self._sessions: SessionStore = sessions if sessions is not None else InMemorySessionStore()
         self.bus = bus if bus is not None else Bus()
@@ -265,5 +275,16 @@ class AgentApp:
         await self.bus.emit(
             Step(type="handover", session_id=session_id, agent=cfg.name, data={"reason": reason})
         )
-        await self._handover.escalate(ticket)
+        try:
+            await self._handover.escalate(ticket)
+        except Exception:
+            # a down ticketing backend must not silence the customer; the step
+            # above is already in the audit log, so the escalation is on record
+            logger.critical(
+                "handover delivery failed session=%s agent=%s reason=%s",
+                session_id,
+                cfg.name,
+                reason,
+                exc_info=True,
+            )
         return BLOCKED_MESSAGE

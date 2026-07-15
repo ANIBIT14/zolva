@@ -88,9 +88,11 @@ def load_cohorts(evals_dir: str | Path) -> list[Cohort]:
     return cohorts
 
 
-def load_cohorts_from_agents(config_dir: str | Path) -> list[Cohort]:
+def load_cohorts_from_agents(config_dir: str | Path, *, required: bool = True) -> list[Cohort]:
     """Collect every cohort declared via `evals:` in agent YAML (paths relative
-    to config_dir; a file loads one cohort, a directory loads all)."""
+    to config_dir; a file loads one cohort, a directory loads all).
+    `required=False` is the CI-validate path: parse and cross-check whatever is
+    declared, but an agent set with no evals is not an error there."""
     cohorts: list[Cohort] = []
     for cfg in load_agents(config_dir).values():
         if not cfg.evals:
@@ -115,7 +117,7 @@ def load_cohorts_from_agents(config_dir: str | Path) -> list[Cohort]:
                     f"{cohort.agent!r}, declared by {cfg.name!r}"
                 )
         cohorts.extend(declared)
-    if not cohorts:
+    if not cohorts and required:
         # a vacuously green --gate is worse than a loud failure
         raise ConfigError(f"no evals: declared by any agent in {config_dir}")
     return cohorts
