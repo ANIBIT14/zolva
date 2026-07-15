@@ -9,3 +9,4 @@ dist/
 eval-results/
 *.db
 dist/
+.claude/
