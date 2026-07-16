@@ -1,4 +1,4 @@
-"""zolva CLI: validate, eval, synthetics, scorecard, dashboard, triage, export-dataset."""
+"""zolva CLI: validate, eval, synthetics, scorecard, dashboard, serve, triage, export-dataset."""
 
 from __future__ import annotations
 
@@ -158,6 +158,27 @@ def _cmd_dashboard(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_serve(args: argparse.Namespace) -> int:
+    from importlib.util import find_spec
+
+    if find_spec("fastapi") is None or find_spec("uvicorn") is None:
+        print(
+            'serve requires the optional extra: pip install "zolva[dashboard]"',
+            file=sys.stderr,
+        )
+        return 1
+    from zolva import serve as serve_mod
+
+    serve_mod.serve(
+        args.app,
+        args.channels,
+        host=args.host,
+        port=args.port,
+        inbound_secret=os.environ.get("ZOLVA_INBOUND_SECRET"),
+    )
+    return 0
+
+
 def _cmd_export_dataset(args: argparse.Namespace) -> int:
     from zolva.feedback import FeedbackQueue
 
@@ -199,6 +220,12 @@ def main(argv: list[str] | None = None) -> int:
     p_score = sub.add_parser("scorecard", help="verify the audit chain and print SARR")
     p_score.add_argument("audit_db")
 
+    p_serve = sub.add_parser("serve", help="serve the reference channel-webhook endpoint")
+    p_serve.add_argument("--app", required=True, help="import path to your AgentApp: module:attr")
+    p_serve.add_argument("--channels", required=True, help="path to channels.yaml")
+    p_serve.add_argument("--host", default="127.0.0.1", help="bind address (default localhost)")
+    p_serve.add_argument("--port", type=int, default=8700)
+
     p_dash = sub.add_parser("dashboard", help="serve the local read-only dashboard UI")
     p_dash.add_argument("config_dir", nargs="?", default=None, help="agent config dir (topology)")
     p_dash.add_argument("--audit", default="audit.sqlite", help="audit DB path (opened read-only)")
@@ -223,6 +250,7 @@ def main(argv: list[str] | None = None) -> int:
         "synthetics": _cmd_synthetics,
         "scorecard": _cmd_scorecard,
         "dashboard": _cmd_dashboard,
+        "serve": _cmd_serve,
         "triage": _cmd_triage,
         "export-dataset": _cmd_export_dataset,
     }

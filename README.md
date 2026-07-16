@@ -185,6 +185,14 @@ Triggered by agent decision, guardrail violation, tool crash, provider failure, 
 
 ### Channels, one CX endpoint, every declared channel
 
+Serve every declared channel over HTTP with one command (reference entrypoint; put your proxy in front in production):
+
+```bash
+pip install "zolva[dashboard]"
+ZOLVA_INBOUND_SECRET=... zolva serve --app app:app --channels channels.yaml
+# POST /channels/{channel}/{agent}  -> HMAC-verified, replies on the same channel
+```
+
 ```yaml
 # channels.yaml
 channels:
@@ -206,11 +214,22 @@ End-to-end recipes, voice CX with ElevenLabs, WhatsApp collections, CI gating, l
 
 ## Security posture
 
-- **Self-hosted by design**, nothing leaves your infrastructure except the LLM calls you configure; the bridge supports in-house gateways.
+- **Self-hosted by design**, nothing leaves your infrastructure except the LLM calls you configure; the bridge supports in-house gateways (`model: { provider: openai, name: gpt-5, base_url: "${ENV:LLM_GATEWAY_URL}", timeout: 30 }`), and transient 429/5xx responses retry with bounded backoff instead of escalating a customer.
 - **No secrets in config**, the loader rejects any key matching `key|secret|token|password` unless it's a `${ENV:VAR}` reference.
 - **`yaml.safe_load` only; no `eval`/`exec`/`pickle` anywhere.**
 - **Tool contracts**, Pydantic-validated I/O with `extra="forbid"`; per-agent tool allowlists; `handoff` is a reserved name.
 - **Session isolation**, no cross-session context is ever assembled.
+- **Optional PII redaction before any provider call**: enable builtin patterns (card, email, phone, aadhaar, ssn) plus your own regexes, and only the masked copy reaches the LLM; sessions, audit, and human handover keep the true transcript.
+
+```python
+app = AgentApp.from_config("agents/", redaction="policies/redaction.yaml")
+```
+
+```yaml
+# policies/redaction.yaml
+builtin: [card, email, phone]
+custom: { loan_ref: "LN-\\d{6}" }
+```
 - CI runs `bandit` and `pip-audit` on every commit.
 
 Found something? See [SECURITY.md](SECURITY.md), coordinated disclosure, 72-hour acknowledgement.
@@ -221,7 +240,7 @@ Point your agent at [`llms.txt`](llms.txt) / [`llms-full.txt`](llms-full.txt), o
 
 ## Status & roadmap
 
-**Beta.** Core runtime, all six plugins (guardrails, evals, feedback, audit, synthetics, channels), and the CLI (`zolva validate | eval --gate | synthetics --gate | scorecard | dashboard | triage | export-dataset`) are implemented and tested (188 tests, `mypy --strict`, 3-version CI matrix). Agents with a `guardrails:` or `evals:` field in their YAML get them wired automatically by `AgentApp.from_config`.
+**Beta.** Core runtime, all six plugins (guardrails, evals, feedback, audit, synthetics, channels), and the CLI (`zolva validate | eval --gate | synthetics --gate | scorecard | dashboard | serve | triage | export-dataset`) are implemented and tested (188 tests, `mypy --strict`, 3-version CI matrix). Agents with a `guardrails:` or `evals:` field in their YAML get them wired automatically by `AgentApp.from_config`.
 
 Before 1.0:
 

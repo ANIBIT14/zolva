@@ -16,6 +16,7 @@ from zolva.feedback import Failure, FeedbackQueue
 from zolva.guardrails import Guardrails
 from zolva.handover import HandoverBackend, LogBackend, Ticket, WebhookBackend
 from zolva.orchestrator import BLOCKED_MESSAGE, AgentApp
+from zolva.redaction import Redactor
 from zolva.signing import SignatureError, sign_payload, verify_zolva_signature
 from zolva.synthetics import SyntheticResult, SyntheticRunner, load_synthetics
 from zolva.tools import ToolRegistry, default_registry, tool
@@ -41,6 +42,7 @@ __all__ = [
     "InboundMessage",
     "LogBackend",
     "LogChannel",
+    "Redactor",
     "Scorecard",
     "SignatureError",
     "Step",

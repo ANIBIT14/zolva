@@ -13,6 +13,7 @@ from zolva.bridge import BridgeError, LLMAdapter, Message, ToolCall, get_adapter
 from zolva.bus import Bus, Step
 from zolva.config import AgentConfig, ConfigError, load_agents
 from zolva.handover import HandoverBackend, LogBackend, Ticket
+from zolva.redaction import RedactingAdapter, Redactor, load_redactor
 from zolva.sessions import InMemorySessionStore, SessionStore
 from zolva.tools import ToolContractError, ToolRegistry, ToolSpec, default_registry
 
@@ -49,6 +50,7 @@ class AgentApp:
         sessions: SessionStore | None = None,
         bus: Bus | None = None,
         adapter: LLMAdapter | None = None,
+        redactor: Redactor | None = None,
     ) -> None:
         self._agents = agents
         self._registry = registry if registry is not None else default_registry
@@ -62,8 +64,12 @@ class AgentApp:
         self._handover = handover if handover is not None else LogBackend()
         self._sessions: SessionStore = sessions if sessions is not None else InMemorySessionStore()
         self.bus = bus if bus is not None else Bus()
+        self._redactor = redactor
+        # injected adapters (tests, custom gateways) get the same masking
+        if adapter is not None and redactor is not None:
+            adapter = RedactingAdapter(adapter, redactor)
         self._adapter = adapter
-        self._provider_adapters: dict[str, LLMAdapter] = {}
+        self._provider_adapters: dict[tuple[str, str | None, float], LLMAdapter] = {}
 
     @classmethod
     def from_config(
@@ -72,11 +78,16 @@ class AgentApp:
         *,
         judge: LLMAdapter | None = None,
         judge_model: str = "",
+        redaction: str | None = None,
         **kwargs: Any,
     ) -> AgentApp:
         """Build the app from a config dir; agents with a `guardrails:` policy
-        get it attached automatically (paths resolve relative to config_dir)."""
+        get it attached automatically (paths resolve relative to config_dir).
+        `redaction` names a PII-pattern file (relative to config_dir) masked
+        into every provider call."""
         agents = load_agents(config_dir)
+        if redaction is not None:
+            kwargs["redactor"] = load_redactor(config_dir, redaction)
         app = cls(agents, **kwargs)
         from zolva.guardrails import Guardrails  # deferred: plugin import inside core factory
 
@@ -101,11 +112,22 @@ class AgentApp:
     def _adapter_for(self, cfg: AgentConfig) -> LLMAdapter:
         if self._adapter is not None:
             return self._adapter
-        provider = cfg.model.provider
-        if provider not in self._provider_adapters:
-            # one adapter (one httpx client/connection pool) per provider per app
-            self._provider_adapters[provider] = get_adapter(provider)
-        return self._provider_adapters[provider]
+        m = cfg.model
+        key = (m.provider, m.base_url, m.timeout)
+        if key not in self._provider_adapters:
+            # one adapter (one httpx client/connection pool) per provider+gateway;
+            # wrapped once here so redaction applies to every provider call.
+            # only overrides are forwarded, so zero-arg custom factories keep working
+            overrides: dict[str, Any] = {}
+            if m.base_url is not None:
+                overrides["base_url"] = m.base_url
+            if m.timeout != 60.0:
+                overrides["timeout"] = m.timeout
+            adapter = get_adapter(m.provider, **overrides)
+            if self._redactor is not None:
+                adapter = RedactingAdapter(adapter, self._redactor)
+            self._provider_adapters[key] = adapter
+        return self._provider_adapters[key]
 
     async def run(self, agent_name: str, session_id: str, user_msg: str) -> str:
         try:
