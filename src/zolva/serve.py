@@ -19,6 +19,7 @@ import json
 from typing import Any
 
 from zolva.channels import ChannelError, ChannelHub
+from zolva.config import ConfigError
 from zolva.orchestrator import AgentApp
 from zolva.signing import SignatureError, verify_zolva_signature
 
@@ -34,6 +35,34 @@ def create_app(app: AgentApp, hub: ChannelHub, *, inbound_secret: str | None = N
     @api.get("/healthz")
     async def healthz() -> dict[str, Any]:
         return {"ok": True, "agents": sorted(hub._agents)}
+
+    @api.post("/sessions/{agent}/resume")
+    async def resume(agent: str, request: Request) -> JSONResponse:
+        """Close the human loop: a resolved ticket lands back in the session."""
+        body = await request.body()
+        if inbound_secret is not None:
+            try:
+                verify_zolva_signature(
+                    body,
+                    request.headers.get("X-Zolva-Signature", ""),
+                    request.headers.get("X-Zolva-Timestamp", ""),
+                    inbound_secret,
+                )
+            except SignatureError as e:
+                return JSONResponse({"error": str(e)}, status_code=401)
+        try:
+            payload = json.loads(body)
+            session_id = str(payload["session_id"])
+            resolution = str(payload["resolution"])
+        except (ValueError, KeyError, TypeError):
+            return JSONResponse(
+                {"error": "body must be JSON with session_id and resolution"}, status_code=400
+            )
+        try:
+            await app.resume(agent, session_id, resolution)
+        except ConfigError as e:
+            return JSONResponse({"error": str(e)}, status_code=400)
+        return JSONResponse({"ok": True})
 
     @api.post("/channels/{channel}/{agent}")
     async def inbound(channel: str, agent: str, request: Request) -> JSONResponse:

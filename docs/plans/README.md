@@ -14,14 +14,22 @@ files were removed after completion per project practice. What shipped:
 | 002 `zolva serve` | `src/zolva/serve.py` + CLI `serve`: HMAC-verified `POST /channels/{channel}/{agent}`, `/healthz`; reference entrypoint behind the `[dashboard]` extra |
 | 003 Provider resilience | `post_with_retry` (429/5xx/transport backoff, Retry-After) in both adapters; `ModelConfig.base_url`/`timeout` for in-house gateways; per-gateway connection pools |
 
-## Direction items deferred (with trigger conditions)
+## Formerly deferred, shipped 2026-07-16
 
-- **Close the human loop (ticketing backend + resume path)** — `resume()` is
-  declared and never called; do after a first pilot picks its ticketing tool.
-- **Customer identity + contact-frequency guardrails** — needs a
-  `customer_ref` design decision; plan when a collections pilot is concrete.
-- **Postgres storage + incremental audit verify** — pull-driven; start with
-  interface extraction when a multi-replica deployment is scheduled.
+- **Human loop**: `AgentApp.resume()` + `resume` bus step + HMAC-verified
+  `POST /sessions/{agent}/resume` in `zolva serve`. A specific ticketing
+  integration (Slack/Zendesk) still waits for the first pilot's choice;
+  `HandoverBackend.resume()` remains the outbound notification seam.
+- **Customer identity + contact caps**: `customer_ref` threads through
+  `run()`/channels into user_msg + response steps; new guardrail
+  `block_contact_frequency: {max_contacts, window_hours, ledger}` counts
+  responses per customer across sessions in a sqlite ledger.
+- **Audit storage + verify scaling**: `AuditStore` protocol (4 methods)
+  with SQLite + in-memory implementations; `verify(incremental=True)`
+  checkpointing with boundary re-hash and stay-red-once-broken semantics;
+  dashboard uses incremental + periodic full cadence. A Postgres backend is
+  a protocol implementation away, deliberately not shipped untested (no
+  Postgres server available in this environment).
 
 ## Findings considered and rejected / already handled
 

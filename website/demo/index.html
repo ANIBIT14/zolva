@@ -153,6 +153,7 @@
   .chip.model_call { background: rgba(144,133,233,.15); color: #b0a7f0; }
   .chip.tool_call  { background: rgba(236,131,90,.16); color: #ec835a; }
   .chip.handover   { background: rgba(250,178,25,.15); color: var(--warn); }
+  .chip.resume     { background: rgba(25,158,112,.16); color: #4cc39a; }
   .chip.feedback   { background: rgba(213,81,129,.16); color: #e08bb0; }
   .chip.channel    { background: rgba(168,157,196,.14); color: var(--text-2); }
   .step .d { color: var(--text); word-break: break-word; }
@@ -495,6 +496,7 @@ function stepBody(st) {
     case "model_call": return `<span class="k2">provider</span> ${esc(d.provider)} <span class="k2">model</span> ${esc(d.model)}`;
     case "tool_call":  return `${esc(d.name)}(${esc(JSON.stringify(d.args))})`;
     case "handover":   return `<span class="k2">reason:</span> ${esc(d.reason)}`;
+    case "resume":     return `<span class="k2">resolved:</span> ${esc(d.resolution)}`;
     default:           return esc(JSON.stringify(d));
   }
 }

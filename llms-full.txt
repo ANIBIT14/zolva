@@ -168,6 +168,13 @@ A full runnable example lives in [`examples/mockbank/`](examples/mockbank/).
 
 ### Guardrails, policy as config, enforced on every step
 
+Per-customer contact caps work across sessions and channels: pass `customer_ref` (a hashed phone or core-banking id) into `app.run(...)` or the channel payload, and cap contact frequency in policy:
+
+```yaml
+post:
+  - block_contact_frequency: { max_contacts: 3, window_hours: 168, ledger: contacts.sqlite }
+```
+
 ```yaml
 # policies/collections.yaml
 pre:
@@ -224,6 +231,8 @@ Production signal → failure queue → triage → permanent eval case → gated
 
 ### Audit, tamper-evident, regulator-ready
 
+Storage sits behind the four-method `AuditStore` protocol (SQLite default, `InMemoryAuditStore` reference; back it with Postgres by implementing the same four methods). `verify()` is the full pass from genesis by default; monitors use `verify(incremental=True)` plus a periodic full pass, which is what the dashboard does.
+
 ```python
 from zolva import AuditLog, scorecard
 log = AuditLog("audit.db")     # hash-chained: edits, deletions, reordering all detectable
@@ -251,6 +260,15 @@ goal: "customer obtains their dues amount and a valid repayment option"
 ```
 
 A persona LLM converses with your *real* agent (staging tools); a judge grades the transcript. Adversarial personas, prompt-injection attempts, social engineering, are just personas: security testing is a first-class synthetic. Run the same patrol from the CLI or cron: `zolva synthetics synthetics/ --app app:app --driver-provider openai --judge-provider openai --gate`.
+
+### Human handover, one interface, your ticketing system, and back
+
+When a teammate resolves the ticket, close the loop: the resolution lands in the session and the audit trail, so the agent knows what happened when the customer returns.
+
+```python
+await app.resume("collections-agent", session_id, "waived the late fee, customer notified")
+# or over HTTP: POST /sessions/{agent}/resume via `zolva serve`
+```
 
 ### Human handover, one interface, your ticketing system
 

@@ -1,6 +1,6 @@
 """Zolva: self-hosted agent platform for banks and fintechs."""
 
-from zolva.audit import AuditLog, Scorecard, scorecard
+from zolva.audit import AuditLog, AuditStore, InMemoryAuditStore, Scorecard, scorecard
 from zolva.bus import Bus, Step, Verdict
 from zolva.channels import (
     ChannelAdapter,
@@ -28,6 +28,7 @@ __all__ = [
     "AgentApp",
     "AgentConfig",
     "AuditLog",
+    "AuditStore",
     "Bus",
     "ChannelAdapter",
     "ChannelError",
@@ -38,6 +39,7 @@ __all__ = [
     "Failure",
     "FeedbackQueue",
     "Guardrails",
+    "InMemoryAuditStore",
     "HandoverBackend",
     "InboundMessage",
     "LogBackend",

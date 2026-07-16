@@ -10,7 +10,14 @@ from pydantic import BaseModel
 logger = logging.getLogger("zolva.bus")
 
 StepType = Literal[
-    "user_msg", "model_call", "tool_call", "response", "handover", "feedback", "channel"
+    "user_msg",
+    "model_call",
+    "tool_call",
+    "response",
+    "handover",
+    "resume",
+    "feedback",
+    "channel",
 ]
 
 

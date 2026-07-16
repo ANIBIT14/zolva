@@ -25,6 +25,19 @@ from zolva.config import ConfigError, load_agents
 
 _HTML = Path(__file__).with_name("dashboard.html")
 
+_AUDIT_LOGS: dict[str, tuple[AuditLog, int]] = {}
+_FULL_VERIFY_EVERY = 20  # every ~5 min at the 15s stats cadence
+
+
+def _verify_chain(path: str) -> bool:
+    """Hybrid cadence: incremental between refreshes (cheap at any log size),
+    full pass from genesis on the first call and every Nth after, so a
+    rewrite of old rows is still caught within minutes."""
+    log, calls = _AUDIT_LOGS.get(path) or (AuditLog(path), 0)
+    ok = log.verify(incremental=calls % _FULL_VERIFY_EVERY != 0)
+    _AUDIT_LOGS[path] = (log, calls + 1)
+    return ok
+
 
 def _ro_conn(path: str) -> sqlite3.Connection:
     return sqlite3.connect(f"file:{path}?mode=ro", uri=True)
@@ -163,9 +176,10 @@ def stats(audit_db: str) -> dict[str, Any]:
                 "SELECT substr(ts, 1, 10), COUNT(*) FROM audit GROUP BY 1 ORDER BY 1"
             ).fetchall()
         ]
-    log = AuditLog(audit_db)  # read paths only: verify() + scorecard()
+    chain_ok = _verify_chain(audit_db)
+    log = _AUDIT_LOGS[audit_db][0]
     return {
-        "chain_ok": log.verify(),
+        "chain_ok": chain_ok,
         "scorecard": scorecard(log).model_dump(),
         "total_steps": total_steps,
         "step_types": step_types,

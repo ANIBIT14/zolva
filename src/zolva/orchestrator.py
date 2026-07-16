@@ -129,13 +129,30 @@ class AgentApp:
             self._provider_adapters[key] = adapter
         return self._provider_adapters[key]
 
-    async def run(self, agent_name: str, session_id: str, user_msg: str) -> str:
+    async def run(
+        self,
+        agent_name: str,
+        session_id: str,
+        user_msg: str,
+        *,
+        customer_ref: str | None = None,
+    ) -> str:
+        """`customer_ref` is an optional stable customer identifier (hashed
+        phone, core-banking id). When given it rides on the user_msg and
+        response steps, which is what per-customer guardrails (contact
+        frequency caps) and per-customer audit queries key on."""
         try:
             cfg = self._agents[agent_name]
         except KeyError:
             raise ConfigError(f"unknown agent {agent_name!r}") from None
+        ref_data = {"customer_ref": customer_ref} if customer_ref else {}
         verdict = await self.bus.emit(
-            Step(type="user_msg", session_id=session_id, agent=cfg.name, data={"text": user_msg})
+            Step(
+                type="user_msg",
+                session_id=session_id,
+                agent=cfg.name,
+                data={"text": user_msg, **ref_data},
+            )
         )
         if not verdict.allow:
             return await self._escalate(
@@ -260,7 +277,7 @@ class AgentApp:
                     type="response",
                     session_id=session_id,
                     agent=cfg.name,
-                    data={"text": response.text},
+                    data={"text": response.text, **ref_data},
                 )
             )
             if not verdict.allow:
@@ -273,6 +290,25 @@ class AgentApp:
             return response.text
 
         return await self._escalate(cfg, session_id, "max turns exceeded")
+
+    async def resume(self, agent_name: str, session_id: str, resolution: str) -> None:
+        """Close the human loop: record a teammate's resolution into the
+        session and the audit trail, so the agent has it when the customer
+        returns. Called by the bank when a handover ticket is resolved
+        (e.g. via the `zolva serve` resume endpoint)."""
+        if agent_name not in self._agents:
+            raise ConfigError(f"unknown agent {agent_name!r}")
+        await self.bus.emit(
+            Step(
+                type="resume",
+                session_id=session_id,
+                agent=agent_name,
+                data={"resolution": resolution},
+            )
+        )
+        await self._sessions.append(
+            session_id, [Message(role="assistant", content=f"[human teammate] {resolution}")]
+        )
 
     async def _close_pending(self, session_id: str, pending: list[ToolCall]) -> None:
         """Answer unresolved tool_calls so the session history stays provider-valid."""
