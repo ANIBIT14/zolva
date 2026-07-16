@@ -21,7 +21,7 @@ handoffs: [human-escalation]
 SUPPORT_YAML = """\
 name: support-agent
 instructions: support.md
-model: { provider: anthropic, name: claude-sonnet-5 }
+model: { provider: anthropic, name: sonnet-4-5 }
 tools: [get_card_status]
 handoffs: [collections-agent, human-escalation]
 """

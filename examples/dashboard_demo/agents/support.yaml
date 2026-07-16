@@ -1,6 +1,6 @@
 name: support-agent
 instructions: support.md
-model: { provider: anthropic, name: claude-sonnet-5 }
+model: { provider: anthropic, name: sonnet-4-5 }
 tools: [get_account_summary, get_card_status, block_card, get_branch_hours]
 handoffs: [disputes-agent, human-escalation]
 guardrails: policies/support.yaml
