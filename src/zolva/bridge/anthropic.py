@@ -7,7 +7,14 @@ from typing import Any
 
 import httpx
 
-from zolva.bridge import BridgeError, LLMResponse, Message, ToolCall, register_adapter
+from zolva.bridge import (
+    BridgeError,
+    LLMResponse,
+    Message,
+    ToolCall,
+    post_with_retry,
+    register_adapter,
+)
 from zolva.tools import ToolSpec
 
 
@@ -18,6 +25,7 @@ class AnthropicAdapter:
         base_url: str = "https://api.anthropic.com",
         transport: httpx.AsyncBaseTransport | None = None,
         max_tokens: int = 4096,
+        timeout: float = 60.0,
     ) -> None:
         self._max_tokens = max_tokens
         key = api_key or os.environ.get("ANTHROPIC_API_KEY")
@@ -27,7 +35,7 @@ class AnthropicAdapter:
             base_url=base_url,
             headers={"x-api-key": key, "anthropic-version": "2023-06-01"},
             transport=transport,
-            timeout=60.0,
+            timeout=timeout,
         )
 
     def _wire_messages(self, messages: list[Message]) -> list[dict[str, Any]]:
@@ -73,11 +81,9 @@ class AnthropicAdapter:
                 {"name": t.name, "description": t.description, "input_schema": t.parameters}
                 for t in tools
             ]
-        try:
-            r = await self._client.post("/v1/messages", json=body)
-            r.raise_for_status()
-        except httpx.HTTPError as e:
-            raise BridgeError(f"anthropic: {e}") from e
+        r = await post_with_retry(
+            self._client, "/v1/messages", json_body=body, provider="anthropic"
+        )
         try:
             text = ""
             calls: list[ToolCall] = []

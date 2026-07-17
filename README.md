@@ -90,6 +90,13 @@ A full runnable example lives in [`examples/mockbank/`](examples/mockbank/).
 
 ### Guardrails, policy as config, enforced on every step
 
+Per-customer contact caps work across sessions and channels: pass `customer_ref` (a hashed phone or core-banking id) into `app.run(...)` or the channel payload, and cap contact frequency in policy:
+
+```yaml
+post:
+  - block_contact_frequency: { max_contacts: 3, window_hours: 168, ledger: contacts.sqlite }
+```
+
 ```yaml
 # policies/collections.yaml
 pre:
@@ -146,6 +153,8 @@ Production signal → failure queue → triage → permanent eval case → gated
 
 ### Audit, tamper-evident, regulator-ready
 
+Storage sits behind the four-method `AuditStore` protocol (SQLite default, `InMemoryAuditStore` reference; back it with Postgres by implementing the same four methods). `verify()` is the full pass from genesis by default; monitors use `verify(incremental=True)` plus a periodic full pass, which is what the dashboard does.
+
 ```python
 from zolva import AuditLog, scorecard
 log = AuditLog("audit.db")     # hash-chained: edits, deletions, reordering all detectable
@@ -174,6 +183,15 @@ goal: "customer obtains their dues amount and a valid repayment option"
 
 A persona LLM converses with your *real* agent (staging tools); a judge grades the transcript. Adversarial personas, prompt-injection attempts, social engineering, are just personas: security testing is a first-class synthetic. Run the same patrol from the CLI or cron: `zolva synthetics synthetics/ --app app:app --driver-provider openai --judge-provider openai --gate`.
 
+### Human handover, one interface, your ticketing system, and back
+
+When a teammate resolves the ticket, close the loop: the resolution lands in the session and the audit trail, so the agent knows what happened when the customer returns.
+
+```python
+await app.resume("collections-agent", session_id, "waived the late fee, customer notified")
+# or over HTTP: POST /sessions/{agent}/resume via `zolva serve`
+```
+
 ### Human handover, one interface, your ticketing system
 
 ```python
@@ -184,6 +202,14 @@ app = AgentApp.from_config("agents/", handover=WebhookBackend(url, secret=hmac_s
 Triggered by agent decision, guardrail violation, tool crash, provider failure, or the customer asking, one code path. Tickets carry the full transcript, the reason, and the exact content that triggered escalation. Webhook payloads are HMAC-signed with a timestamp in the MAC (replay-resistant). Receivers verify with `zolva.verify_zolva_signature(body, sig, ts, secret)`.
 
 ### Channels, one CX endpoint, every declared channel
+
+Serve every declared channel over HTTP with one command (reference entrypoint; put your proxy in front in production):
+
+```bash
+pip install "zolva[dashboard]"
+ZOLVA_INBOUND_SECRET=... zolva serve --app app:app --channels channels.yaml
+# POST /channels/{channel}/{agent}  -> HMAC-verified, replies on the same channel
+```
 
 ```yaml
 # channels.yaml
@@ -206,11 +232,22 @@ End-to-end recipes, voice CX with ElevenLabs, WhatsApp collections, CI gating, l
 
 ## Security posture
 
-- **Self-hosted by design**, nothing leaves your infrastructure except the LLM calls you configure; the bridge supports in-house gateways.
+- **Self-hosted by design**, nothing leaves your infrastructure except the LLM calls you configure; the bridge supports in-house gateways (`model: { provider: openai, name: gpt-5, base_url: "${ENV:LLM_GATEWAY_URL}", timeout: 30 }`), and transient 429/5xx responses retry with bounded backoff instead of escalating a customer.
 - **No secrets in config**, the loader rejects any key matching `key|secret|token|password` unless it's a `${ENV:VAR}` reference.
 - **`yaml.safe_load` only; no `eval`/`exec`/`pickle` anywhere.**
 - **Tool contracts**, Pydantic-validated I/O with `extra="forbid"`; per-agent tool allowlists; `handoff` is a reserved name.
 - **Session isolation**, no cross-session context is ever assembled.
+- **Optional PII redaction before any provider call**: enable builtin patterns (card, email, phone, aadhaar, ssn) plus your own regexes, and only the masked copy reaches the LLM; sessions, audit, and human handover keep the true transcript.
+
+```python
+app = AgentApp.from_config("agents/", redaction="policies/redaction.yaml")
+```
+
+```yaml
+# policies/redaction.yaml
+builtin: [card, email, phone]
+custom: { loan_ref: "LN-\\d{6}" }
+```
 - CI runs `bandit` and `pip-audit` on every commit.
 
 Found something? See [SECURITY.md](SECURITY.md), coordinated disclosure, 72-hour acknowledgement.
@@ -221,7 +258,7 @@ Point your agent at [`llms.txt`](llms.txt) / [`llms-full.txt`](llms-full.txt), o
 
 ## Status & roadmap
 
-**Beta.** Core runtime, all six plugins (guardrails, evals, feedback, audit, synthetics, channels), and the CLI (`zolva validate | eval --gate | synthetics --gate | scorecard | dashboard | triage | export-dataset`) are implemented and tested (188 tests, `mypy --strict`, 3-version CI matrix). Agents with a `guardrails:` or `evals:` field in their YAML get them wired automatically by `AgentApp.from_config`.
+**Beta.** Core runtime, all six plugins (guardrails, evals, feedback, audit, synthetics, channels), and the CLI (`zolva validate | eval --gate | synthetics --gate | scorecard | dashboard | serve | triage | export-dataset`) are implemented and tested (188 tests, `mypy --strict`, 3-version CI matrix). Agents with a `guardrails:` or `evals:` field in their YAML get them wired automatically by `AgentApp.from_config`.
 
 Before 1.0:
 

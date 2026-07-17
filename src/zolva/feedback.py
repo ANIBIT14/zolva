@@ -125,7 +125,7 @@ class FeedbackQueue:
                 "cohort": path.stem,
                 "agent": failure.agent,
                 "grader": "judge",
-                "min_pass_rate": 1.0,  # nosec B105 - eval gate threshold, not a credential
+                "min_pass_rate": 1.0,  # nosec B105  (eval gate threshold)
                 "cases": [],
             }
         cohort.setdefault("cases", []).append({"input": user_msgs[-1], "expect": expect})

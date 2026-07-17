@@ -13,6 +13,7 @@ from zolva.bridge import BridgeError, LLMAdapter, Message, ToolCall, get_adapter
 from zolva.bus import Bus, Step
 from zolva.config import AgentConfig, ConfigError, load_agents
 from zolva.handover import HandoverBackend, LogBackend, Ticket
+from zolva.redaction import RedactingAdapter, Redactor, load_redactor
 from zolva.sessions import InMemorySessionStore, SessionStore
 from zolva.tools import ToolContractError, ToolRegistry, ToolSpec, default_registry
 
@@ -49,6 +50,7 @@ class AgentApp:
         sessions: SessionStore | None = None,
         bus: Bus | None = None,
         adapter: LLMAdapter | None = None,
+        redactor: Redactor | None = None,
     ) -> None:
         self._agents = agents
         self._registry = registry if registry is not None else default_registry
@@ -62,8 +64,12 @@ class AgentApp:
         self._handover = handover if handover is not None else LogBackend()
         self._sessions: SessionStore = sessions if sessions is not None else InMemorySessionStore()
         self.bus = bus if bus is not None else Bus()
+        self._redactor = redactor
+        # injected adapters (tests, custom gateways) get the same masking
+        if adapter is not None and redactor is not None:
+            adapter = RedactingAdapter(adapter, redactor)
         self._adapter = adapter
-        self._provider_adapters: dict[str, LLMAdapter] = {}
+        self._provider_adapters: dict[tuple[str, str | None, float], LLMAdapter] = {}
 
     @classmethod
     def from_config(
@@ -72,11 +78,16 @@ class AgentApp:
         *,
         judge: LLMAdapter | None = None,
         judge_model: str = "",
+        redaction: str | None = None,
         **kwargs: Any,
     ) -> AgentApp:
         """Build the app from a config dir; agents with a `guardrails:` policy
-        get it attached automatically (paths resolve relative to config_dir)."""
+        get it attached automatically (paths resolve relative to config_dir).
+        `redaction` names a PII-pattern file (relative to config_dir) masked
+        into every provider call."""
         agents = load_agents(config_dir)
+        if redaction is not None:
+            kwargs["redactor"] = load_redactor(config_dir, redaction)
         app = cls(agents, **kwargs)
         from zolva.guardrails import Guardrails  # deferred: plugin import inside core factory
 
@@ -101,19 +112,47 @@ class AgentApp:
     def _adapter_for(self, cfg: AgentConfig) -> LLMAdapter:
         if self._adapter is not None:
             return self._adapter
-        provider = cfg.model.provider
-        if provider not in self._provider_adapters:
-            # one adapter (one httpx client/connection pool) per provider per app
-            self._provider_adapters[provider] = get_adapter(provider)
-        return self._provider_adapters[provider]
+        m = cfg.model
+        key = (m.provider, m.base_url, m.timeout)
+        if key not in self._provider_adapters:
+            # one adapter (one httpx client/connection pool) per provider+gateway;
+            # wrapped once here so redaction applies to every provider call.
+            # only overrides are forwarded, so zero-arg custom factories keep working
+            overrides: dict[str, Any] = {}
+            if m.base_url is not None:
+                overrides["base_url"] = m.base_url
+            if m.timeout != 60.0:
+                overrides["timeout"] = m.timeout
+            adapter = get_adapter(m.provider, **overrides)
+            if self._redactor is not None:
+                adapter = RedactingAdapter(adapter, self._redactor)
+            self._provider_adapters[key] = adapter
+        return self._provider_adapters[key]
 
-    async def run(self, agent_name: str, session_id: str, user_msg: str) -> str:
+    async def run(
+        self,
+        agent_name: str,
+        session_id: str,
+        user_msg: str,
+        *,
+        customer_ref: str | None = None,
+    ) -> str:
+        """`customer_ref` is an optional stable customer identifier (hashed
+        phone, core-banking id). When given it rides on the user_msg and
+        response steps, which is what per-customer guardrails (contact
+        frequency caps) and per-customer audit queries key on."""
         try:
             cfg = self._agents[agent_name]
         except KeyError:
             raise ConfigError(f"unknown agent {agent_name!r}") from None
+        ref_data = {"customer_ref": customer_ref} if customer_ref else {}
         verdict = await self.bus.emit(
-            Step(type="user_msg", session_id=session_id, agent=cfg.name, data={"text": user_msg})
+            Step(
+                type="user_msg",
+                session_id=session_id,
+                agent=cfg.name,
+                data={"text": user_msg, **ref_data},
+            )
         )
         if not verdict.allow:
             return await self._escalate(
@@ -238,7 +277,7 @@ class AgentApp:
                     type="response",
                     session_id=session_id,
                     agent=cfg.name,
-                    data={"text": response.text},
+                    data={"text": response.text, **ref_data},
                 )
             )
             if not verdict.allow:
@@ -251,6 +290,25 @@ class AgentApp:
             return response.text
 
         return await self._escalate(cfg, session_id, "max turns exceeded")
+
+    async def resume(self, agent_name: str, session_id: str, resolution: str) -> None:
+        """Close the human loop: record a teammate's resolution into the
+        session and the audit trail, so the agent has it when the customer
+        returns. Called by the bank when a handover ticket is resolved
+        (e.g. via the `zolva serve` resume endpoint)."""
+        if agent_name not in self._agents:
+            raise ConfigError(f"unknown agent {agent_name!r}")
+        await self.bus.emit(
+            Step(
+                type="resume",
+                session_id=session_id,
+                agent=agent_name,
+                data={"resolution": resolution},
+            )
+        )
+        await self._sessions.append(
+            session_id, [Message(role="assistant", content=f"[human teammate] {resolution}")]
+        )
 
     async def _close_pending(self, session_id: str, pending: list[ToolCall]) -> None:
         """Answer unresolved tool_calls so the session history stays provider-valid."""

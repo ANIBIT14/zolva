@@ -1,6 +1,6 @@
 [project]
 name = "zolva"
-version = "0.3.2"
+version = "0.4.0"
 description = "Open-source, self-hosted agent platform for banks and fintechs"
 readme = "README.md"
 requires-python = ">=3.11"

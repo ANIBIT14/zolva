@@ -200,8 +200,18 @@ class ChannelHub:
                 data={"channel": channel, "direction": "in", "text": msg.text},
             )
         )
+        # a gateway that knows the customer sends customer_ref alongside the
+        # payload; per-customer guardrails (contact frequency caps) key on it
+        ref = msg.meta.get("customer_ref")
         reply = (
-            await self._app.run(agent, session_id, msg.text) if verdict.allow else BLOCKED_MESSAGE
+            await self._app.run(
+                agent,
+                session_id,
+                msg.text,
+                customer_ref=str(ref) if ref is not None else None,
+            )
+            if verdict.allow
+            else BLOCKED_MESSAGE
         )
         verdict = await self._app.bus.emit(
             Step(

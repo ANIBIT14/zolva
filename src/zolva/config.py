@@ -22,6 +22,8 @@ class ModelConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     provider: str
     name: str
+    base_url: str | None = None  # in-house gateway; None = provider default
+    timeout: float = 60.0
 
 
 class AgentConfig(BaseModel):

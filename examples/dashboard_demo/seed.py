@@ -27,7 +27,7 @@ DB = HERE / "audit.sqlite"
 Row = tuple[str, dict[str, object]]
 
 _OPENAI = {"provider": "openai", "model": "gpt-5"}
-_ANTHROPIC = {"provider": "anthropic", "model": "claude-sonnet-5"}
+_ANTHROPIC = {"provider": "anthropic", "model": "sonnet-4-5"}
 
 _DUES_Q = [
     "How much do I owe on my loan?",

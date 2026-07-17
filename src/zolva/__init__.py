@@ -1,6 +1,6 @@
 """Zolva: self-hosted agent platform for banks and fintechs."""
 
-from zolva.audit import AuditLog, Scorecard, scorecard
+from zolva.audit import AuditLog, AuditStore, InMemoryAuditStore, Scorecard, scorecard
 from zolva.bus import Bus, Step, Verdict
 from zolva.channels import (
     ChannelAdapter,
@@ -16,17 +16,19 @@ from zolva.feedback import Failure, FeedbackQueue
 from zolva.guardrails import Guardrails
 from zolva.handover import HandoverBackend, LogBackend, Ticket, WebhookBackend
 from zolva.orchestrator import BLOCKED_MESSAGE, AgentApp
+from zolva.redaction import Redactor
 from zolva.signing import SignatureError, sign_payload, verify_zolva_signature
 from zolva.synthetics import SyntheticResult, SyntheticRunner, load_synthetics
 from zolva.tools import ToolRegistry, default_registry, tool
 
-__version__ = "0.3.2"
+__version__ = "0.4.0"
 
 __all__ = [
     "BLOCKED_MESSAGE",
     "AgentApp",
     "AgentConfig",
     "AuditLog",
+    "AuditStore",
     "Bus",
     "ChannelAdapter",
     "ChannelError",
@@ -37,10 +39,12 @@ __all__ = [
     "Failure",
     "FeedbackQueue",
     "Guardrails",
+    "InMemoryAuditStore",
     "HandoverBackend",
     "InboundMessage",
     "LogBackend",
     "LogChannel",
+    "Redactor",
     "Scorecard",
     "SignatureError",
     "Step",

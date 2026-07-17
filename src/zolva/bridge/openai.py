@@ -8,7 +8,14 @@ from typing import Any
 
 import httpx
 
-from zolva.bridge import BridgeError, LLMResponse, Message, ToolCall, register_adapter
+from zolva.bridge import (
+    BridgeError,
+    LLMResponse,
+    Message,
+    ToolCall,
+    post_with_retry,
+    register_adapter,
+)
 from zolva.tools import ToolSpec
 
 
@@ -18,6 +25,7 @@ class OpenAIAdapter:
         api_key: str | None = None,
         base_url: str = "https://api.openai.com/v1",
         transport: httpx.AsyncBaseTransport | None = None,
+        timeout: float = 60.0,
     ) -> None:
         key = api_key or os.environ.get("OPENAI_API_KEY")
         if not key:
@@ -26,7 +34,7 @@ class OpenAIAdapter:
             base_url=base_url,
             headers={"Authorization": f"Bearer {key}"},
             transport=transport,
-            timeout=60.0,
+            timeout=timeout,
         )
 
     def _wire_messages(self, system: str, messages: list[Message]) -> list[dict[str, Any]]:
@@ -63,11 +71,9 @@ class OpenAIAdapter:
                 }
                 for t in tools
             ]
-        try:
-            r = await self._client.post("/chat/completions", json=body)
-            r.raise_for_status()
-        except httpx.HTTPError as e:
-            raise BridgeError(f"openai: {e}") from e
+        r = await post_with_retry(
+            self._client, "/chat/completions", json_body=body, provider="openai"
+        )
         try:
             msg = r.json()["choices"][0]["message"]
             calls = [
