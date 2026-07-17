@@ -165,13 +165,12 @@ import logging
 import os
 
 import httpx
-from fastapi import FastAPI, Query, Request, Response
+from fastapi import BackgroundTasks, FastAPI, Query, Request, Response
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 import tools  # noqa: F401  your @zolva.tool functions register on import
-from zolva import AgentApp, ChannelHub
+from zolva import AgentApp, ChannelError, ChannelHub, SignatureError, verify_zolva_signature
 from zolva.bridge import get_adapter
-from zolva.channels import ChannelError
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("wa-gateway")
@@ -207,7 +206,7 @@ async def verify(
 
 # -- Inbound customer messages (POST, X-Hub-Signature-256 over the raw body) --
 @api.post("/webhooks/whatsapp")
-async def inbound(request: Request) -> JSONResponse:
+async def inbound(request: Request, background: BackgroundTasks) -> JSONResponse:
     raw = await request.body()
     header = request.headers.get("X-Hub-Signature-256", "")
     expected = "sha256=" + hmac.new(APP_SECRET.encode(), raw, hashlib.sha256).hexdigest()
@@ -224,29 +223,35 @@ async def inbound(request: Request) -> JSONResponse:
             for msg in change.get("value", {}).get("messages", []):
                 if msg.get("type") != "text":
                     continue  # start with text; media/interactive come later
-                try:
-                    await hub.dispatch(
-                        "whatsapp",
-                        "collections-agent",
-                        {"session_id": msg["from"], "text": msg["text"]["body"]},
-                    )
-                except ChannelError:
-                    log.exception("dispatch failed wa_id=%s", msg.get("from"))
-    # always 200: Meta retries non-2xx, and retries of a failed turn
-    # would replay the customer message into a new agent run
+                background.add_task(_dispatch, msg["from"], msg["text"]["body"])
+    # 200 now, agent turn after: Meta retries slow or non-2xx deliveries,
+    # and a retried delivery would replay the customer message into a new run
     return JSONResponse({"status": "received"})
+
+
+async def _dispatch(wa_id: str, text: str) -> None:
+    try:
+        await hub.dispatch(
+            "whatsapp", "collections-agent", {"session_id": wa_id, "text": text}
+        )
+    except ChannelError:
+        log.exception("dispatch failed wa_id=%s", wa_id)
 
 
 # -- Replies from Zolva (HMAC-signed by the webhook channel) --
 @api.post("/send")
 async def send(request: Request) -> JSONResponse:
     raw = await request.body()
-    ts = request.headers.get("X-Zolva-Timestamp", "")
-    sig = request.headers.get("X-Zolva-Signature", "")
-    expected = hmac.new(
-        CHANNEL_SECRET.encode(), ts.encode() + b"." + raw, hashlib.sha256
-    ).hexdigest()
-    if not hmac.compare_digest(sig, expected):
+    try:
+        # checks the MAC and rejects stale timestamps, so a captured
+        # request cannot be replayed later
+        verify_zolva_signature(
+            raw,
+            request.headers.get("X-Zolva-Signature", ""),
+            request.headers.get("X-Zolva-Timestamp", ""),
+            CHANNEL_SECRET,
+        )
+    except SignatureError:
         return JSONResponse({"error": "invalid signature"}, status_code=403)
 
     reply = await request.json()  # {"session_id": wa number, "text": agent reply}
