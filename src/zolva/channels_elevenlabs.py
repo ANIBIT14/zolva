@@ -52,6 +52,9 @@ class ElevenLabsChannel(ChannelAdapter):
         self._api_base = api_base.rstrip("/")
         self._client = httpx.AsyncClient(transport=transport, timeout=30.0)
 
+    async def aclose(self) -> None:
+        await self._client.aclose()
+
     async def receive(self, raw: dict[str, Any]) -> InboundMessage:
         """Inbound turns arrive as {session_id, text} from your gateway's STT."""
         return _parse_inbound(raw)

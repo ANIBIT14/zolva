@@ -2,12 +2,16 @@
 
 > Open-source, self-hosted agent platform for banks and fintechs. Agents are
 > declared in YAML + Markdown config; tools are the bank's own APIs registered
-> as typed Python functions; guardrails, evals, feedback loop, audit, and
-> synthetics attach to every step via a middleware bus. pip-installable, runs
-> entirely inside the bank's infrastructure. Apache-2.0. https://zolva.ai
+> as typed Python functions; guardrails (incl. per-customer contact caps),
+> PII redaction before provider calls, evals, feedback loop, hash-chained
+> audit with pluggable storage, human handover with a resume path, and
+> synthetics attach to every step via a middleware bus. Ships a read-only
+> team dashboard and a reference HTTP entrypoint (`zolva serve`).
+> pip-installable, runs entirely inside the bank's infrastructure.
+> Apache-2.0. https://zolva.ai
 
 Install: `pip install zolva` (dev: `pip install -e ".[dev]"`). Python >=3.11.
-Entry points: `zolva.AgentApp.from_config("agents/")`, `@zolva.tool`, CLI `zolva validate <dir>`.
+Entry points: `zolva.AgentApp.from_config("agents/")`, `@zolva.tool`, CLI `zolva validate <dir>`, `zolva serve`, `zolva dashboard`.
 
 ## Docs
 

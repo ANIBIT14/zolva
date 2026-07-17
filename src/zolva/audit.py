@@ -31,6 +31,11 @@ from zolva.orchestrator import AgentApp
 
 _GENESIS = "genesis"
 
+# eval/synthetic traffic uses these session-id prefixes; production evidence
+# (scorecard, failure queue) must not be polluted by test runs against a
+# live app instance
+NON_PRODUCTION_SESSION_PREFIXES = ("eval-", "synthetic-")
+
 # (id, ts, session_id, agent, type, data, prev_hash, hash)
 AuditRow = tuple[int, str, str, str, str, str, str, str]
 # (ts, session_id, agent, type, data, prev_hash, hash) — id is storage-assigned
@@ -226,14 +231,24 @@ class Scorecard(BaseModel):
         )
 
 
-def scorecard(audit: AuditLog) -> Scorecard:
-    """SARR v1: session got a response and never escalated.
+def scorecard(
+    audit: AuditLog,
+    *,
+    exclude_session_prefixes: tuple[str, ...] = NON_PRODUCTION_SESSION_PREFIXES,
+) -> Scorecard:
+    """SARR v1: session got a response and never escalated. Eval and
+    synthetic sessions are excluded by default, a patrol run against the
+    production app must not move the production metric.
 
     ponytail: no re-contact window yet (needs customer identity across
     sessions); add when a bank wires customer refs into session ids.
     """
     by_session = audit.step_types_by_session()
-    sessions = [types for sid, types in by_session.items() if "user_msg" in types]
+    sessions = [
+        types
+        for sid, types in by_session.items()
+        if "user_msg" in types and not sid.startswith(exclude_session_prefixes)
+    ]
     total = len(sessions)
     escalated = sum(1 for types in sessions if "handover" in types)
     resolved = sum(1 for types in sessions if "response" in types and "handover" not in types)

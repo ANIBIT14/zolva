@@ -17,10 +17,12 @@ import yaml
 from pydantic import BaseModel, ValidationError
 
 from zolva._db import sqlite_conn
+from zolva.audit import NON_PRODUCTION_SESSION_PREFIXES
 from zolva.bridge import Message
 from zolva.bus import Step, Verdict
 from zolva.config import ConfigError
 from zolva.evals import Cohort
+from zolva.redaction import Redactor
 from zolva.orchestrator import AgentApp
 
 
@@ -57,6 +59,8 @@ class FeedbackQueue:
         app.bus.on(self._observe)
 
     async def _observe(self, step: Step) -> Verdict | None:
+        if step.session_id.startswith(NON_PRODUCTION_SESSION_PREFIXES):
+            return None  # eval/synthetic escalations are grading, not production signal
         if step.type == "handover":
             await self._insert(
                 step.session_id, step.agent, "escalation", str(step.data.get("reason", ""))
@@ -163,15 +167,22 @@ class FeedbackQueue:
         with self._conn() as conn:
             conn.execute("UPDATE failures SET status = ? WHERE id = ?", (status, failure_id))
 
-    def export_dataset(self, out_path: str | Path) -> int:
-        """Accepted failures as fine-tuning JSONL, the SFT/DPO on-ramp, no training code."""
+    def export_dataset(self, out_path: str | Path, *, redactor: "Redactor | None" = None) -> int:
+        """Accepted failures as fine-tuning JSONL, the SFT/DPO on-ramp, no training code.
+
+        Transcripts are real customer conversations; pass a Redactor (or
+        `zolva export-dataset --redaction file.yaml`) so PII never lands in
+        a training file."""
         rows = self.accepted()
         with open(out_path, "w") as f:
             for failure in rows:
+                transcript = (
+                    redactor.redact_messages(failure.transcript) if redactor else failure.transcript
+                )
                 f.write(
                     json.dumps(
                         {
-                            "messages": [m.model_dump() for m in failure.transcript],
+                            "messages": [m.model_dump() for m in transcript],
                             "kind": failure.kind,
                             "note": failure.note,
                         }

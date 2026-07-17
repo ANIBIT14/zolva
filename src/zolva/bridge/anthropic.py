@@ -38,6 +38,9 @@ class AnthropicAdapter:
             timeout=timeout,
         )
 
+    async def aclose(self) -> None:
+        await self._client.aclose()
+
     def _wire_messages(self, messages: list[Message]) -> list[dict[str, Any]]:
         wire: list[dict[str, Any]] = []
         for m in messages:
