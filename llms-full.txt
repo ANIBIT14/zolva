@@ -310,7 +310,7 @@ reply = await hub.dispatch("whatsapp", "collections-agent", webhook_payload)
 
 Any agent becomes reachable on the channels the company declares; the hub resolves the adapter, enforces a per-agent channel allowlist, namespaces sessions per channel (identities can never collide across channels), and delivers the reply back on the same channel with HMAC-signed webhooks. Both directions are emitted on the bus, so audit and guardrails see the customer contact itself. Custom channels implement one two-method `ChannelAdapter`; a scripted `FakeChannel` ships for tests, and an `elevenlabs` voice adapter (documented TTS endpoint, signed audio delivery, webhook-signature helper) ships in the box.
 
-End-to-end recipes, voice CX with ElevenLabs, WhatsApp collections, CI gating, live at [zolva.ai/playbooks](https://zolva.ai/playbooks/).
+End-to-end recipes, voice CX with ElevenLabs, WhatsApp collections, CI gating, a Slack handover desk, SMS collections with Twilio and Razorpay, and Telegram support with Zendesk escalation, live at [zolva.ai/playbooks](https://zolva.ai/playbooks/). Every provider call is verified against the official documentation, and each playbook links to it.
 
 ## Security posture
 

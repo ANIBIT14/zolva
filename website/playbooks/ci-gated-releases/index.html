@@ -77,8 +77,9 @@
           from the shipped CLI itself (<code>zolva validate</code>, <code>zolva eval
           &lt;dir&gt; --app module:attr --gate --judge-provider --judge-model --out</code>,
           <code>zolva scorecard</code>, <code>zolva triage --accept/--reject</code>,
-          <code>zolva export-dataset</code>). GitHub Actions steps use the current documented
-          major versions of the official actions.
+          <code>zolva export-dataset</code>).
+          <a href="https://docs.github.com/en/actions" target="_blank" rel="noopener noreferrer">GitHub Actions</a>
+          steps use the current documented major versions of the official actions.
         </div>
       </section>
 
@@ -107,8 +108,15 @@
 import tools  # noqa: F401  registers @zolva.tool functions
 
 from zolva import AgentApp
+from zolva.bridge import get_adapter
 
-app = AgentApp.from_config("agents/")</code></pre>
+app = AgentApp.from_config(
+    "agents/",
+    # policies with judge-backed rules (never, refuse_topics) need this at
+    # startup; separate from the eval grader's --judge-provider/--judge-model
+    judge=get_adapter("openai"),
+    judge_model="gpt-5",
+)</code></pre>
         </div>
         <div class="code">
           <div class="code-bar"><span>layout</span></div>

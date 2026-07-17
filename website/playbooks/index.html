@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Playbooks | Zolva</title>
-  <meta name="description" content="Copy-paste playbooks for deploying Zolva agents in production: voice CX with ElevenLabs, channel integrations, CI gating. Every provider call verified against official documentation." />
+  <meta name="description" content="Copy-paste playbooks for deploying Zolva agents in production: voice CX with ElevenLabs, WhatsApp, SMS with Twilio and Razorpay, Telegram with Zendesk, a Slack handover desk, CI gating. Every provider call verified against official documentation." />
   <link rel="canonical" href="https://zolva.ai/playbooks/" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="apple-touch-icon" href="/mark-512.png" />
@@ -75,6 +75,30 @@
             so no prompt or policy change ships without passing its worst cohort, plus a weekly
             drift run and the failure-to-regression loop.</p>
             <p style="margin-top:0.8rem"><code>evals</code> · <code>feedback</code> · <code>scorecard</code></p>
+          </a>
+          <a class="why-card" href="/playbooks/slack-handover-desk/" style="display:block">
+            <span class="num">04</span>
+            <h3>The handover desk lives in Slack</h3>
+            <p>Every escalation from every agent lands as a threaded message in one Slack
+            channel; a teammate's thread reply becomes the resolution, recorded back into the
+            session and the audit chain through the resume endpoint.</p>
+            <p style="margin-top:0.8rem"><code>handover</code> · <code>resume</code> · <code>audit</code></p>
+          </a>
+          <a class="why-card" href="/playbooks/sms-collections-twilio-razorpay/" style="display:block">
+            <span class="num">05</span>
+            <h3>SMS collections with Twilio &amp; Razorpay</h3>
+            <p>Repayment assistance over plain SMS: Twilio Messaging as the channel, Razorpay
+            payment links as a guarded tool, and per-customer contact caps plus RBI contact
+            windows enforced as config, not prompt suggestions.</p>
+            <p style="margin-top:0.8rem"><code>channels</code> · <code>tools</code> · <code>guardrails</code></p>
+          </a>
+          <a class="why-card" href="/playbooks/telegram-support-zendesk/" style="display:block">
+            <span class="num">06</span>
+            <h3>Telegram support with Zendesk escalation</h3>
+            <p>A support agent on the Telegram Bot API whose escalations become real Zendesk
+            tickets; when the team solves one, a signed Zendesk webhook resumes the session
+            and tells the customer on the channel where they asked.</p>
+            <p style="margin-top:0.8rem"><code>channels</code> · <code>handover</code> · <code>resume</code></p>
           </a>
         </div>
       </div>

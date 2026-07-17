@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Slack Handover Desk | Zolva Playbooks</title>
+  <meta name="description" content="Production playbook: every Zolva escalation lands as a threaded message in a Slack channel, teammates resolve in the thread, and the resolution flows back into the session and audit trail. Every Slack API call verified against official documentation." />
+  <link rel="canonical" href="https://zolva.ai/playbooks/slack-handover-desk/" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/mark-512.png" />
+  <meta name="theme-color" content="#08011A" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Zolva" />
+  <meta property="og:title" content="Slack handover desk: a Zolva playbook" />
+  <meta property="og:description" content="Escalations in a Slack channel, resolutions from the thread, the human loop closed on the audit chain." />
+  <meta property="og:url" content="https://zolva.ai/playbooks/slack-handover-desk/" />
+  <meta property="og:image" content="https://zolva.ai/mark-512.png" />
+  <meta name="twitter:card" content="summary" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "Slack handover desk: a Zolva playbook",
+    "description": "Route Zolva human escalations into a Slack channel and close the loop from thread replies using the Events API and the resume endpoint.",
+    "url": "https://zolva.ai/playbooks/slack-handover-desk/",
+    "author": { "@type": "Organization", "name": "Zolva", "url": "https://zolva.ai" }
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links">menu</button>
+      <nav class="nav-links" id="nav-links" aria-label="Main">
+        <a href="/#why">Why Zolva</a>
+        <a href="/#platform">Platform</a>
+        <a href="/docs/">Docs</a>
+        <a href="/playbooks/" aria-current="page">Playbooks</a>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a class="nav-cta" href="/docs/#quickstart">pip install zolva</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="wrap docs-shell">
+    <aside class="docs-sidebar" aria-label="Playbook steps">
+      <p class="group">Playbook</p>
+      <a href="#overview">Overview</a>
+      <a href="#prerequisites">Prerequisites</a>
+      <p class="group">Steps</p>
+      <a href="#step-backend">1 · Point handover at the desk</a>
+      <a href="#step-escalations">2 · Escalations into Slack</a>
+      <a href="#step-resolve">3 · Resolve from the thread</a>
+      <a href="#step-run">4 · Run it end to end</a>
+      <p class="group">Reference</p>
+      <a href="#notes">Retries, loops &amp; scopes</a>
+    </aside>
+
+    <main class="docs-main">
+      <section id="overview">
+        <p class="eyebrow" style="margin-bottom:1rem">Playbook 04 · Slack</p>
+        <h1>The handover desk lives in Slack</h1>
+        <p><strong>Goal:</strong> every escalation from every Zolva agent, on every channel,
+        lands as one threaded message in a <code>#cx-escalations</code> Slack channel. A
+        teammate replies in the thread; that reply becomes the resolution, recorded into the
+        customer's session and the audit chain via the <code>resume</code> endpoint, so the
+        agent has it the moment the customer returns.</p>
+        <div class="callout">
+          <strong>Verification note.</strong> The Slack API calls in this playbook were checked
+          against Slack's official documentation before publication: request signing with
+          <code>X-Slack-Signature</code> / <code>X-Slack-Request-Timestamp</code> and the
+          <code>v0:{timestamp}:{body}</code> HMAC-SHA256 base string
+          (<a href="https://docs.slack.dev/authentication/verifying-requests-from-slack" target="_blank" rel="noopener noreferrer">verifying requests from Slack</a>),
+          the Events API <code>url_verification</code> handshake, the three-second
+          acknowledgment window and <code>x-slack-retry-num</code> retry headers
+          (<a href="https://docs.slack.dev/apis/events-api/" target="_blank" rel="noopener noreferrer">Events API</a>),
+          and <code>chat.postMessage</code> arguments, scopes, and threading via the parent
+          <code>ts</code>
+          (<a href="https://docs.slack.dev/reference/methods/chat.postMessage" target="_blank" rel="noopener noreferrer">chat.postMessage reference</a>).
+          If Slack changes a field, trust their docs over this page.
+        </div>
+        <p>The shape: Zolva's <code>WebhookBackend</code> delivers each handover ticket,
+        HMAC-signed, to <strong>your desk gateway</strong> (one small FastAPI service). The
+        gateway posts a summary into Slack with <code>chat.postMessage</code> and returns the
+        message <code>ts</code> as the ticket id, so the Slack thread <em>is</em> the ticket.
+        Thread replies come back through the Events API; the gateway forwards them, signed, to
+        the <code>POST /sessions/{agent}/resume</code> endpoint that <code>zolva serve</code>
+        exposes. Handover, resolution, and resume are all steps on the audit chain.</p>
+      </section>
+
+      <section id="prerequisites">
+        <h2>Prerequisites <a class="anchor-link" href="#prerequisites">#</a></h2>
+        <ul>
+          <li>A Slack app installed in your workspace with the bot scopes
+          <code>chat:write</code> and <code>channels:history</code>, its <strong>bot
+          token</strong> (<code>xoxb-…</code>), and its <strong>signing secret</strong>.</li>
+          <li>Event Subscriptions enabled with the bot event <code>message.channels</code>;
+          you will set the request URL in step 3. Invite the bot to your escalations channel
+          and note the <strong>channel ID</strong> (<code>C…</code>).</li>
+          <li>Python ≥ 3.11 and: <code>pip install "zolva[dashboard]" fastapi uvicorn httpx</code>
+          (the extra gives you <code>zolva serve</code>).</li>
+          <li>Environment variables, never inline config: <code>SLACK_BOT_TOKEN</code>,
+          <code>SLACK_SIGNING_SECRET</code>, <code>SLACK_ESCALATIONS_CHANNEL</code>,
+          <code>ZOLVA_HANDOVER_SECRET</code>, <code>ZOLVA_INBOUND_SECRET</code>, and your
+          model provider key.</li>
+        </ul>
+      </section>
+
+      <section id="step-backend">
+        <h2>Step 1 · Point handover at the desk <a class="anchor-link" href="#step-backend">#</a></h2>
+        <p>Nothing about your agents changes. The handover backend is one constructor argument
+        on the app, and it serves every agent in the config directory:</p>
+        <div class="code">
+          <div class="code-bar"><span>app.py</span><button class="copy-btn" data-copy="#c-app">copy</button></div>
+          <pre><code data-lang="python" id="c-app">"""The bank's AgentApp, escalating to the Slack desk gateway."""
+
+import os
+
+import tools  # noqa: F401  your @zolva.tool functions register on import
+from zolva import AgentApp, WebhookBackend
+from zolva.bridge import get_adapter
+
+app = AgentApp.from_config(
+    "agents/",
+    # judge-backed rules (never, refuse_topics) need an adapter at startup
+    judge=get_adapter("openai"),
+    judge_model="gpt-5",
+    handover=WebhookBackend(
+        url="http://localhost:8015/handover",  # the desk gateway, step 2
+        secret=os.environ["ZOLVA_HANDOVER_SECRET"],
+    ),
+)</code></pre>
+        </div>
+        <p>Every escalation path converges here: an agent calling
+        <code>handoff(to="human-escalation")</code>, a guardrail block, a tool crash, a
+        provider outage. The backend receives the full <code>Ticket</code> (session id, agent,
+        reason, transcript, trigger) as an HMAC-signed POST and must answer with a JSON
+        <code>{"id": …}</code>.</p>
+      </section>
+
+      <section id="step-escalations">
+        <h2>Step 2 · Escalations into Slack <a class="anchor-link" href="#step-escalations">#</a></h2>
+        <p>The desk gateway's first endpoint receives the ticket, posts it to the escalations
+        channel, and remembers which Slack thread belongs to which session:</p>
+        <div class="code">
+          <div class="code-bar"><span>slack_desk.py</span><button class="copy-btn" data-copy="#c-desk">copy</button></div>
+          <pre><code data-lang="python" id="c-desk">"""Slack handover desk: escalations in a channel, resolutions from the thread.
+
+Run: uvicorn slack_desk:api --host 0.0.0.0 --port 8015
+Point your Slack app's Event Subscriptions request URL at https://your-host/slack/events
+"""
+
+import hashlib
+import hmac
+import json
+import logging
+import os
+import sqlite3
+import time
+
+import httpx
+from fastapi import BackgroundTasks, FastAPI, Request, Response
+from fastapi.responses import JSONResponse, PlainTextResponse
+
+from zolva import SignatureError, sign_payload, verify_zolva_signature
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger("slack-desk")
+
+api = FastAPI()
+
+BOT_TOKEN = os.environ["SLACK_BOT_TOKEN"]
+SIGNING_SECRET = os.environ["SLACK_SIGNING_SECRET"]
+DESK_CHANNEL = os.environ["SLACK_ESCALATIONS_CHANNEL"]  # channel ID, e.g. C0123456789
+HANDOVER_SECRET = os.environ["ZOLVA_HANDOVER_SECRET"]
+INBOUND_SECRET = os.environ["ZOLVA_INBOUND_SECRET"]
+ZOLVA_URL = os.environ.get("ZOLVA_URL", "http://localhost:8700")
+
+# thread ts -> (session_id, agent); sqlite so a gateway restart keeps open tickets
+db = sqlite3.connect("desk.sqlite", check_same_thread=False)
+db.execute(
+    "CREATE TABLE IF NOT EXISTS tickets "
+    "(thread_ts TEXT PRIMARY KEY, session_id TEXT NOT NULL, agent TEXT NOT NULL)"
+)
+
+
+async def _post_message(payload: dict) -> dict:
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        r = await client.post(
+            "https://slack.com/api/chat.postMessage",
+            json=payload,
+            headers={"Authorization": f"Bearer {BOT_TOKEN}"},
+        )
+    data: dict = r.json()
+    if not data.get("ok"):
+        log.error("chat.postMessage failed: %s", data.get("error"))
+    return data
+
+
+# -- Handover tickets from Zolva (HMAC-signed by WebhookBackend) --
+@api.post("/handover")
+async def handover(request: Request) -> JSONResponse:
+    raw = await request.body()
+    try:
+        verify_zolva_signature(
+            raw,
+            request.headers.get("X-Zolva-Signature", ""),
+            request.headers.get("X-Zolva-Timestamp", ""),
+            HANDOVER_SECRET,
+        )
+    except SignatureError:
+        return JSONResponse({"error": "invalid signature"}, status_code=403)
+
+    ticket = json.loads(raw)  # Ticket: session_id, agent, reason, transcript, trigger
+    tail = "\n".join(
+        f"{m['role']}: {m['content']}" for m in ticket["transcript"][-6:] if m.get("content")
+    )
+    data = await _post_message(
+        {
+            "channel": DESK_CHANNEL,
+            "text": (
+                f":rotating_light: *{ticket['agent']}* escalated `{ticket['session_id']}`\n"
+                f"*Reason:* {ticket['reason']}\n```{tail}```\n"
+                "_Reply in this thread to resolve._"
+            ),
+        }
+    )
+    if not data.get("ok"):
+        return JSONResponse({"error": "slack rejected the message"}, status_code=502)
+    with db:
+        db.execute(
+            "INSERT OR REPLACE INTO tickets VALUES (?, ?, ?)",
+            (data["ts"], ticket["session_id"], ticket["agent"]),
+        )
+    # WebhookBackend records this id as the HandoverRef: the thread is the ticket
+    return JSONResponse({"id": data["ts"]})</code></pre>
+        </div>
+        <p>The transcript tail keeps PII exposure deliberate: the desk sees the last six turns,
+        not the customer's whole history, and the blocked content that triggered the escalation
+        arrives in <code>trigger</code> even when a guardrail kept it out of the session.</p>
+      </section>
+
+      <section id="step-resolve">
+        <h2>Step 3 · Resolve from the thread <a class="anchor-link" href="#step-resolve">#</a></h2>
+        <p>Same file, second half. Slack's Events API delivers every message in the channel;
+        the gateway verifies Slack's signature, answers the one-time
+        <code>url_verification</code> handshake, and treats a human's thread reply as the
+        resolution:</p>
+        <div class="code">
+          <div class="code-bar"><span>slack_desk.py (continued)</span><button class="copy-btn" data-copy="#c-events">copy</button></div>
+          <pre><code data-lang="python" id="c-events"># -- Slack request signing: v0=HMAC_SHA256("v0:{timestamp}:{body}") --
+def _slack_signature_ok(raw: bytes, ts: str, signature: str) -> bool:
+    if not ts.isdigit() or abs(time.time() - int(ts)) > 300:  # replay guard, per Slack docs
+        return False
+    base = b"v0:" + ts.encode() + b":" + raw
+    expected = "v0=" + hmac.new(SIGNING_SECRET.encode(), base, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(signature, expected)
+
+
+@api.post("/slack/events")
+async def slack_events(request: Request, background: BackgroundTasks) -> Response:
+    raw = await request.body()
+    if not _slack_signature_ok(
+        raw,
+        request.headers.get("X-Slack-Request-Timestamp", ""),
+        request.headers.get("X-Slack-Signature", ""),
+    ):
+        return Response(status_code=403)
+    body = json.loads(raw)
+    if body.get("type") == "url_verification":  # one-time handshake when you save the URL
+        return PlainTextResponse(body.get("challenge", ""))
+    if request.headers.get("X-Slack-Retry-Num"):
+        # Slack retries anything slower than 3s; a retried reply must not resume twice
+        return Response(status_code=200)
+
+    event = body.get("event", {})
+    if (
+        body.get("type") == "event_callback"
+        and event.get("type") == "message"
+        and event.get("channel") == DESK_CHANNEL
+        and event.get("thread_ts")  # only threaded replies, not new messages
+        and not event.get("bot_id")  # never react to our own confirmations
+        and not event.get("subtype")  # skip edits, joins, and other message subtypes
+    ):
+        background.add_task(_resolve, event["thread_ts"], event.get("text", ""))
+    return Response(status_code=200)  # ack inside Slack's 3-second window; work happens after
+
+
+async def _resolve(thread_ts: str, resolution: str) -> None:
+    row = db.execute(
+        "SELECT session_id, agent FROM tickets WHERE thread_ts = ?", (thread_ts,)
+    ).fetchone()
+    if row is None:
+        return  # a thread the desk didn't open
+    session_id, agent = row
+    body = json.dumps({"session_id": session_id, "resolution": resolution}).encode()
+    ts, sig = sign_payload(INBOUND_SECRET, body)  # zolva serve verifies this signature
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        r = await client.post(
+            f"{ZOLVA_URL}/sessions/{agent}/resume",
+            content=body,
+            headers={
+                "Content-Type": "application/json",
+                "X-Zolva-Signature": sig,
+                "X-Zolva-Timestamp": ts,
+            },
+        )
+    if r.status_code != 200:
+        log.error("resume failed: %s %s", r.status_code, r.text)
+        return
+    await _post_message(
+        {
+            "channel": DESK_CHANNEL,
+            "thread_ts": thread_ts,  # parent ts threads the confirmation, per Slack docs
+            "text": ":white_check_mark: Recorded. The agent has this resolution "
+            "when the customer returns.",
+        }
+    )</code></pre>
+        </div>
+        <p>The resume lands in the session history as a <code>[human teammate]</code> message
+        and emits a <code>resume</code> step on the bus, so the audit chain shows the full arc:
+        <code>handover → resolution → resume</code>, with who-said-what preserved.</p>
+      </section>
+
+      <section id="step-run">
+        <h2>Step 4 · Run it end to end <a class="anchor-link" href="#step-run">#</a></h2>
+        <p>Three processes: the desk gateway, <code>zolva serve</code>, and one signed test
+        message. The demo channel uses the <code>log</code> adapter because
+        <code>zolva serve</code> returns the reply in the HTTP response anyway:</p>
+        <div class="code">
+          <div class="code-bar"><span>channels.yaml</span><button class="copy-btn" data-copy="#c-chan">copy</button></div>
+          <pre><code data-lang="yaml" id="c-chan">channels:
+  webchat:
+    adapter: log
+agents:
+  support-agent: [webchat]</code></pre>
+        </div>
+        <div class="code">
+          <div class="code-bar"><span>shell</span><button class="copy-btn" data-copy="#c-run">copy</button></div>
+          <pre><code data-lang="bash" id="c-run">uvicorn slack_desk:api --port 8015 &
+ZOLVA_INBOUND_SECRET=$ZOLVA_INBOUND_SECRET zolva serve --app app:app --channels channels.yaml --port 8700 &
+
+# a signed inbound message that will escalate (hardship -> human-escalation)
+python - &lt;&lt;'EOF'
+import json, os, httpx
+from zolva import sign_payload
+
+body = json.dumps({"session_id": "demo-1",
+                   "text": "I lost my job and can't make this month's payment"}).encode()
+ts, sig = sign_payload(os.environ["ZOLVA_INBOUND_SECRET"], body)
+r = httpx.post("http://localhost:8700/channels/webchat/support-agent", content=body,
+               headers={"Content-Type": "application/json",
+                        "X-Zolva-Signature": sig, "X-Zolva-Timestamp": ts})
+print(r.json())
+EOF</code></pre>
+        </div>
+        <p>Watch <code>#cx-escalations</code>: the ticket appears with the transcript tail.
+        Reply in the thread ("Waived the late fee, set up a 3-month plan, call scheduled"),
+        and the desk confirms with a checkmark once the resume is recorded. Then
+        <code>zolva scorecard audit.db</code> shows the handover and resume steps on a
+        verified chain.</p>
+      </section>
+
+      <section id="notes">
+        <h2>Retries, loops &amp; scopes <a class="anchor-link" href="#notes">#</a></h2>
+        <ul>
+          <li><strong>The 3-second rule:</strong> Slack retries any event not acknowledged
+          with a 2xx within three seconds, up to three times with
+          <code>x-slack-retry-num</code> set. The gateway acks immediately and does the
+          resume in the background; retried deliveries are dropped before they can resume
+          twice.</li>
+          <li><strong>Bot-loop protection:</strong> the desk's own thread confirmations come
+          back through the Events API too. Skipping events with a <code>bot_id</code> or any
+          <code>subtype</code> (edits, joins) is what keeps the desk from talking to
+          itself.</li>
+          <li><strong>Private escalations channel:</strong> subscribe to
+          <code>message.groups</code> with the <code>groups:history</code> scope instead of
+          <code>message.channels</code> / <code>channels:history</code>. Everything else is
+          unchanged.</li>
+          <li><strong>Two signatures, same idea:</strong> Slack signs with
+          <code>v0:{timestamp}:{body}</code> and a five-minute replay window; Zolva signs with
+          <code>{timestamp}.{body}</code> and the same window. Both directions of the desk are
+          authenticated, both use constant-time comparison.</li>
+          <li><strong>Every agent, every channel:</strong> the ticket carries
+          <code>agent</code> and the channel-namespaced <code>session_id</code>, so one desk
+          serves your WhatsApp, voice, and webchat deployments at once.</li>
+        </ul>
+        <p style="margin-top:1.5rem"><a href="/playbooks/">← All playbooks</a></p>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div class="wrap footer-grid">
+      <div>
+        <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+        <p style="margin-top:0.8rem; max-width:22em;">The open-source, self-hosted agent
+        platform for banks and fintechs.</p>
+      </div>
+      <nav aria-label="Product">
+        <span class="col-title">Product</span>
+        <a href="/docs/">Documentation</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/#platform">Platform</a>
+        <a href="/#compare">Comparison</a>
+        <a href="https://pypi.org/project/zolva/" target="_blank" rel="noopener noreferrer">PyPI</a>
+      </nav>
+      <nav aria-label="Project">
+        <span class="col-title">Project</span>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="/security/">Security policy</a>
+        <a href="/contributing/">Contributing</a>
+        <a href="/legal/">Trust &amp; legal</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Apache-2.0 license</a>
+      </nav>
+      <nav aria-label="For machines">
+        <span class="col-title">For machines</span>
+        <a href="/llms.txt">llms.txt</a>
+        <a href="/llms-full.txt">llms-full.txt</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/AGENTS.md" target="_blank" rel="noopener noreferrer">AGENTS.md</a>
+      </nav>
+    </div>
+    <div class="wrap footer-sig">
+      <span>© 2026 Zolva. Apache-2.0.</span>
+      <span>Self-hosted by design; your data never leaves.</span>
+    </div>
+  </footer>
+</body>
+</html>
