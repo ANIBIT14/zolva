@@ -21,7 +21,7 @@ from zolva.signing import SignatureError, sign_payload, verify_zolva_signature
 from zolva.synthetics import SyntheticResult, SyntheticRunner, load_synthetics
 from zolva.tools import ToolRegistry, default_registry, tool
 
-__version__ = "0.3.2"
+__version__ = "0.4.0"
 
 __all__ = [
     "BLOCKED_MESSAGE",
