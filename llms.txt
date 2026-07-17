@@ -17,6 +17,7 @@ Entry points: `zolva.AgentApp.from_config("agents/")`, `@zolva.tool`, CLI `zolva
 
 - [AGENTS.md](AGENTS.md): exact setup, verify, and convention instructions for AI coding agents
 - [README.md](README.md): quickstart and public API
+- [Playbooks](https://zolva.ai/playbooks/): six production playbooks (ElevenLabs voice, WhatsApp, CI gating, Slack handover desk, Twilio + Razorpay SMS, Telegram + Zendesk); every provider call verified against and linked to official docs
 - [docs/specs/2026-07-12-zolva-design.md](docs/specs/2026-07-12-zolva-design.md): full architecture, security model, competitive positioning
 - [examples/mockbank/](examples/mockbank/): runnable end-to-end example (config + tools + orchestrator)
 - [examples/dashboard_demo/](examples/dashboard_demo/): seeded demo for `zolva dashboard` (600 sessions, verifiable audit chain)

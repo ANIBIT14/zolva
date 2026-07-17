@@ -73,11 +73,13 @@
         <div class="callout">
           <strong>Verification note.</strong> The Meta WhatsApp Cloud API calls in this playbook
           were checked against Meta's official documentation before publication: the send
-          endpoint and payload (<code>developers.facebook.com · business-messaging/whatsapp ·
-          get-started</code>), the inbound webhook payload shape, the <code>hub.challenge</code>
-          verification handshake, and <code>X-Hub-Signature-256</code> validation (Meta's own
-          sample apps). If Meta changes an API version or field, trust their docs over this
-          page.
+          endpoint and payload
+          (<a href="https://developers.facebook.com/docs/whatsapp/cloud-api/get-started" target="_blank" rel="noopener noreferrer">Cloud API get started</a>),
+          the inbound webhook payload shape, the <code>hub.challenge</code>
+          verification handshake, and <code>X-Hub-Signature-256</code> validation
+          (<a href="https://developers.facebook.com/docs/graph-api/webhooks/getting-started" target="_blank" rel="noopener noreferrer">Graph API webhooks</a>
+          and Meta's own sample apps). If Meta changes an API version or field, trust their
+          docs over this page.
         </div>
         <p>The shape: Meta's Cloud API webhooks hit <strong>your gateway</strong> (one small
         FastAPI service in your VPC). The gateway dispatches each customer message into Zolva's
@@ -168,13 +170,19 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 
 import tools  # noqa: F401  your @zolva.tool functions register on import
 from zolva import AgentApp, ChannelHub
+from zolva.bridge import get_adapter
 from zolva.channels import ChannelError
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("wa-gateway")
 
 api = FastAPI()
-zolva_app = AgentApp.from_config("agents/")
+zolva_app = AgentApp.from_config(
+    "agents/",
+    # judge-backed rules (refuse_topics, never) need an adapter at startup
+    judge=get_adapter("openai"),
+    judge_model="gpt-5",
+)
 hub = ChannelHub.from_config("channels.yaml", zolva_app)
 
 ACCESS_TOKEN = os.environ["WA_ACCESS_TOKEN"]
@@ -199,7 +207,7 @@ async def verify(
 
 # -- Inbound customer messages (POST, X-Hub-Signature-256 over the raw body) --
 @api.post("/webhooks/whatsapp")
-async def inbound(request: Request) -> dict[str, str] | JSONResponse:
+async def inbound(request: Request) -> JSONResponse:
     raw = await request.body()
     header = request.headers.get("X-Hub-Signature-256", "")
     expected = "sha256=" + hmac.new(APP_SECRET.encode(), raw, hashlib.sha256).hexdigest()
@@ -208,7 +216,7 @@ async def inbound(request: Request) -> dict[str, str] | JSONResponse:
 
     body = await request.json()
     if body.get("object") != "whatsapp_business_account":
-        return {"status": "ignored"}
+        return JSONResponse({"status": "ignored"})
 
     # documented payload: entry[].changes[].value.messages[]
     for entry in body.get("entry", []):
@@ -226,12 +234,12 @@ async def inbound(request: Request) -> dict[str, str] | JSONResponse:
                     log.exception("dispatch failed wa_id=%s", msg.get("from"))
     # always 200: Meta retries non-2xx, and retries of a failed turn
     # would replay the customer message into a new agent run
-    return {"status": "received"}
+    return JSONResponse({"status": "received"})
 
 
 # -- Replies from Zolva (HMAC-signed by the webhook channel) --
 @api.post("/send")
-async def send(request: Request) -> dict[str, str] | JSONResponse:
+async def send(request: Request) -> JSONResponse:
     raw = await request.body()
     ts = request.headers.get("X-Zolva-Timestamp", "")
     sig = request.headers.get("X-Zolva-Signature", "")
@@ -258,7 +266,7 @@ async def send(request: Request) -> dict[str, str] | JSONResponse:
     if r.status_code >= 400:
         log.error("graph api rejected send: %s %s", r.status_code, r.text)
         return JSONResponse({"error": "delivery failed"}, status_code=502)
-    return {"status": "sent"}</code></pre>
+    return JSONResponse({"status": "sent"})</code></pre>
         </div>
         <p>Session identity is the customer's WhatsApp number (<code>msg["from"]</code>), which
         the hub namespaces to <code>whatsapp:&lt;number&gt;</code>, so it can never collide with

@@ -76,11 +76,13 @@
         <div class="callout">
           <strong>Verification note.</strong> Every ElevenLabs endpoint, header, field, and
           signature format in this playbook was checked against the official documentation
-          before publication: the Text to Speech API reference
-          (<code>api-reference/text-to-speech/convert</code>), the Custom LLM integration guide
-          (<code>eleven-agents/customization/llm/custom-llm</code>), and the post-call webhooks
-          guide (<code>eleven-agents/workflows/post-call-webhooks</code>). If ElevenLabs changes
-          an API, trust their docs over this page.
+          before publication: the
+          <a href="https://elevenlabs.io/docs/api-reference/text-to-speech/convert" target="_blank" rel="noopener noreferrer">Text to Speech API reference</a>,
+          the
+          <a href="https://elevenlabs.io/docs/eleven-agents/customization/llm/custom-llm" target="_blank" rel="noopener noreferrer">Custom LLM integration guide</a>,
+          and the
+          <a href="https://elevenlabs.io/docs/eleven-agents/workflows/post-call-webhooks" target="_blank" rel="noopener noreferrer">post-call webhooks guide</a>.
+          If ElevenLabs changes an API, trust their docs over this page.
         </div>
         <p>There are two integration paths; most teams should start with Path A.</p>
         <ul>
@@ -170,12 +172,18 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 import tools  # noqa: F401  your @zolva.tool functions register on import
 from zolva import AgentApp
+from zolva.bridge import get_adapter
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("voice-bridge")
 
 api = FastAPI()
-zolva_app = AgentApp.from_config("agents/")
+zolva_app = AgentApp.from_config(
+    "agents/",
+    # judge-backed rules (refuse_topics, never) need an adapter at startup
+    judge=get_adapter("openai"),
+    judge_model="gpt-5",
+)
 
 SAFE_ERROR = "I'm having trouble right now. Let me connect you with a teammate."
 
@@ -259,7 +267,7 @@ queue = FeedbackQueue("failures.db")
 
 
 @api.post("/webhooks/elevenlabs")
-async def post_call(request: Request) -> dict[str, str] | JSONResponse:
+async def post_call(request: Request) -> JSONResponse:
     raw = await request.body()
     header = request.headers.get("elevenlabs-signature", "")
     try:
@@ -271,7 +279,7 @@ async def post_call(request: Request) -> dict[str, str] | JSONResponse:
 
     event = json.loads(raw)
     if event.get("type") != "post_call_transcription":
-        return {"status": "ignored"}
+        return JSONResponse({"status": "ignored"})
 
     data = event["data"]
     analysis = data.get("analysis") or {}
@@ -282,7 +290,7 @@ async def post_call(request: Request) -> dict[str, str] | JSONResponse:
             "failed_call",
             note=analysis.get("transcript_summary", "call not marked successful"),
         )
-    return {"status": "received"}</code></pre>
+    return JSONResponse({"status": "received"})</code></pre>
         </div>
         <p>If you already use the ElevenLabs Python SDK, its documented
         <code>elevenlabs.webhooks.construct_event(...)</code> does the same verification;
@@ -315,9 +323,15 @@ agents:
         <div class="code">
           <div class="code-bar"><span>your webhook handler</span><button class="copy-btn" data-copy="#c-disp">copy</button></div>
           <pre><code data-lang="python" id="c-disp">from zolva import AgentApp, ChannelHub
+from zolva.bridge import get_adapter
 from zolva.channels import ChannelError
 
-zolva_app = AgentApp.from_config("agents/")
+zolva_app = AgentApp.from_config(
+    "agents/",
+    # judge-backed rules (refuse_topics, never) need an adapter at startup
+    judge=get_adapter("openai"),
+    judge_model="gpt-5",
+)
 hub = ChannelHub.from_config("channels.yaml", zolva_app)
 
 
