@@ -182,7 +182,12 @@ def _cmd_serve(args: argparse.Namespace) -> int:
 def _cmd_export_dataset(args: argparse.Namespace) -> int:
     from zolva.feedback import FeedbackQueue
 
-    n = FeedbackQueue(args.failures_db).export_dataset(args.out)
+    redactor = None
+    if args.redaction:
+        from zolva.redaction import Redactor
+
+        redactor = Redactor.from_file(args.redaction)
+    n = FeedbackQueue(args.failures_db).export_dataset(args.out, redactor=redactor)
     print(f"wrote {n} accepted failure(s) to {args.out}")
     return 0
 
@@ -242,6 +247,7 @@ def main(argv: list[str] | None = None) -> int:
     p_export = sub.add_parser("export-dataset", help="accepted failures as fine-tuning JSONL")
     p_export.add_argument("failures_db")
     p_export.add_argument("out")
+    p_export.add_argument("--redaction", default="", help="PII pattern file to mask transcripts")
 
     args = parser.parse_args(argv)
     commands: dict[str, Any] = {

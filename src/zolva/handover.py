@@ -57,6 +57,9 @@ class WebhookBackend(HandoverBackend):
         self._secret = secret
         self._client = httpx.AsyncClient(transport=transport, timeout=30.0)
 
+    async def aclose(self) -> None:
+        await self._client.aclose()
+
     async def escalate(self, ticket: Ticket) -> HandoverRef:
         body = ticket.model_dump_json().encode()
         # timestamp inside the MAC so a captured request can't be replayed later

@@ -35,8 +35,13 @@ files were removed after completion per project practice. What shipped:
 
 - Adapter registration, startup tool validation, fail-closed bus, handover
   crash, audit index, validate parity: fixed in v0.3.2.
-- Unclosed httpx clients: LOW; revisit with a lifecycle/close API if a
-  long-running embedder reports leaks.
-- Eval/synthetic session pollution of scorecard/feedback: fix
-  opportunistically by filtering `eval-`/`synthetic-` session prefixes.
+- Fixed post-0.4.0: aclose() lifecycle on every httpx owner plus
+  AgentApp.aclose()/ChannelHub.aclose(); scorecard and feedback auto-capture
+  now skip `eval-`/`synthetic-` sessions; `export_dataset(--redaction)`
+  masks PII in training exports; a blocked channel step escalates to
+  handover instead of replying silently.
 - Dashboard auth: deliberately out of v1 (reverse-proxy guidance documented).
+- Still open by design: session summarization for month-long threads
+  (trigger: first long-thread pilot), ticketing connector (trigger: pilot's
+  tool choice), Postgres AuditStore (trigger: multi-replica deployment +
+  a real server to test against).

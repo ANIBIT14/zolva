@@ -37,6 +37,9 @@ class OpenAIAdapter:
             timeout=timeout,
         )
 
+    async def aclose(self) -> None:
+        await self._client.aclose()
+
     def _wire_messages(self, system: str, messages: list[Message]) -> list[dict[str, Any]]:
         wire: list[dict[str, Any]] = [{"role": "system", "content": system}]
         for m in messages:

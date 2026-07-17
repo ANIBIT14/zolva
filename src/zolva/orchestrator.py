@@ -291,6 +291,31 @@ class AgentApp:
 
         return await self._escalate(cfg, session_id, "max turns exceeded")
 
+    async def escalate(
+        self, agent_name: str, session_id: str, reason: str, *, trigger: str = ""
+    ) -> str:
+        """Public escalation path for callers outside the agent loop (e.g. a
+        channel-level guardrail block): emits the handover step, delivers the
+        ticket, returns the customer-safe blocked message."""
+        try:
+            cfg = self._agents[agent_name]
+        except KeyError:
+            raise ConfigError(f"unknown agent {agent_name!r}") from None
+        return await self._escalate(cfg, session_id, reason, trigger=trigger)
+
+    async def aclose(self) -> None:
+        """Close pooled provider clients and the handover backend, for
+        embedders that build and discard apps (tests, notebooks, workers)."""
+        adapters = [*self._provider_adapters.values(), self._adapter]
+        for adapter in adapters:
+            inner = getattr(adapter, "_inner", adapter)  # unwrap RedactingAdapter
+            closer = getattr(inner, "aclose", None)
+            if closer is not None:
+                await closer()
+        closer = getattr(self._handover, "aclose", None)
+        if closer is not None:
+            await closer()
+
     async def resume(self, agent_name: str, session_id: str, resolution: str) -> None:
         """Close the human loop: record a teammate's resolution into the
         session and the audit trail, so the agent has it when the customer

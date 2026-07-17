@@ -24,7 +24,7 @@ from pydantic import BaseModel
 
 from zolva.bus import Step
 from zolva.config import ConfigError, resolve_refs
-from zolva.orchestrator import BLOCKED_MESSAGE, AgentApp
+from zolva.orchestrator import AgentApp
 from zolva.signing import sign_payload
 
 logger = logging.getLogger("zolva.channels")
@@ -80,6 +80,9 @@ class WebhookChannel(ChannelAdapter):
         self._url = url
         self._secret = secret
         self._client = httpx.AsyncClient(transport=transport, timeout=30.0)
+
+    async def aclose(self) -> None:
+        await self._client.aclose()
 
     async def receive(self, raw: dict[str, Any]) -> InboundMessage:
         return _parse_inbound(raw)
@@ -203,16 +206,16 @@ class ChannelHub:
         # a gateway that knows the customer sends customer_ref alongside the
         # payload; per-customer guardrails (contact frequency caps) key on it
         ref = msg.meta.get("customer_ref")
-        reply = (
-            await self._app.run(
-                agent,
-                session_id,
-                msg.text,
-                customer_ref=str(ref) if ref is not None else None,
+        if verdict.allow:
+            reply = await self._app.run(
+                agent, session_id, msg.text, customer_ref=str(ref) if ref is not None else None
             )
-            if verdict.allow
-            else BLOCKED_MESSAGE
-        )
+        else:
+            # a blocked inbound is customer contact a human must see, the same
+            # degrade-to-handover contract as blocks inside the agent loop
+            reply = await self._app.escalate(
+                agent, session_id, verdict.reason or "blocked", trigger=msg.text
+            )
         verdict = await self._app.bus.emit(
             Step(
                 type="channel",
@@ -222,6 +225,14 @@ class ChannelHub:
             )
         )
         if not verdict.allow:
-            reply = BLOCKED_MESSAGE
+            reply = await self._app.escalate(
+                agent, session_id, verdict.reason or "blocked", trigger=reply
+            )
         await adapter.send(msg.session_id, reply)
         return reply
+
+    async def aclose(self) -> None:
+        for adapter in self._channels.values():
+            closer = getattr(adapter, "aclose", None)
+            if closer is not None:
+                await closer()
