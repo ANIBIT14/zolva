@@ -398,6 +398,7 @@ app = AgentApp.from_config("agents/", handover=WebhookBackend(url, secret=hmac_s
           <li><code>WebhookBackend</code> payloads are HMAC-signed with a timestamp inside the MAC, replay-resistant. Verify at your receiver with <code>zolva.verify_zolva_signature(body, sig, ts, secret)</code>; constant-time compare and timestamp tolerance are handled for you.</li>
           <li><code>LogBackend</code> ships for development. Ticketing-system adapters (Zendesk, Freshdesk, ServiceNow) are community/plugin territory.</li>
           <li>Every escalation auto-lands in the <a href="#feedback">failure queue</a>; an escalation is tomorrow's eval case.</li>
+          <li><strong>The loop closes both ways.</strong> When a teammate resolves the ticket, <code>await app.resume(agent, session_id, resolution)</code> (or the HMAC-verified <code>POST /sessions/{agent}/resume</code> on <code>zolva serve</code>) records the resolution as an audited <code>resume</code> step and a session note, so the agent knows the outcome when the customer returns.</li>
         </ul>
       </section>
 
@@ -480,7 +481,18 @@ Guardrails.from_file("policies/collections.yaml", agent="collections-agent",
         </div>
         <p>Extension = subclass one <code>Rule</code> class. Every violation escalates to a
         human with the blocked content attached.</p>
-      </section>
+              <h3>Per-customer contact caps</h3>
+        <p>Collections regulation caps contact attempts per customer, not per session. Pass
+        <code>customer_ref</code> (a hashed phone or core-banking id) into <code>app.run(...)</code>
+        or the channel payload, and cap frequency across sessions and channels in policy; the
+        count lives in a small ledger next to the policy file, and a blocked contact escalates
+        to a human.</p>
+        <div class="code">
+          <div class="code-bar"><span>policies/collections.yaml</span><button class="copy-btn" data-copy="#c-freq">copy</button></div>
+          <pre><code data-lang="yaml" id="c-freq">post:
+  - block_contact_frequency: { max_contacts: 3, window_hours: 168, ledger: contacts.sqlite }</code></pre>
+        </div>
+</section>
 
       <section id="evals">
         <h2>Evals &amp; CI gating <a class="anchor-link" href="#evals">#</a></h2>
@@ -572,7 +584,15 @@ print(scorecard(log).summary())   # SARR + containment + velocity</code></pre>
         safety (unsafe-comply, wrong-reason, disclaimer), usefulness (false-refusal, containment,
         handoff correctness), and velocity (wrong→right time), so refusing everything can never
         look like winning.</p>
-      </section>
+              <h3>Storage and verification at scale</h3>
+        <p>The chain sits behind the four-method <code>AuditStore</code> protocol: SQLite is the
+        default, <code>InMemoryAuditStore</code> ships as the reference second implementation, and
+        Postgres or WORM-backed storage is the same four methods (the atomicity recipe is in the
+        protocol docstring). <code>verify()</code> is the full pass from genesis by default;
+        monitors call <code>verify(incremental=True)</code>, which checkpoints proven rows and
+        re-hashes the boundary, paired with a periodic full pass. The dashboard does exactly
+        this, and once a break is detected the badge stays red.</p>
+</section>
 
       <section id="synthetics">
         <h2>Synthetic monitoring <a class="anchor-link" href="#synthetics">#</a></h2>
@@ -613,7 +633,19 @@ goal: "customer obtains their dues amount and a valid repayment option"</code></
         <p>Found something? See
         <a href="https://github.com/ANIBIT14/zolva/blob/main/SECURITY.md" target="_blank" rel="noopener noreferrer">SECURITY.md</a>:
         coordinated disclosure, 72-hour acknowledgement.</p>
-      </section>
+              <h3>PII redaction before provider calls</h3>
+        <p>Optional and pattern-driven: enable builtins (card, email, phone, aadhaar, ssn) and
+        your own regexes, and only the masked copy reaches the LLM provider. Sessions, audit,
+        and handover keep the true transcript, humans and regulators need reality. The same
+        patterns mask training exports via <code>zolva export-dataset --redaction</code>.</p>
+        <div class="code">
+          <div class="code-bar"><span>python + yaml</span><button class="copy-btn" data-copy="#c-redact">copy</button></div>
+          <pre><code data-lang="python" id="c-redact">app = AgentApp.from_config("agents/", redaction="policies/redaction.yaml")
+# policies/redaction.yaml
+# builtin: [card, email, phone]
+# custom: { loan_ref: "LN-\\d{6}" }</code></pre>
+        </div>
+</section>
 
       <section id="cli">
         <h2>CLI reference <a class="anchor-link" href="#cli">#</a></h2>

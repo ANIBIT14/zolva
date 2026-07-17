@@ -258,12 +258,15 @@ Point your agent at [`llms.txt`](llms.txt) / [`llms-full.txt`](llms-full.txt), o
 
 ## Status & roadmap
 
-**Beta.** Core runtime, all six plugins (guardrails, evals, feedback, audit, synthetics, channels), and the CLI (`zolva validate | eval --gate | synthetics --gate | scorecard | dashboard | serve | triage | export-dataset`) are implemented and tested (188 tests, `mypy --strict`, 3-version CI matrix). Agents with a `guardrails:` or `evals:` field in their YAML get them wired automatically by `AgentApp.from_config`.
+**Beta.** Core runtime, seven plugins (guardrails, evals, feedback, audit, synthetics, channels, redaction), the dashboard, the `zolva serve` entrypoint, and the CLI (`zolva validate | eval --gate | synthetics --gate | scorecard | dashboard | serve | triage | export-dataset`) are implemented and tested (249 tests, `mypy --strict`, 3-version CI matrix). Agents with a `guardrails:` or `evals:` field in their YAML get them wired automatically by `AgentApp.from_config`.
+
+Zolva is maintained as an independent open-source reference implementation, no commercial backing and no sales motion. Use it, fork it, battle-test it in staging; issues and PRs genuinely shape what gets built.
 
 Before 1.0:
 
-- Docs site at [zolva.ai](https://zolva.ai)
-- More `ChannelAdapter` implementations (Twilio, telephony) and ticketing-system handover backends (the interfaces and an ElevenLabs voice adapter ship; more adapters welcome)
+- More `ChannelAdapter` implementations (Twilio, telephony) and ticketing-system handover backends that call the resume path (the interfaces and an ElevenLabs voice adapter ship; more adapters welcome)
+- A Postgres `AuditStore` (the four-method protocol and recipe ship; needs a real server to test against)
+- Session summarization for months-long conversation threads
 - Judge model configured per policy
 
 Design docs: [`docs/specs/`](docs/specs/) · Full architecture, threat model, and competitive positioning included.
