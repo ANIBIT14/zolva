@@ -105,8 +105,10 @@
           uvicorn are for your bridge endpoint; Zolva itself adds no web framework).</li>
           <li>Environment variables, never inline config:
           <code>OPENAI_API_KEY</code> or <code>ANTHROPIC_API_KEY</code> for the agent's model,
-          <code>ELEVENLABS_API_KEY</code>, and <code>ELEVENLABS_WEBHOOK_SECRET</code> (shown
-          once when you create the webhook in the ElevenLabs dashboard).</li>
+          <code>ELEVENLABS_API_KEY</code>, <code>ELEVENLABS_BRIDGE_KEY</code> (a secret you
+          generate; it authenticates ElevenLabs to your bridge), and
+          <code>ELEVENLABS_WEBHOOK_SECRET</code> (shown once when you create the webhook in
+          the ElevenLabs dashboard).</li>
         </ul>
       </section>
 
@@ -161,8 +163,10 @@ Point your ElevenLabs agent's Custom LLM server URL at
 https://your-host/v1/chat/completions
 """
 
+import hmac
 import json
 import logging
+import os
 import time
 import uuid
 from typing import Any, AsyncIterator
@@ -176,6 +180,10 @@ from zolva.bridge import get_adapter
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("voice-bridge")
+
+# the same secret you set as the Custom LLM "API key" in the dashboard;
+# ElevenLabs sends it like any OpenAI client: Authorization: Bearer &lt;key&gt;
+BRIDGE_API_KEY = os.environ["ELEVENLABS_BRIDGE_KEY"]
 
 api = FastAPI()
 zolva_app = AgentApp.from_config(
@@ -200,6 +208,11 @@ def _chunk(cid: str, created: int, model: str, delta: dict[str, Any],
 
 @api.post("/v1/chat/completions")
 async def chat_completions(request: Request) -> StreamingResponse | JSONResponse:
+    auth = request.headers.get("Authorization", "")
+    if not hmac.compare_digest(auth, f"Bearer {BRIDGE_API_KEY}"):
+        # without this, anyone who can reach the bridge can drive the agent
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+
     try:
         body = await request.json()
     except Exception:
@@ -236,8 +249,11 @@ async def chat_completions(request: Request) -> StreamingResponse | JSONResponse
 
     return StreamingResponse(stream(), media_type="text/event-stream")</code></pre>
         </div>
-        <p>In the ElevenLabs dashboard, set your agent's LLM to <strong>Custom LLM</strong> and
-        point the server URL at this endpoint. ElevenLabs maintains the spoken conversation
+        <p>In the ElevenLabs dashboard, set your agent's LLM to <strong>Custom LLM</strong>,
+        point the server URL at this endpoint, and store <code>ELEVENLABS_BRIDGE_KEY</code>'s
+        value as the Custom LLM API key secret; the endpoint is OpenAI-compatible, so the key
+        arrives as a standard bearer token and the bridge rejects any caller without it.
+        ElevenLabs maintains the spoken conversation
         history on its side; Zolva keeps its own authoritative session history, which is why
         the bridge forwards only the latest user turn.</p>
         <div class="callout">
@@ -264,6 +280,9 @@ from zolva.channels import ChannelError
 from zolva.channels_elevenlabs import verify_elevenlabs_signature
 
 queue = FeedbackQueue("failures.db")
+# attach: auto-capture every escalation, and give recorded failures the
+# session transcript (when the session_id matches the conversation id)
+queue.attach(zolva_app)
 
 
 @api.post("/webhooks/elevenlabs")
