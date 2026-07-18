@@ -131,7 +131,7 @@ app = AgentApp.from_config(
     "agents/",
     # judge-backed rules (never, refuse_topics) need an adapter at startup
     judge=get_adapter("openai"),
-    judge_model="gpt-5",
+    judge_model="gpt-5.6-terra",
     handover=WebhookBackend(
         url="http://localhost:8015/handover",  # the desk gateway, step 2
         secret=os.environ["ZOLVA_HANDOVER_SECRET"],
