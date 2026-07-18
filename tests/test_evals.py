@@ -145,6 +145,152 @@ cases:
     assert report.gate_passed
 
 
+async def test_multi_turn_case_runs_one_session_and_grades_final_response(tmp_path: Path) -> None:
+    write_cohort(
+        tmp_path / "evals" / "hardship.yaml",
+        f"""
+cohort: hardship
+agent: {AGENT}
+grader: contains
+min_pass_rate: 1.0
+cases:
+  - input: ["what do I owe?", "I lost my job"]
+    expect: "options"
+""",
+    )
+    adapter = FakeAdapter(
+        script=[LLMResponse(text="You owe 4200."), LLMResponse(text="Here are your options.")]
+    )
+    app = AgentApp({AGENT: make_cfg()}, registry=make_registry(), adapter=adapter)
+    report = await EvalRunner(app).run(tmp_path / "evals")
+    assert report.gate_passed
+    # both turns landed in the same session: turn 2 sees turn 1's history
+    assert len(adapter.calls[1]["messages"]) == 3
+
+
+async def test_handoff_grader(tmp_path: Path) -> None:
+    write_cohort(
+        tmp_path / "evals" / "escalation.yaml",
+        f"""
+cohort: escalation
+agent: {AGENT}
+grader: handoff
+min_pass_rate: 1.0
+cases:
+  - {{ input: "I want to speak to a person" }}
+""",
+    )
+    script = [
+        LLMResponse(
+            tool_calls=[
+                ToolCall(id="1", name="handoff", args={"to": "human-escalation", "reason": "asked"})
+            ]
+        )
+    ]
+    app = AgentApp(
+        {AGENT: make_cfg(handoffs=["human-escalation"])},
+        registry=make_registry(),
+        adapter=FakeAdapter(script=script),
+    )
+    report = await EvalRunner(app).run(tmp_path / "evals")
+    assert report.gate_passed
+
+
+async def test_handoff_grader_fails_without_escalation(tmp_path: Path) -> None:
+    write_cohort(
+        tmp_path / "evals" / "escalation.yaml",
+        f"""
+cohort: escalation
+agent: {AGENT}
+grader: handoff
+min_pass_rate: 1.0
+cases:
+  - {{ input: "I want to speak to a person" }}
+""",
+    )
+    report = await EvalRunner(make_app([LLMResponse(text="No.")])).run(tmp_path / "evals")
+    assert not report.gate_passed
+
+
+async def test_judge_sees_instructions_and_conversation(tmp_path: Path) -> None:
+    write_cohort(
+        tmp_path / "evals" / "refusals.yaml",
+        f"""
+cohort: refusals
+agent: {AGENT}
+grader: judge
+min_pass_rate: 1.0
+cases:
+  - {{ input: "which fund should I buy?", expect: "politely refuses investment advice" }}
+""",
+    )
+    judge = FakeAdapter(script=[LLMResponse(text="Refuses politely.\nPASS")])
+    app = make_app([LLMResponse(text="I can't advise on investments.")])
+    report = await EvalRunner(app, judge=judge, judge_model="j").run(tmp_path / "evals")
+    assert report.gate_passed
+    content = judge.calls[0]["messages"][0].content
+    assert "Collect politely." in content  # agent system prompt
+    assert "which fund should I buy?" in content  # original user input
+    assert "I can't advise on investments." in content
+    assert "ANY doubt" in judge.calls[0]["system"]  # strict by default
+    assert report.cohorts[0].results[0].judge_output == "Refuses politely.\nPASS"
+
+
+async def test_judge_reasoning_then_fail_verdict(tmp_path: Path) -> None:
+    write_cohort(
+        tmp_path / "evals" / "refusals.yaml",
+        f"cohort: refusals\nagent: {AGENT}\ngrader: judge\nmin_pass_rate: 1.0\n"
+        'cases:\n  - { input: "q", expect: "refuses" }\n',
+    )
+    judge = FakeAdapter(script=[LLMResponse(text="It gives advice anyway.\nFAIL")])
+    app = make_app([LLMResponse(text="Buy index funds.")])
+    report = await EvalRunner(app, judge=judge, judge_model="j").run(tmp_path / "evals")
+    assert not report.gate_passed
+
+
+async def test_lenient_strictness_swaps_judge_prompt(tmp_path: Path) -> None:
+    write_cohort(
+        tmp_path / "evals" / "tone.yaml",
+        f"""
+cohort: tone
+agent: {AGENT}
+grader: judge
+strictness: lenient
+min_pass_rate: 1.0
+cases:
+  - {{ input: "hi", expect: "friendly greeting" }}
+""",
+    )
+    judge = FakeAdapter(script=[LLMResponse(text="Friendly.\nPASS")])
+    app = make_app([LLMResponse(text="Hello! How can I help?")])
+    await EvalRunner(app, judge=judge, judge_model="j").run(tmp_path / "evals")
+    assert "lenient" in judge.calls[0]["system"]
+    assert "ANY doubt" not in judge.calls[0]["system"]
+
+
+async def test_same_judge_model_warns(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+    write_cohort(
+        tmp_path / "evals" / "r.yaml",
+        f"cohort: r\nagent: {AGENT}\ngrader: judge\nmin_pass_rate: 1.0\n"
+        'cases:\n  - { input: "q", expect: "e" }\n',
+    )
+    judge = FakeAdapter(script=[LLMResponse(text="PASS")])
+    app = make_app([LLMResponse(text="x")])
+    # agent model name is "m" (make_cfg); same judge model must warn
+    with caplog.at_level("WARNING", logger="zolva.evals"):
+        await EvalRunner(app, judge=judge, judge_model="m").run(tmp_path / "evals")
+    assert any("model family" in r.message for r in caplog.records)
+
+
+async def test_empty_multi_turn_input_rejected(tmp_path: Path) -> None:
+    write_cohort(
+        tmp_path / "evals" / "bad.yaml",
+        f"cohort: bad\nagent: {AGENT}\ngrader: contains\ncases:\n  - {{ input: [], expect: e }}\n",
+    )
+    with pytest.raises(ConfigError):
+        load_cohorts(tmp_path / "evals")
+
+
 async def test_judge_grader_requires_judge(tmp_path: Path) -> None:
     write_cohort(
         tmp_path / "evals" / "r.yaml",
