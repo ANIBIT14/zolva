@@ -109,6 +109,14 @@ class AgentApp:
     def sessions(self) -> SessionStore:
         return self._sessions
 
+    def agent_config(self, name: str) -> AgentConfig:
+        """Config of a declared agent (used by evals to give the judge the
+        agent's system prompt and model)."""
+        try:
+            return self._agents[name]
+        except KeyError:
+            raise ConfigError(f"unknown agent {name!r}") from None
+
     def _adapter_for(self, cfg: AgentConfig) -> LLMAdapter:
         if self._adapter is not None:
             return self._adapter

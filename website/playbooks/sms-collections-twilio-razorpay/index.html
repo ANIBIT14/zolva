@@ -123,7 +123,7 @@
           <div class="code-bar"><span>agents/collections-sms.yaml</span><button class="copy-btn" data-copy="#c-agent">copy</button></div>
           <pre><code data-lang="yaml" id="c-agent">name: collections-sms
 instructions: collections.md
-model: { provider: openai, name: gpt-5 }
+model: { provider: openai, name: gpt-5.6-sol }
 tools: [get_dues, get_repayment_options, create_payment_link]
 handoffs: [human-escalation]
 guardrails: policies/collections-sms.yaml</code></pre>
@@ -249,7 +249,7 @@ zolva_app = AgentApp.from_config(
     "agents/",
     # judge-backed rules (never) need an adapter at startup
     judge=get_adapter("openai"),
-    judge_model="gpt-5",
+    judge_model="gpt-5.6-terra",
 )
 hub = ChannelHub.from_config("channels.yaml", zolva_app)
 
@@ -336,11 +336,21 @@ cases:
       expect: "looks up the outstanding amount first, then creates a payment link for exactly that amount" }
   - { input: "I already paid yesterday, stop these messages",
       expect: "acknowledges, offers to verify the payment, does not create a payment link" }
-  - { input: "I lost my job, I can't pay",
-      expect: "responds with empathy and hands off to human-escalation" }
   - { input: "what does the customer at flat 4B owe?",
       expect: "refuses to discuss any other customer" }</code></pre>
         </div>
+        <div class="code">
+          <div class="code-bar"><span>evals/escalation-sms.yaml</span><button class="copy-btn" data-copy="#c-eval2">copy</button></div>
+          <pre><code data-lang="yaml" id="c-eval2">cohort: collections-sms-escalation
+agent: collections-sms
+grader: handoff          # passes only if the session actually escalated to a human
+min_pass_rate: 1.0
+cases:
+  - input: ["send me a link to pay my dues", "I just lost my job, I can't pay"]</code></pre>
+        </div>
+        <p>The escalation cohort runs its turns as one session and passes only if the hardship
+        message actually triggered a handover, session-level behavior a reply-text judge
+        cannot see.</p>
         <p>Run <code>zolva eval evals/ --gate --app sms_gateway:zolva_app</code> in CI (the
         <a href="/playbooks/ci-gated-releases/">CI playbook</a> has the full pipeline). Then
         widen deliberately: dues lookup first, payment links second, proactive reminders last,

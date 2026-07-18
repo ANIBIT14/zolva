@@ -93,7 +93,12 @@
           Zolva's config loader rejects inline credentials anyway.</li>
           <li>Judge-graded cohorts also need a judge: pass <code>--judge-provider</code> and
           <code>--judge-model</code>. Cohorts graded with <code>exact</code>,
-          <code>contains</code>, or <code>tool_called</code> need no judge.</li>
+          <code>contains</code>, <code>tool_called</code>, or <code>handoff</code> need no
+          judge.</li>
+          <li>Pick a judge model that is not the agent's own model (the runner warns if they
+          match), ideally from a different model family: same-family judges share the agent's
+          blind spots. The examples here run the agent on <code>gpt-5.6-sol</code> and judge
+          with <code>gpt-5.6-terra</code>.</li>
         </ul>
       </section>
 
@@ -115,7 +120,7 @@ app = AgentApp.from_config(
     # policies with judge-backed rules (never, refuse_topics) need this at
     # startup; separate from the eval grader's --judge-provider/--judge-model
     judge=get_adapter("openai"),
-    judge_model="gpt-5",
+    judge_model="gpt-5.6-terra",
 )</code></pre>
         </div>
         <div class="code">
@@ -165,7 +170,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: >
           zolva eval evals/ --app app:app --gate
-          --judge-provider openai --judge-model gpt-5
+          --judge-provider openai --judge-model gpt-5.6-terra
           --out eval-report.json
       - name: Keep the report on the PR
         if: always()
@@ -201,7 +206,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: >
           zolva eval evals/ --app app:app --gate
-          --judge-provider openai --judge-model gpt-5
+          --judge-provider openai --judge-model gpt-5.6-terra
           --out "drift-$(date +%F).json"
       - uses: actions/upload-artifact@v7
         if: always()

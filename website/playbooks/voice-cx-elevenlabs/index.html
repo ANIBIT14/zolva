@@ -120,7 +120,7 @@
           <div class="code-bar"><span>agents/cx-voice.yaml</span><button class="copy-btn" data-copy="#c-agent">copy</button></div>
           <pre><code data-lang="yaml" id="c-agent">name: cx-voice-agent
 instructions: cx-voice.md
-model: { provider: openai, name: gpt-5 }
+model: { provider: openai, name: gpt-5.6-sol }
 tools: [get_dues, get_repayment_options, send_payment_link]
 handoffs: [human-escalation]
 guardrails: policies/voice.yaml</code></pre>
@@ -190,7 +190,7 @@ zolva_app = AgentApp.from_config(
     "agents/",
     # judge-backed rules (refuse_topics, never) need an adapter at startup
     judge=get_adapter("openai"),
-    judge_model="gpt-5",
+    judge_model="gpt-5.6-terra",
 )
 
 SAFE_ERROR = "I'm having trouble right now. Let me connect you with a teammate."
@@ -349,7 +349,7 @@ zolva_app = AgentApp.from_config(
     "agents/",
     # judge-backed rules (refuse_topics, never) need an adapter at startup
     judge=get_adapter("openai"),
-    judge_model="gpt-5",
+    judge_model="gpt-5.6-terra",
 )
 hub = ChannelHub.from_config("channels.yaml", zolva_app)
 

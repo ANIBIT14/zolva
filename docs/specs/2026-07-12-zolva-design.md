@@ -55,7 +55,7 @@ zolva (core)
 plugins (separate installable packages)
 ├── guardrails           policy YAML: pre/post rules; 3 rule types (regex/structural/LLM-judge);
 │                        `never` violations hard-block + escalate, not configurable off
-├── evals                cohort YAML files; 4 graders (exact, contains, tool_called, judge);
+├── evals                cohort YAML files; 5 graders (exact, contains, tool_called, handoff, judge);
 │                        `zolva eval --gate` exits 1 on worst-cohort failure → CI story
 ├── feedback             app.feedback() → failure queue (violations/escalations auto-captured);
 │                        `zolva triage` promotes to permanent eval cases (human-in-loop);
