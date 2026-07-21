@@ -56,6 +56,41 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://zolva.ai/playbooks/red-team-synthetics/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://zolva.ai/playbooks/feedback-to-fix-loop/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://zolva.ai/playbooks/regulator-ready-audit/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://zolva.ai/playbooks/self-hosted-llm-gateway/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://zolva.ai/playbooks/rcs-fraud-alerts/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://zolva.ai/playbooks/cross-channel-contact-caps/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://zolva.ai/playbooks/pii-redaction-data-residency/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://zolva.ai/security/</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>

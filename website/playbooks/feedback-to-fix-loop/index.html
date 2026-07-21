@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The feedback-to-fix loop | Zolva Playbooks</title>
+  <meta name="description" content="Production playbook: turn every production failure into a permanent, gated regression test. Escalations auto-captured, thumbs-down recorded, triaged into eval cohorts, and re-verified weekly so the same bug can never silently return." />
+  <link rel="canonical" href="https://zolva.ai/playbooks/feedback-to-fix-loop/" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/mark-512.png" />
+  <meta name="theme-color" content="#08011A" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Zolva" />
+  <meta property="og:title" content="The feedback-to-fix loop: a Zolva playbook" />
+  <meta property="og:description" content="Every production failure becomes a permanent gated test: capture, triage, promote to a regression cohort, re-verify forever." />
+  <meta property="og:url" content="https://zolva.ai/playbooks/feedback-to-fix-loop/" />
+  <meta property="og:image" content="https://zolva.ai/mark-512.png" />
+  <meta name="twitter:card" content="summary" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "The feedback-to-fix loop: a Zolva playbook",
+    "description": "Turn production failures into permanent, gated regression tests with Zolva's feedback queue and eval gate.",
+    "url": "https://zolva.ai/playbooks/feedback-to-fix-loop/",
+    "author": { "@type": "Organization", "name": "Zolva", "url": "https://zolva.ai" }
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links">menu</button>
+      <nav class="nav-links" id="nav-links" aria-label="Main">
+        <a href="/#why">Why Zolva</a>
+        <a href="/#platform">Platform</a>
+        <a href="/docs/">Docs</a>
+        <a href="/playbooks/" aria-current="page">Playbooks</a>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a class="nav-cta" href="/docs/#quickstart">pip install zolva</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="wrap docs-shell">
+    <aside class="docs-sidebar" aria-label="Playbook steps">
+      <p class="group">Playbook</p>
+      <a href="#overview">Overview</a>
+      <a href="#prerequisites">Prerequisites</a>
+      <p class="group">Steps</p>
+      <a href="#step-capture">1 · Capture the signal</a>
+      <a href="#step-triage">2 · Triage into a cohort</a>
+      <a href="#step-gate">3 · Gate &amp; re-verify</a>
+      <a href="#step-dataset">4 · Export for fine-tuning</a>
+      <p class="group">Reference</p>
+      <a href="#notes">Why the loop closes</a>
+    </aside>
+
+    <main class="docs-main">
+      <section id="overview">
+        <p class="eyebrow" style="margin-bottom:1rem">Playbook 08 · Feedback</p>
+        <h1>Every failure becomes a permanent test</h1>
+        <p><strong>Goal:</strong> a closed loop where a production failure, an escalation, a
+        thumbs-down, a wrong answer someone reported, becomes a permanent regression case that
+        gates every future release. Fix it once, and the bug can never silently come back, because
+        the test that would catch it now runs in CI and on a weekly drift job forever.</p>
+        <div class="callout">
+          <strong>No external provider.</strong> This playbook uses Zolva's built-in feedback
+          queue, eval gate, and dataset export. The only external call is your own model provider,
+          already configured for the agent and the judge.
+        </div>
+        <p>The path is one direction: production signal → failure queue → human triage → permanent
+        eval case → gated fix → weekly re-verify. Every arrow is a Zolva primitive; nothing here
+        is glue you have to maintain.</p>
+      </section>
+
+      <section id="prerequisites">
+        <h2>Prerequisites <a class="anchor-link" href="#prerequisites">#</a></h2>
+        <ul>
+          <li>A running <code>AgentApp</code> and a place to store the queue (a SQLite file such
+          as <code>failures.db</code>).</li>
+          <li>An eval judge provider for the regression cohorts you will create.</li>
+          <li>Python ≥ 3.11 and <code>pip install zolva</code>.</li>
+        </ul>
+      </section>
+
+      <section id="step-capture">
+        <h2>Step 1 · Capture the signal <a class="anchor-link" href="#step-capture">#</a></h2>
+        <p>Attach the queue to the app once. Escalations and guardrail violations are captured
+        automatically; record explicit signals (a thumbs-down from your UI, an agent-review note)
+        with one call.</p>
+        <div class="code">
+          <div class="code-bar"><span>app.py</span><button class="copy-btn" data-copy="#c-cap">copy</button></div>
+          <pre><code data-lang="python" id="c-cap">from zolva import AgentApp, FeedbackQueue
+
+app = AgentApp.from_config("agents/")
+q = FeedbackQueue("failures.db")
+q.attach(app)          # escalations + violations auto-captured
+
+# from your product surface, when a customer or reviewer flags a reply:
+await q.record(session_id, "collections-agent", "thumbs_down",
+               note="quoted the wrong due date")</code></pre>
+        </div>
+        <p>Synthetic and eval sessions are skipped by the capture, so the queue holds real
+        production failures, not test traffic.</p>
+      </section>
+
+      <section id="step-triage">
+        <h2>Step 2 · Triage into a regression cohort <a class="anchor-link" href="#step-triage">#</a></h2>
+        <p>A human decides what a good answer looks like. Triaging promotes a captured failure into
+        a permanent eval case, writing the expected behaviour a judge will grade against. Do it in
+        code or from the CLI.</p>
+        <div class="code">
+          <div class="code-bar"><span>python</span><button class="copy-btn" data-copy="#c-tri">copy</button></div>
+          <pre><code data-lang="python" id="c-tri">q.accept(failure_id=42,
+         cohort_path="evals/regressions.yaml",
+         expect="states the correct due date from the ledger, not a guess")</code></pre>
+        </div>
+        <div class="code">
+          <div class="code-bar"><span>terminal</span><button class="copy-btn" data-copy="#c-tricli">copy</button></div>
+          <pre><code data-lang="bash" id="c-tricli"># list what's pending, then promote or reject by id
+zolva triage failures.db
+zolva triage failures.db --accept 42 \
+  --cohort evals/regressions.yaml \
+  --expect "states the correct due date from the ledger, not a guess"
+zolva triage failures.db --reject 43      # not a real defect</code></pre>
+        </div>
+        <p>The captured transcript carries the exact input that failed, so the regression case
+        reproduces the real conversation, not a paraphrase of it.</p>
+      </section>
+
+      <section id="step-gate">
+        <h2>Step 3 · Gate the fix, then re-verify weekly <a class="anchor-link" href="#step-gate">#</a></h2>
+        <p>Now the regression cohort is an ordinary gated eval. Run it in CI so no change ships
+        without passing it, and on a weekly cron so provider drift can't quietly reintroduce the
+        bug.</p>
+        <div class="code">
+          <div class="code-bar"><span>terminal</span><button class="copy-btn" data-copy="#c-gate">copy</button></div>
+          <pre><code data-lang="bash" id="c-gate">zolva eval evals/ --app app:app --gate \
+  --judge-provider anthropic --judge-model claude-neutral</code></pre>
+        </div>
+        <p>A great average never rescues a failing cohort: the gate is on the worst cohort, so a
+        single unfixed regression fails the release. Wire this into the pipeline in the
+        <a href="/playbooks/ci-gated-releases/">CI-gated releases playbook</a>.</p>
+      </section>
+
+      <section id="step-dataset">
+        <h2>Step 4 · Export the dataset for fine-tuning <a class="anchor-link" href="#step-dataset">#</a></h2>
+        <p>Accepted failures are also a labelled dataset. Export them as JSONL for supervised or
+        preference fine-tuning, with PII masked on the way out.</p>
+        <div class="code">
+          <div class="code-bar"><span>terminal</span><button class="copy-btn" data-copy="#c-ds">copy</button></div>
+          <pre><code data-lang="bash" id="c-ds">zolva export-dataset failures.db dataset.jsonl \
+  --redaction policies/redaction.yaml</code></pre>
+        </div>
+        <p>The training itself lives in your stack; Zolva gives you the clean, de-identified
+        on-ramp. See the <a href="/playbooks/pii-redaction-data-residency/">redaction playbook</a>
+        for the pattern file.</p>
+      </section>
+
+      <section id="notes">
+        <h2>Why the loop closes <a class="anchor-link" href="#notes">#</a></h2>
+        <ul>
+          <li><strong>Auto-capture:</strong> escalations and guardrail blocks enter the queue with
+          no extra code; you only hand-record softer signals like a thumbs-down.</li>
+          <li><strong>Human-in-the-loop promotion:</strong> a person writes the expected behaviour,
+          so the regression encodes judgement, not just "don't do that again".</li>
+          <li><strong>Gated forever:</strong> once promoted, the case is a normal cohort under the
+          worst-cohort gate; the fix is protected on every PR and every weekly run.</li>
+          <li><strong>De-identified export:</strong> the dataset on-ramp masks PII, so training
+          data never carries raw customer identifiers out of your systems.</li>
+        </ul>
+        <p style="margin-top:1.5rem"><a href="/playbooks/">← All playbooks</a></p>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div class="wrap footer-grid">
+      <div>
+        <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+        <p style="margin-top:0.8rem; max-width:22em;">The open-source, self-hosted agent
+        platform for banks and fintechs.</p>
+      </div>
+      <nav aria-label="Product">
+        <span class="col-title">Product</span>
+        <a href="/docs/">Documentation</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/#platform">Platform</a>
+        <a href="/#compare">Comparison</a>
+        <a href="https://pypi.org/project/zolva/" target="_blank" rel="noopener noreferrer">PyPI</a>
+      </nav>
+      <nav aria-label="Project">
+        <span class="col-title">Project</span>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="/security/">Security policy</a>
+        <a href="/contributing/">Contributing</a>
+        <a href="/legal/">Trust &amp; legal</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Apache-2.0 license</a>
+      </nav>
+      <nav aria-label="For machines">
+        <span class="col-title">For machines</span>
+        <a href="/llms.txt">llms.txt</a>
+        <a href="/llms-full.txt">llms-full.txt</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/AGENTS.md" target="_blank" rel="noopener noreferrer">AGENTS.md</a>
+      </nav>
+    </div>
+    <div class="wrap footer-sig">
+      <span>© 2026 Zolva. Apache-2.0.</span>
+      <span>Self-hosted by design; your data never leaves.</span>
+    </div>
+  </footer>
+</body>
+</html>

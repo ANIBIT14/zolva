@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PII redaction &amp; data residency | Zolva Playbooks</title>
+  <meta name="description" content="Production playbook: mask card numbers, emails, phones, and your own identifiers before any text reaches the model, while sessions, audit, and human handover keep the true transcript. Only the masked copy leaves for the LLM call." />
+  <link rel="canonical" href="https://zolva.ai/playbooks/pii-redaction-data-residency/" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/mark-512.png" />
+  <meta name="theme-color" content="#08011A" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Zolva" />
+  <meta property="og:title" content="PII redaction & data residency: a Zolva playbook" />
+  <meta property="og:description" content="Mask PII before the model call; keep the true transcript in sessions, audit, and handover. Only the masked copy reaches the LLM." />
+  <meta property="og:url" content="https://zolva.ai/playbooks/pii-redaction-data-residency/" />
+  <meta property="og:image" content="https://zolva.ai/mark-512.png" />
+  <meta name="twitter:card" content="summary" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "PII redaction & data residency: a Zolva playbook",
+    "description": "Mask PII before any LLM call while keeping the true transcript in sessions, audit, and handover, with Zolva.",
+    "url": "https://zolva.ai/playbooks/pii-redaction-data-residency/",
+    "author": { "@type": "Organization", "name": "Zolva", "url": "https://zolva.ai" }
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links">menu</button>
+      <nav class="nav-links" id="nav-links" aria-label="Main">
+        <a href="/#why">Why Zolva</a>
+        <a href="/#platform">Platform</a>
+        <a href="/docs/">Docs</a>
+        <a href="/playbooks/" aria-current="page">Playbooks</a>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a class="nav-cta" href="/docs/#quickstart">pip install zolva</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="wrap docs-shell">
+    <aside class="docs-sidebar" aria-label="Playbook steps">
+      <p class="group">Playbook</p>
+      <a href="#overview">Overview</a>
+      <a href="#prerequisites">Prerequisites</a>
+      <p class="group">Steps</p>
+      <a href="#step-patterns">1 · Declare the patterns</a>
+      <a href="#step-attach">2 · Attach it to the app</a>
+      <a href="#step-exports">3 · Mask exports too</a>
+      <p class="group">Reference</p>
+      <a href="#notes">What is and is not masked</a>
+    </aside>
+
+    <main class="docs-main">
+      <section id="overview">
+        <p class="eyebrow" style="margin-bottom:1rem">Playbook 13 · Privacy</p>
+        <h1>Mask PII before the model ever sees it</h1>
+        <p><strong>Goal:</strong> the model provider gets a masked copy, and your own systems keep
+        the truth. Card numbers, emails, phones, and identifiers you define are redacted in every
+        message bound for the LLM, while the session history, the audit chain, and the human
+        handover ticket retain the real transcript, because your teammate resolving a case needs
+        the actual account number the customer typed.</p>
+        <div class="callout">
+          <strong>No external provider.</strong> Redaction is a built-in Zolva plugin driven by a
+          pattern file. There are no third-party calls to verify; masking happens in-process,
+          before the provider request is built.
+        </div>
+        <p>The shape: the redactor wraps your model adapter. Only the outbound provider call sees
+        the masked text; everything else on the bus, sessions, audit, handover, sees the original.
+        Patterns are config, so compliance can widen coverage without a code change.</p>
+      </section>
+
+      <section id="prerequisites">
+        <h2>Prerequisites <a class="anchor-link" href="#prerequisites">#</a></h2>
+        <ul>
+          <li>A running <code>AgentApp</code>.</li>
+          <li>The identifiers specific to your bank you want masked (a loan reference format, an
+          internal customer id), as regular expressions.</li>
+          <li>Python ≥ 3.11 and <code>pip install zolva</code>.</li>
+        </ul>
+      </section>
+
+      <section id="step-patterns">
+        <h2>Step 1 · Declare the patterns <a class="anchor-link" href="#step-patterns">#</a></h2>
+        <p>Enable the built-in patterns you need and add your own. Built-ins cover common PII;
+        custom entries are named regexes for identifiers only you have.</p>
+        <div class="code">
+          <div class="code-bar"><span>policies/redaction.yaml</span><button class="copy-btn" data-copy="#c-red">copy</button></div>
+          <pre><code data-lang="yaml" id="c-red">builtin: [card, email, phone]
+custom:
+  loan_ref: "LN-\\d{6}"
+  cust_id:  "CUST-[A-Z0-9]{8}"</code></pre>
+        </div>
+        <p>Available built-ins include <code>card</code>, <code>email</code>, <code>phone</code>,
+        <code>aadhaar</code>, and <code>ssn</code>. An unknown built-in name fails validation, so a
+        typo is caught at load, not in production.</p>
+      </section>
+
+      <section id="step-attach">
+        <h2>Step 2 · Attach it to the app <a class="anchor-link" href="#step-attach">#</a></h2>
+        <p>One argument wires the redactor in. From here, every message the agent sends to the
+        provider is masked first.</p>
+        <div class="code">
+          <div class="code-bar"><span>app.py</span><button class="copy-btn" data-copy="#c-attach">copy</button></div>
+          <pre><code data-lang="python" id="c-attach">from zolva import AgentApp
+
+app = AgentApp.from_config("agents/", redaction="policies/redaction.yaml")</code></pre>
+        </div>
+        <p>A customer who types "my card 4111 1111 1111 1111 was declined" sends
+        <code>my card [CARD] was declined</code> to the model, but the session, the audit entry, and
+        any human handover keep the real number. The agent still reasons and replies correctly,
+        because the masking is consistent within the conversation.</p>
+      </section>
+
+      <section id="step-exports">
+        <h2>Step 3 · Mask training exports too <a class="anchor-link" href="#step-exports">#</a></h2>
+        <p>The same pattern file de-identifies data on its way out to fine-tuning. If you run the
+        <a href="/playbooks/feedback-to-fix-loop/">feedback-to-fix loop</a>, export accepted
+        failures with redaction applied so no raw identifier leaves your systems in a dataset.</p>
+        <div class="code">
+          <div class="code-bar"><span>terminal</span><button class="copy-btn" data-copy="#c-exp">copy</button></div>
+          <pre><code data-lang="bash" id="c-exp">zolva export-dataset failures.db dataset.jsonl \
+  --redaction policies/redaction.yaml</code></pre>
+        </div>
+      </section>
+
+      <section id="notes">
+        <h2>What is and is not masked <a class="anchor-link" href="#notes">#</a></h2>
+        <ul>
+          <li><strong>Masked:</strong> only the copy sent to the model provider, and, on request,
+          the dataset export. That is the text that would otherwise leave your perimeter.</li>
+          <li><strong>Not masked:</strong> the session history, the audit chain, and the human
+          handover ticket, all keep the true transcript, because your own systems and staff need
+          it to resolve the case and to answer an auditor.</li>
+          <li><strong>Patterns are config:</strong> compliance can add a new identifier regex
+          without touching code, and validation rejects an unknown built-in at load.</li>
+          <li><strong>Layer it:</strong> redaction reduces what leaves your VPC; run the model
+          itself in your VPC too with the
+          <a href="/playbooks/self-hosted-llm-gateway/">self-hosted gateway playbook</a> and even
+          the masked copy never reaches a vendor.</li>
+        </ul>
+        <p style="margin-top:1.5rem"><a href="/playbooks/">← All playbooks</a></p>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div class="wrap footer-grid">
+      <div>
+        <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+        <p style="margin-top:0.8rem; max-width:22em;">The open-source, self-hosted agent
+        platform for banks and fintechs.</p>
+      </div>
+      <nav aria-label="Product">
+        <span class="col-title">Product</span>
+        <a href="/docs/">Documentation</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/#platform">Platform</a>
+        <a href="/#compare">Comparison</a>
+        <a href="https://pypi.org/project/zolva/" target="_blank" rel="noopener noreferrer">PyPI</a>
+      </nav>
+      <nav aria-label="Project">
+        <span class="col-title">Project</span>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="/security/">Security policy</a>
+        <a href="/contributing/">Contributing</a>
+        <a href="/legal/">Trust &amp; legal</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Apache-2.0 license</a>
+      </nav>
+      <nav aria-label="For machines">
+        <span class="col-title">For machines</span>
+        <a href="/llms.txt">llms.txt</a>
+        <a href="/llms-full.txt">llms-full.txt</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/AGENTS.md" target="_blank" rel="noopener noreferrer">AGENTS.md</a>
+      </nav>
+    </div>
+    <div class="wrap footer-sig">
+      <span>© 2026 Zolva. Apache-2.0.</span>
+      <span>Self-hosted by design; your data never leaves.</span>
+    </div>
+  </footer>
+</body>
+</html>

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Playbooks | Zolva</title>
-  <meta name="description" content="Copy-paste playbooks for deploying Zolva agents in production: voice CX with ElevenLabs, WhatsApp, SMS with Twilio and Razorpay, Telegram with Zendesk, a Slack handover desk, CI gating. Every provider call verified against official documentation." />
+  <meta name="description" content="Copy-paste playbooks for deploying Zolva agents in production: channels (WhatsApp, SMS, RCS, Telegram, voice), security red-teaming, the feedback-to-fix loop, regulator-ready audit, self-hosted model gateways, PII redaction, and CI gating. Every provider call verified against official documentation." />
   <link rel="canonical" href="https://zolva.ai/playbooks/" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="apple-touch-icon" href="/mark-512.png" />
@@ -99,6 +99,62 @@
             tickets; when the team solves one, a signed Zendesk webhook resumes the session
             and tells the customer on the channel where they asked.</p>
             <p style="margin-top:0.8rem"><code>channels</code> · <code>handover</code> · <code>resume</code></p>
+          </a>
+          <a class="why-card" href="/playbooks/red-team-synthetics/" style="display:block">
+            <span class="num">07</span>
+            <h3>Red-team your agent with synthetics</h3>
+            <p>Attacker personas converse with your real staging agent nightly: prompt injection,
+            social engineering, and data-exfiltration attempts become gated tests, and every
+            attempt lands on the audit chain.</p>
+            <p style="margin-top:0.8rem"><code>synthetics</code> · <code>guardrails</code> · <code>audit</code></p>
+          </a>
+          <a class="why-card" href="/playbooks/feedback-to-fix-loop/" style="display:block">
+            <span class="num">08</span>
+            <h3>Every failure becomes a permanent test</h3>
+            <p>Escalations and thumbs-down flow into a failure queue, get triaged into regression
+            cohorts, and gate every future release; the same bug can never silently return, and
+            accepted failures export as a fine-tuning dataset.</p>
+            <p style="margin-top:0.8rem"><code>feedback</code> · <code>evals</code> · <code>export</code></p>
+          </a>
+          <a class="why-card" href="/playbooks/regulator-ready-audit/" style="display:block">
+            <span class="num">09</span>
+            <h3>An audit trail regulators can trust</h3>
+            <p>A tamper-evident hash-chained record of every decision, continuous chain
+            verification, the SARR scorecard, and a self-hosted read-only dashboard, assembled as
+            the evidence EU AI Act and SR 11-7 ask for.</p>
+            <p style="margin-top:0.8rem"><code>audit</code> · <code>scorecard</code> · <code>dashboard</code></p>
+          </a>
+          <a class="why-card" href="/playbooks/self-hosted-llm-gateway/" style="display:block">
+            <span class="num">10</span>
+            <h3>Run against your own LLM gateway</h3>
+            <p>Point Zolva at an in-VPC, OpenAI-compatible gateway (LiteLLM, vLLM, or a Bedrock or
+            Azure proxy) so no prompt or customer data leaves your network, with bounded retries
+            and per-gateway timeouts.</p>
+            <p style="margin-top:0.8rem"><code>bridge</code> · <code>base_url</code> · <code>resilience</code></p>
+          </a>
+          <a class="why-card" href="/playbooks/rcs-fraud-alerts/" style="display:block">
+            <span class="num">11</span>
+            <h3>Fraud-alert support on RCS</h3>
+            <p>A verified-sender agent on Google's RCS Business Messaging via your own gateway:
+            Pub/Sub inbound, the agentMessages API for replies, third-party disclosure hard-blocked,
+            every turn audited.</p>
+            <p style="margin-top:0.8rem"><code>channels</code> · <code>guardrails</code> · <code>audit</code></p>
+          </a>
+          <a class="why-card" href="/playbooks/cross-channel-contact-caps/" style="display:block">
+            <span class="num">12</span>
+            <h3>Cap contacts across every channel</h3>
+            <p>One shared ledger keyed on a customer reference enforces a rolling contact limit over
+            WhatsApp, SMS, and RCS together, with RBI contact windows, as config not prompt
+            suggestions.</p>
+            <p style="margin-top:0.8rem"><code>guardrails</code> · <code>customer_ref</code> · <code>audit</code></p>
+          </a>
+          <a class="why-card" href="/playbooks/pii-redaction-data-residency/" style="display:block">
+            <span class="num">13</span>
+            <h3>Mask PII before the model sees it</h3>
+            <p>Card numbers, emails, phones, and your own identifiers are redacted before any text
+            reaches the model, while sessions, audit, and human handover keep the true transcript.
+            Exports are masked too.</p>
+            <p style="margin-top:0.8rem"><code>redaction</code> · <code>sessions</code> · <code>handover</code></p>
           </a>
         </div>
       </div>
