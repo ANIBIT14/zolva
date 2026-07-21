@@ -51,6 +51,11 @@
           documentation before it is published. Nothing illustrative, nothing invented.</p>
         </div>
 
+        <div class="section-head" style="max-width:46em; margin:clamp(1.5rem,4vh,3rem) 0 1.4rem;">
+          <p class="eyebrow">Channels</p>
+          <p>Put a guardrailed agent on the channel your customers already use. Your gateway owns
+          the provider specifics; Zolva owns the guardrails and the audit trail.</p>
+        </div>
         <div class="why-grid">
           <a class="why-card" href="/playbooks/voice-cx-elevenlabs/" style="display:block">
             <span class="num">01</span>
@@ -68,22 +73,6 @@
             blocks, and every message on the audit chain.</p>
             <p style="margin-top:0.8rem"><code>channels</code> · <code>guardrails</code> · <code>audit</code></p>
           </a>
-          <a class="why-card" href="/playbooks/ci-gated-releases/" style="display:block">
-            <span class="num">03</span>
-            <h3>CI-gated agent releases</h3>
-            <p><code>zolva validate</code> and <code>zolva eval --gate</code> in GitHub Actions
-            so no prompt or policy change ships without passing its worst cohort, plus a weekly
-            drift run and the failure-to-regression loop.</p>
-            <p style="margin-top:0.8rem"><code>evals</code> · <code>feedback</code> · <code>scorecard</code></p>
-          </a>
-          <a class="why-card" href="/playbooks/slack-handover-desk/" style="display:block">
-            <span class="num">04</span>
-            <h3>The handover desk lives in Slack</h3>
-            <p>Every escalation from every agent lands as a threaded message in one Slack
-            channel; a teammate's thread reply becomes the resolution, recorded back into the
-            session and the audit chain through the resume endpoint.</p>
-            <p style="margin-top:0.8rem"><code>handover</code> · <code>resume</code> · <code>audit</code></p>
-          </a>
           <a class="why-card" href="/playbooks/sms-collections-twilio-razorpay/" style="display:block">
             <span class="num">05</span>
             <h3>SMS collections with Twilio &amp; Razorpay</h3>
@@ -99,6 +88,30 @@
             tickets; when the team solves one, a signed Zendesk webhook resumes the session
             and tells the customer on the channel where they asked.</p>
             <p style="margin-top:0.8rem"><code>channels</code> · <code>handover</code> · <code>resume</code></p>
+          </a>
+          <a class="why-card" href="/playbooks/rcs-fraud-alerts/" style="display:block">
+            <span class="num">11</span>
+            <h3>Fraud-alert support on RCS</h3>
+            <p>A verified-sender agent on Google's RCS Business Messaging via your own gateway:
+            Pub/Sub inbound, the agentMessages API for replies, third-party disclosure hard-blocked,
+            every turn audited.</p>
+            <p style="margin-top:0.8rem"><code>channels</code> · <code>guardrails</code> · <code>audit</code></p>
+          </a>
+        </div>
+
+        <div class="section-head" style="max-width:46em; margin:clamp(2rem,5vh,3.5rem) 0 1.4rem;">
+          <p class="eyebrow">Testing &amp; quality</p>
+          <p>Gate every release on its worst cohort, attack your own agent before an adversary
+          does, and turn each production failure into a permanent test.</p>
+        </div>
+        <div class="why-grid">
+          <a class="why-card" href="/playbooks/ci-gated-releases/" style="display:block">
+            <span class="num">03</span>
+            <h3>CI-gated agent releases</h3>
+            <p><code>zolva validate</code> and <code>zolva eval --gate</code> in GitHub Actions
+            so no prompt or policy change ships without passing its worst cohort, plus a weekly
+            drift run and the failure-to-regression loop.</p>
+            <p style="margin-top:0.8rem"><code>evals</code> · <code>feedback</code> · <code>scorecard</code></p>
           </a>
           <a class="why-card" href="/playbooks/red-team-synthetics/" style="display:block">
             <span class="num">07</span>
@@ -116,6 +129,15 @@
             accepted failures export as a fine-tuning dataset.</p>
             <p style="margin-top:0.8rem"><code>feedback</code> · <code>evals</code> · <code>export</code></p>
           </a>
+        </div>
+
+        <div class="section-head" style="max-width:46em; margin:clamp(2rem,5vh,3.5rem) 0 1.4rem;">
+          <p class="eyebrow">Compliance &amp; privacy</p>
+          <p>The evidence regulators ask for and the data handling they require: a tamper-evident
+          trail, contact limits that count across channels, and PII that never leaves your
+          perimeter.</p>
+        </div>
+        <div class="why-grid">
           <a class="why-card" href="/playbooks/regulator-ready-audit/" style="display:block">
             <span class="num">09</span>
             <h3>An audit trail regulators can trust</h3>
@@ -123,22 +145,6 @@
             verification, the SARR scorecard, and a self-hosted read-only dashboard, assembled as
             the evidence EU AI Act and SR 11-7 ask for.</p>
             <p style="margin-top:0.8rem"><code>audit</code> · <code>scorecard</code> · <code>dashboard</code></p>
-          </a>
-          <a class="why-card" href="/playbooks/self-hosted-llm-gateway/" style="display:block">
-            <span class="num">10</span>
-            <h3>Run against your own LLM gateway</h3>
-            <p>Point Zolva at an in-VPC, OpenAI-compatible gateway (LiteLLM, vLLM, or a Bedrock or
-            Azure proxy) so no prompt or customer data leaves your network, with bounded retries
-            and per-gateway timeouts.</p>
-            <p style="margin-top:0.8rem"><code>bridge</code> · <code>base_url</code> · <code>resilience</code></p>
-          </a>
-          <a class="why-card" href="/playbooks/rcs-fraud-alerts/" style="display:block">
-            <span class="num">11</span>
-            <h3>Fraud-alert support on RCS</h3>
-            <p>A verified-sender agent on Google's RCS Business Messaging via your own gateway:
-            Pub/Sub inbound, the agentMessages API for replies, third-party disclosure hard-blocked,
-            every turn audited.</p>
-            <p style="margin-top:0.8rem"><code>channels</code> · <code>guardrails</code> · <code>audit</code></p>
           </a>
           <a class="why-card" href="/playbooks/cross-channel-contact-caps/" style="display:block">
             <span class="num">12</span>
@@ -155,6 +161,30 @@
             reaches the model, while sessions, audit, and human handover keep the true transcript.
             Exports are masked too.</p>
             <p style="margin-top:0.8rem"><code>redaction</code> · <code>sessions</code> · <code>handover</code></p>
+          </a>
+        </div>
+
+        <div class="section-head" style="max-width:46em; margin:clamp(2rem,5vh,3.5rem) 0 1.4rem;">
+          <p class="eyebrow">Operations &amp; infrastructure</p>
+          <p>Run the platform on your terms: one handover desk for every escalation, and every
+          model call routed through a gateway inside your own network.</p>
+        </div>
+        <div class="why-grid">
+          <a class="why-card" href="/playbooks/slack-handover-desk/" style="display:block">
+            <span class="num">04</span>
+            <h3>The handover desk lives in Slack</h3>
+            <p>Every escalation from every agent lands as a threaded message in one Slack
+            channel; a teammate's thread reply becomes the resolution, recorded back into the
+            session and the audit chain through the resume endpoint.</p>
+            <p style="margin-top:0.8rem"><code>handover</code> · <code>resume</code> · <code>audit</code></p>
+          </a>
+          <a class="why-card" href="/playbooks/self-hosted-llm-gateway/" style="display:block">
+            <span class="num">10</span>
+            <h3>Run against your own LLM gateway</h3>
+            <p>Point Zolva at an in-VPC, OpenAI-compatible gateway (LiteLLM, vLLM, or a Bedrock or
+            Azure proxy) so no prompt or customer data leaves your network, with bounded retries
+            and per-gateway timeouts.</p>
+            <p style="margin-top:0.8rem"><code>bridge</code> · <code>base_url</code> · <code>resilience</code></p>
           </a>
         </div>
       </div>
