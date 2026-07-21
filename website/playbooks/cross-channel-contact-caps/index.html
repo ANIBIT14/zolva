@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cross-channel contact caps | Zolva Playbooks</title>
+  <meta name="description" content="Production playbook: cap how often a customer is contacted across every channel at once. One shared ledger keyed on a customer reference enforces a rolling contact limit over WhatsApp, SMS, and RCS together, with RBI contact windows, as config not prompt suggestions." />
+  <link rel="canonical" href="https://zolva.ai/playbooks/cross-channel-contact-caps/" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/mark-512.png" />
+  <meta name="theme-color" content="#08011A" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Zolva" />
+  <meta property="og:title" content="Cross-channel contact caps: a Zolva playbook" />
+  <meta property="og:description" content="One shared ledger caps total customer contacts across WhatsApp, SMS, and RCS at once, enforced as config." />
+  <meta property="og:url" content="https://zolva.ai/playbooks/cross-channel-contact-caps/" />
+  <meta property="og:image" content="https://zolva.ai/mark-512.png" />
+  <meta name="twitter:card" content="summary" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "Cross-channel contact caps: a Zolva playbook",
+    "description": "Cap total customer contacts across every channel with one shared ledger keyed on a customer reference, using Zolva.",
+    "url": "https://zolva.ai/playbooks/cross-channel-contact-caps/",
+    "author": { "@type": "Organization", "name": "Zolva", "url": "https://zolva.ai" }
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links">menu</button>
+      <nav class="nav-links" id="nav-links" aria-label="Main">
+        <a href="/#why">Why Zolva</a>
+        <a href="/#platform">Platform</a>
+        <a href="/docs/">Docs</a>
+        <a href="/playbooks/" aria-current="page">Playbooks</a>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a class="nav-cta" href="/docs/#quickstart">pip install zolva</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="wrap docs-shell">
+    <aside class="docs-sidebar" aria-label="Playbook steps">
+      <p class="group">Playbook</p>
+      <a href="#overview">Overview</a>
+      <a href="#prerequisites">Prerequisites</a>
+      <p class="group">Steps</p>
+      <a href="#step-ref">1 · Thread a customer ref</a>
+      <a href="#step-cap">2 · One shared cap</a>
+      <a href="#step-window">3 · Add the window</a>
+      <p class="group">Reference</p>
+      <a href="#notes">How the cap counts</a>
+    </aside>
+
+    <main class="docs-main">
+      <section id="overview">
+        <p class="eyebrow" style="margin-bottom:1rem">Playbook 12 · Compliance</p>
+        <h1>Cap contacts across every channel at once</h1>
+        <p><strong>Goal:</strong> a customer who is on WhatsApp, SMS, and RCS is still one person,
+        and a "no more than three contacts a week" rule has to count all three together. This
+        playbook enforces a rolling per-customer contact cap in one shared ledger, so the limit
+        holds across channels and across sessions, not per silo, and the cap is policy the deploy
+        validates, not a line in a prompt.</p>
+        <div class="callout">
+          <strong>No external provider.</strong> This is a guardrail and a customer reference you
+          already have; it composes with any channel playbook. There are no third-party calls to
+          verify.
+        </div>
+        <p>The shape: you pass a stable <code>customer_ref</code>, a hashed phone or a core-banking
+        id, alongside every message on every channel. The <code>block_contact_frequency</code>
+        guardrail counts allowed agent responses for that ref in a rolling window, in one SQLite
+        ledger shared by every agent and channel, and blocks the next contact once the cap is
+        reached.</p>
+      </section>
+
+      <section id="prerequisites">
+        <h2>Prerequisites <a class="anchor-link" href="#prerequisites">#</a></h2>
+        <ul>
+          <li>A stable identifier per customer that is the same across channels, for example a
+          hash of the verified phone number or the core-banking customer id. Do not use the raw
+          channel handle; those differ per channel.</li>
+          <li>Agents already reachable on your channels (see the
+          <a href="/playbooks/whatsapp-collections/">WhatsApp</a>,
+          <a href="/playbooks/sms-collections-twilio-razorpay/">SMS</a>, and
+          <a href="/playbooks/rcs-fraud-alerts/">RCS</a> playbooks).</li>
+          <li>Python ≥ 3.11 and <code>pip install zolva</code>.</li>
+        </ul>
+      </section>
+
+      <section id="step-ref">
+        <h2>Step 1 · Thread a customer reference through every channel <a class="anchor-link" href="#step-ref">#</a></h2>
+        <p>The cap can only govern traffic it can attribute to a person, so pass
+        <code>customer_ref</code> with each turn. Include it in the channel payload your gateway
+        dispatches, or pass it directly to <code>run()</code>.</p>
+        <div class="code">
+          <div class="code-bar"><span>in your gateway's dispatch</span><button class="copy-btn" data-copy="#c-disp">copy</button></div>
+          <pre><code data-lang="python" id="c-disp">await hub.dispatch(
+    "whatsapp", "collections-agent",
+    {"session_id": wa_number, "text": text, "customer_ref": customer_ref},
+)
+
+# or, calling the agent directly:
+reply = await app.run(
+    "collections-agent", session_id, user_msg, customer_ref=customer_ref,
+)</code></pre>
+        </div>
+        <p>Use the <em>same</em> <code>customer_ref</code> for that customer on every channel; that
+        shared value is what makes the count cross-channel rather than per-silo.</p>
+      </section>
+
+      <section id="step-cap">
+        <h2>Step 2 · One shared cap in policy <a class="anchor-link" href="#step-cap">#</a></h2>
+        <p>Add <code>block_contact_frequency</code> to a policy every channel-facing agent shares,
+        and point every agent at the <strong>same ledger file</strong>. Because the ledger is keyed
+        on <code>customer_ref</code>, one file counts contacts across all of them.</p>
+        <div class="code">
+          <div class="code-bar"><span>policies/contact.yaml</span><button class="copy-btn" data-copy="#c-cap">copy</button></div>
+          <pre><code data-lang="yaml" id="c-cap">post:
+  - block_contact_frequency:
+      max_contacts: 3
+      window_hours: 168        # 7 days
+      ledger: contacts.sqlite  # the SAME path for every agent = a shared cap</code></pre>
+        </div>
+        <div class="code">
+          <div class="code-bar"><span>agents/collections.yaml</span><button class="copy-btn" data-copy="#c-agent">copy</button></div>
+          <pre><code data-lang="yaml" id="c-agent">name: collections-agent
+instructions: collections.md
+model: { provider: openai, name: gpt-5.6-sol }
+tools: [get_dues, get_repayment_options, send_payment_link]
+handoffs: [human-escalation]
+guardrails: policies/contact.yaml   # every channel-facing agent references this</code></pre>
+        </div>
+        <p>When the fourth contact in the window is attempted, the guardrail blocks it and escalates
+        to a human with the reason attached, rather than sending yet another message. The block is
+        on the audit chain, which is the evidence a regulator asks for.</p>
+      </section>
+
+      <section id="step-window">
+        <h2>Step 3 · Add the contact window <a class="anchor-link" href="#step-window">#</a></h2>
+        <p>Frequency and hours are separate rules; combine them. <code>block_outside_window</code>
+        refuses contact outside permitted hours before the model runs, and works alongside the
+        shared cap.</p>
+        <div class="code">
+          <div class="code-bar"><span>policies/contact.yaml</span><button class="copy-btn" data-copy="#c-both">copy</button></div>
+          <pre><code data-lang="yaml" id="c-both">pre:
+  - block_outside_window: { hours: "08:00-19:00", tz: Asia/Kolkata }   # RBI contact norms
+post:
+  - block_contact_frequency: { max_contacts: 3, window_hours: 168, ledger: contacts.sqlite }</code></pre>
+        </div>
+        <p>Policies are validated at startup, so a malformed cap fails the deploy, not a live
+        customer conversation.</p>
+      </section>
+
+      <section id="notes">
+        <h2>How the cap counts <a class="anchor-link" href="#notes">#</a></h2>
+        <ul>
+          <li><strong>Keyed on the customer, not the channel:</strong> the ledger counts by
+          <code>customer_ref</code>, so WhatsApp, SMS, and RCS draw down the same allowance.</li>
+          <li><strong>Rolling window:</strong> it counts contacts newer than
+          <code>window_hours</code> ago, so the allowance refills continuously rather than resetting
+          on a calendar boundary.</li>
+          <li><strong>Only counts what it can attribute:</strong> a turn with no
+          <code>customer_ref</code> is skipped by the cap, so always pass the ref for traffic you
+          intend to govern.</li>
+          <li><strong>Blocks escalate:</strong> a capped contact is not dropped silently; it
+          becomes a human escalation on the audit chain.</li>
+        </ul>
+        <p style="margin-top:1.5rem"><a href="/playbooks/">← All playbooks</a></p>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div class="wrap footer-grid">
+      <div>
+        <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+        <p style="margin-top:0.8rem; max-width:22em;">The open-source, self-hosted agent
+        platform for banks and fintechs.</p>
+      </div>
+      <nav aria-label="Product">
+        <span class="col-title">Product</span>
+        <a href="/docs/">Documentation</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/#platform">Platform</a>
+        <a href="/#compare">Comparison</a>
+        <a href="https://pypi.org/project/zolva/" target="_blank" rel="noopener noreferrer">PyPI</a>
+      </nav>
+      <nav aria-label="Project">
+        <span class="col-title">Project</span>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="/security/">Security policy</a>
+        <a href="/contributing/">Contributing</a>
+        <a href="/legal/">Trust &amp; legal</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Apache-2.0 license</a>
+      </nav>
+      <nav aria-label="For machines">
+        <span class="col-title">For machines</span>
+        <a href="/llms.txt">llms.txt</a>
+        <a href="/llms-full.txt">llms-full.txt</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/AGENTS.md" target="_blank" rel="noopener noreferrer">AGENTS.md</a>
+      </nav>
+    </div>
+    <div class="wrap footer-sig">
+      <span>© 2026 Zolva. Apache-2.0.</span>
+      <span>Self-hosted by design; your data never leaves.</span>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Regulator-ready audit &amp; dashboard | Zolva Playbooks</title>
+  <meta name="description" content="Production playbook: a tamper-evident, hash-chained audit trail of every agent decision, a continuous chain-verification badge, the SARR scorecard, and a self-hosted read-only dashboard, assembled as the evidence EU AI Act and SR 11-7 ask for." />
+  <link rel="canonical" href="https://zolva.ai/playbooks/regulator-ready-audit/" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/mark-512.png" />
+  <meta name="theme-color" content="#08011A" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Zolva" />
+  <meta property="og:title" content="Regulator-ready audit &amp; dashboard: a Zolva playbook" />
+  <meta property="og:description" content="Tamper-evident audit chain, chain verification, SARR scorecard, and a read-only dashboard as regulator evidence." />
+  <meta property="og:url" content="https://zolva.ai/playbooks/regulator-ready-audit/" />
+  <meta property="og:image" content="https://zolva.ai/mark-512.png" />
+  <meta name="twitter:card" content="summary" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "Regulator-ready audit & dashboard: a Zolva playbook",
+    "description": "Assemble a tamper-evident audit trail, chain verification, SARR scorecard, and a read-only dashboard as compliance evidence with Zolva.",
+    "url": "https://zolva.ai/playbooks/regulator-ready-audit/",
+    "author": { "@type": "Organization", "name": "Zolva", "url": "https://zolva.ai" }
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links">menu</button>
+      <nav class="nav-links" id="nav-links" aria-label="Main">
+        <a href="/#why">Why Zolva</a>
+        <a href="/#platform">Platform</a>
+        <a href="/docs/">Docs</a>
+        <a href="/playbooks/" aria-current="page">Playbooks</a>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a class="nav-cta" href="/docs/#quickstart">pip install zolva</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="wrap docs-shell">
+    <aside class="docs-sidebar" aria-label="Playbook steps">
+      <p class="group">Playbook</p>
+      <a href="#overview">Overview</a>
+      <a href="#prerequisites">Prerequisites</a>
+      <p class="group">Steps</p>
+      <a href="#step-chain">1 · Attach the audit chain</a>
+      <a href="#step-verify">2 · Verify &amp; scorecard</a>
+      <a href="#step-dashboard">3 · Stand up the dashboard</a>
+      <p class="group">Reference</p>
+      <a href="#notes">Mapping to the rules</a>
+    </aside>
+
+    <main class="docs-main">
+      <section id="overview">
+        <p class="eyebrow" style="margin-bottom:1rem">Playbook 09 · Compliance</p>
+        <h1>An audit trail regulators can trust</h1>
+        <p><strong>Goal:</strong> a tamper-evident record of every agent decision, guardrail block,
+        tool call, and human handover, one you can hand an auditor knowing that any edit, deletion,
+        or reordering is detectable. Add a live containment scorecard and a read-only dashboard, and
+        the ongoing-monitoring and traceability obligations of modern AI rules stop being a
+        spreadsheet exercise and become a service that is simply running.</p>
+        <div class="callout">
+          <strong>No external provider.</strong> The audit log, verification, scorecard, and
+          dashboard are all self-hosted Zolva components reading a local database. Nothing leaves
+          your infrastructure.
+        </div>
+        <p>The shape: the audit log attaches to the same bus every other plugin uses, so it records
+        by construction, no new instrumentation at your call sites. Each entry is hash-chained to
+        the one before it, verification walks the chain from genesis, and the dashboard opens the
+        database read-only to render topology, transcripts, and the scorecard.</p>
+      </section>
+
+      <section id="prerequisites">
+        <h2>Prerequisites <a class="anchor-link" href="#prerequisites">#</a></h2>
+        <ul>
+          <li>A running <code>AgentApp</code> and a path for the audit database (for example
+          <code>audit.sqlite</code>).</li>
+          <li>For the dashboard: <code>pip install "zolva[dashboard]"</code> (adds FastAPI and
+          Uvicorn).</li>
+          <li>Python ≥ 3.11.</li>
+        </ul>
+      </section>
+
+      <section id="step-chain">
+        <h2>Step 1 · Attach the audit chain <a class="anchor-link" href="#step-chain">#</a></h2>
+        <p>One attach records everything that crosses the bus. The store sits behind a four-method
+        protocol; SQLite ships as the default, and you can back it with Postgres by implementing the
+        same four methods when you go multi-replica.</p>
+        <div class="code">
+          <div class="code-bar"><span>app.py</span><button class="copy-btn" data-copy="#c-chain">copy</button></div>
+          <pre><code data-lang="python" id="c-chain">from zolva import AgentApp, AuditLog
+
+app = AgentApp.from_config("agents/")
+log = AuditLog("audit.sqlite")   # hash-chained: edits, deletes, reordering all detectable
+log.attach(app)</code></pre>
+        </div>
+        <p>Because the log is downstream of the bus, a guardrail refusal is recorded with the same
+        fidelity as a normal reply: the blocked content, the rule that fired, and the escalation
+        that followed are all on the chain.</p>
+      </section>
+
+      <section id="step-verify">
+        <h2>Step 2 · Verify the chain and read the scorecard <a class="anchor-link" href="#step-verify">#</a></h2>
+        <p>Verification is the evidence. A full pass walks from genesis; monitors use an incremental
+        pass plus a periodic full pass. The scorecard reports SARR, the Safe Automated Resolution
+        Rate, alongside its containment counter-metric.</p>
+        <div class="code">
+          <div class="code-bar"><span>python</span><button class="copy-btn" data-copy="#c-verify">copy</button></div>
+          <pre><code data-lang="python" id="c-verify">from zolva import scorecard
+
+assert log.verify()                       # False if any entry was altered
+print(scorecard(log).summary())           # SARR + containment</code></pre>
+        </div>
+        <div class="code">
+          <div class="code-bar"><span>terminal</span><button class="copy-btn" data-copy="#c-score">copy</button></div>
+          <pre><code data-lang="bash" id="c-score">zolva scorecard audit.sqlite   # verifies the chain and prints the scorecard</code></pre>
+        </div>
+        <p>Run <code>zolva scorecard</code> in a scheduled job and alert on a failed verification;
+        a broken chain is the one signal you never want to discover during an audit instead of
+        before it.</p>
+      </section>
+
+      <section id="step-dashboard">
+        <h2>Step 3 · Stand up the read-only dashboard <a class="anchor-link" href="#step-dashboard">#</a></h2>
+        <p>The dashboard is a self-hosted web UI over the config and the audit database: agent, tool,
+        and handoff topology, a live-tailing session feed with full transcripts, tool-call stats, and
+        the SARR scorecard behind a continuous chain-verification badge. It opens the database
+        read-only and adds no instrumentation.</p>
+        <div class="code">
+          <div class="code-bar"><span>terminal</span><button class="copy-btn" data-copy="#c-dash">copy</button></div>
+          <pre><code data-lang="bash" id="c-dash">pip install "zolva[dashboard]"
+zolva dashboard agents/ --audit audit.sqlite    # http://127.0.0.1:8600</code></pre>
+        </div>
+        <p>It binds to localhost by default and has no auth of its own by design; put your
+        reverse proxy and access controls in front of it, the same way you would any internal ops
+        tool. To see it populated before you have traffic, seed the demo dataset that ships with
+        the examples.</p>
+      </section>
+
+      <section id="notes">
+        <h2>Mapping to the rules <a class="anchor-link" href="#notes">#</a></h2>
+        <ul>
+          <li><strong>Traceability:</strong> the hash chain makes every decision reconstructable and
+          tamper-evident; verification is a single call that either holds or does not.</li>
+          <li><strong>Human oversight:</strong> handovers are first-class entries, so the record
+          shows when and why a human took over, and how the session resumed.</li>
+          <li><strong>Ongoing monitoring:</strong> the scorecard plus scheduled verification give a
+          standing measure of safe automated resolution, not a one-time validation.</li>
+          <li><strong>Config provenance:</strong> entries are stamped against the config version in
+          force, so you can tell which policy governed any given conversation.</li>
+        </ul>
+        <p style="margin-top:1.5rem"><a href="/playbooks/">← All playbooks</a></p>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div class="wrap footer-grid">
+      <div>
+        <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+        <p style="margin-top:0.8rem; max-width:22em;">The open-source, self-hosted agent
+        platform for banks and fintechs.</p>
+      </div>
+      <nav aria-label="Product">
+        <span class="col-title">Product</span>
+        <a href="/docs/">Documentation</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/#platform">Platform</a>
+        <a href="/#compare">Comparison</a>
+        <a href="https://pypi.org/project/zolva/" target="_blank" rel="noopener noreferrer">PyPI</a>
+      </nav>
+      <nav aria-label="Project">
+        <span class="col-title">Project</span>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="/security/">Security policy</a>
+        <a href="/contributing/">Contributing</a>
+        <a href="/legal/">Trust &amp; legal</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Apache-2.0 license</a>
+      </nav>
+      <nav aria-label="For machines">
+        <span class="col-title">For machines</span>
+        <a href="/llms.txt">llms.txt</a>
+        <a href="/llms-full.txt">llms-full.txt</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/AGENTS.md" target="_blank" rel="noopener noreferrer">AGENTS.md</a>
+      </nav>
+    </div>
+    <div class="wrap footer-sig">
+      <span>© 2026 Zolva. Apache-2.0.</span>
+      <span>Self-hosted by design; your data never leaves.</span>
+    </div>
+  </footer>
+</body>
+</html>

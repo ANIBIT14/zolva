@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Self-hosted models via your LLM gateway | Zolva Playbooks</title>
+  <meta name="description" content="Production playbook: point Zolva at an in-VPC, OpenAI-compatible LLM gateway (LiteLLM, vLLM, or a Bedrock/Azure proxy) so no prompt or customer data ever leaves your network, with bounded retries and per-gateway timeouts. Every endpoint verified against official documentation." />
+  <link rel="canonical" href="https://zolva.ai/playbooks/self-hosted-llm-gateway/" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/mark-512.png" />
+  <meta name="theme-color" content="#08011A" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Zolva" />
+  <meta property="og:title" content="Self-hosted models via your LLM gateway: a Zolva playbook" />
+  <meta property="og:description" content="Run Zolva against an in-VPC OpenAI-compatible gateway (LiteLLM, vLLM, Bedrock/Azure proxy): no data leaves your network." />
+  <meta property="og:url" content="https://zolva.ai/playbooks/self-hosted-llm-gateway/" />
+  <meta property="og:image" content="https://zolva.ai/mark-512.png" />
+  <meta name="twitter:card" content="summary" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "Self-hosted models via your LLM gateway: a Zolva playbook",
+    "description": "Point Zolva at an in-VPC OpenAI-compatible gateway such as LiteLLM or vLLM so no data leaves your network.",
+    "url": "https://zolva.ai/playbooks/self-hosted-llm-gateway/",
+    "author": { "@type": "Organization", "name": "Zolva", "url": "https://zolva.ai" }
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links">menu</button>
+      <nav class="nav-links" id="nav-links" aria-label="Main">
+        <a href="/#why">Why Zolva</a>
+        <a href="/#platform">Platform</a>
+        <a href="/docs/">Docs</a>
+        <a href="/playbooks/" aria-current="page">Playbooks</a>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a class="nav-cta" href="/docs/#quickstart">pip install zolva</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="wrap docs-shell">
+    <aside class="docs-sidebar" aria-label="Playbook steps">
+      <p class="group">Playbook</p>
+      <a href="#overview">Overview</a>
+      <a href="#prerequisites">Prerequisites</a>
+      <p class="group">Steps</p>
+      <a href="#step-gateway">1 · Stand up the gateway</a>
+      <a href="#step-config">2 · Point Zolva at it</a>
+      <a href="#step-resilience">3 · Timeouts &amp; retries</a>
+      <p class="group">Reference</p>
+      <a href="#notes">Residency notes</a>
+    </aside>
+
+    <main class="docs-main">
+      <section id="overview">
+        <p class="eyebrow" style="margin-bottom:1rem">Playbook 10 · Self-hosted</p>
+        <h1>Run against your own LLM gateway</h1>
+        <p><strong>Goal:</strong> every model call leaves through one gateway that you run inside
+        your own network, so prompts and customer data never touch a vendor endpoint you do not
+        control. Zolva speaks the OpenAI chat-completions protocol, so any OpenAI-compatible
+        gateway, LiteLLM, vLLM, or a proxy in front of Bedrock or Azure OpenAI, is a one-line config
+        change, not a new adapter.</p>
+        <div class="callout">
+          <strong>Verification note.</strong> The gateway endpoints below were checked against
+          official documentation before publication: LiteLLM Proxy serves an OpenAI-compatible
+          <code>/v1/chat/completions</code> on its base URL with
+          <code>Authorization: Bearer &lt;master key&gt;</code>
+          (<a href="https://docs.litellm.ai/docs/providers/openai_compatible" target="_blank" rel="noopener noreferrer">LiteLLM OpenAI-compatible docs</a>),
+          and vLLM's OpenAI-compatible server exposes the same path on
+          <code>http://host:8000/v1</code>
+          (<a href="https://docs.vllm.ai/en/latest/serving/online_serving/" target="_blank" rel="noopener noreferrer">vLLM online serving docs</a>).
+          If either project changes a path or auth header, trust their docs over this page.
+        </div>
+        <p>The shape: Zolva's OpenAI adapter posts to <code>base_url</code> + <code>/chat/completions</code>
+        with a bearer token. Set <code>base_url</code> to your gateway and the bearer to the
+        gateway's key instead of a vendor key, and the request never leaves your VPC. The gateway
+        decides which real model serves it.</p>
+      </section>
+
+      <section id="prerequisites">
+        <h2>Prerequisites <a class="anchor-link" href="#prerequisites">#</a></h2>
+        <ul>
+          <li>An OpenAI-compatible gateway reachable on your network. For example, a LiteLLM proxy
+          on <code>http://llm-gateway.internal:4000</code>, or a vLLM server on
+          <code>http://llm-gateway.internal:8000</code>.</li>
+          <li>The gateway's key (LiteLLM's <code>master_key</code>, or whatever bearer your proxy
+          expects). Zolva reads it from <code>OPENAI_API_KEY</code>.</li>
+          <li>A model name the gateway routes, such as the alias you configured in the proxy.</li>
+          <li>Python ≥ 3.11 and <code>pip install zolva</code>.</li>
+          <li>Environment variables, never inline config: <code>LLM_GATEWAY_URL</code> and
+          <code>OPENAI_API_KEY</code> (the gateway key).</li>
+        </ul>
+      </section>
+
+      <section id="step-gateway">
+        <h2>Step 1 · Stand up the gateway <a class="anchor-link" href="#step-gateway">#</a></h2>
+        <p>This is your infrastructure, not Zolva's; the two common paths, for reference:</p>
+        <div class="code">
+          <div class="code-bar"><span>LiteLLM proxy (routes to many providers)</span><button class="copy-btn" data-copy="#c-litellm">copy</button></div>
+          <pre><code data-lang="bash" id="c-litellm"># serves an OpenAI-compatible API on http://0.0.0.0:4000
+# clients authenticate with the proxy master key, not the upstream provider key
+litellm --config litellm.config.yaml</code></pre>
+        </div>
+        <div class="code">
+          <div class="code-bar"><span>vLLM (serves an open-weights model in your VPC)</span><button class="copy-btn" data-copy="#c-vllm">copy</button></div>
+          <pre><code data-lang="bash" id="c-vllm"># exposes /v1/chat/completions on http://0.0.0.0:8000
+vllm serve your-org/your-model --api-key "$GATEWAY_KEY"</code></pre>
+        </div>
+        <p>Either way the base URL Zolva needs ends in <code>/v1</code>: LiteLLM's
+        <code>http://host:4000/v1</code> or vLLM's <code>http://host:8000/v1</code>.</p>
+      </section>
+
+      <section id="step-config">
+        <h2>Step 2 · Point Zolva at it <a class="anchor-link" href="#step-config">#</a></h2>
+        <p>One line in the agent's model block. Keep <code>provider: openai</code> (that selects the
+        chat-completions protocol, not the vendor) and set <code>base_url</code>.</p>
+        <div class="code">
+          <div class="code-bar"><span>agents/support.yaml</span><button class="copy-btn" data-copy="#c-agent">copy</button></div>
+          <pre><code data-lang="yaml" id="c-agent">name: support-agent
+instructions: support.md
+model:
+  provider: openai            # the wire protocol, not the vendor
+  name: gpt-5.6-sol           # a model alias your gateway routes
+  base_url: ${ENV:LLM_GATEWAY_URL}   # e.g. http://llm-gateway.internal:4000/v1
+  timeout: 30
+tools: [lookup_balance, recent_transactions]
+handoffs: [human-escalation]</code></pre>
+        </div>
+        <p>Set the two environment variables and validate:</p>
+        <div class="code">
+          <div class="code-bar"><span>terminal</span><button class="copy-btn" data-copy="#c-env">copy</button></div>
+          <pre><code data-lang="bash" id="c-env">export LLM_GATEWAY_URL="http://llm-gateway.internal:4000/v1"
+export OPENAI_API_KEY="$LITELLM_MASTER_KEY"   # the gateway's key, not a vendor key
+zolva validate agents/</code></pre>
+        </div>
+        <p>The loader rejects any inline key, so the gateway credential stays in the environment,
+        never in the YAML. Judge-backed rules and evals take the same <code>base_url</code>, so
+        guardrails and the judge also run entirely through your gateway.</p>
+      </section>
+
+      <section id="step-resilience">
+        <h2>Step 3 · Timeouts and retries <a class="anchor-link" href="#step-resilience">#</a></h2>
+        <p>A gateway is one more hop that can be briefly busy. Zolva retries transient
+        <code>429</code> and <code>5xx</code> responses with bounded backoff, honouring
+        <code>Retry-After</code>, before it gives up, so a momentary blip becomes a short wait
+        rather than an escalated customer. The <code>timeout</code> above bounds each attempt, and
+        each distinct <code>base_url</code> gets its own connection pool.</p>
+        <p>When the gateway is genuinely down, the call degrades to human handover, never to
+        silence: the customer is escalated with the reason on the audit chain. Test that path with
+        an adversarial synthetic that runs while the gateway is stopped.</p>
+      </section>
+
+      <section id="notes">
+        <h2>Residency notes <a class="anchor-link" href="#notes">#</a></h2>
+        <ul>
+          <li><strong>One egress point:</strong> with the gateway inside your VPC, model traffic
+          leaves through infrastructure you audit and log, not through each agent process.</li>
+          <li><strong>Vendor swap without code change:</strong> the gateway decides the real model,
+          so moving from a hosted model to an open-weights vLLM deployment, or between clouds, never
+          touches agent config beyond the alias.</li>
+          <li><strong>Keys stay put:</strong> agents hold the gateway key only; upstream provider
+          keys live in the gateway, in one place, rotated independently.</li>
+          <li><strong>Protocol, not vendor:</strong> <code>provider: openai</code> means the
+          OpenAI wire format. Anything that speaks it, including Azure OpenAI and Bedrock behind a
+          compatible proxy, works through the same setting.</li>
+        </ul>
+        <p style="margin-top:1.5rem"><a href="/playbooks/">← All playbooks</a></p>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div class="wrap footer-grid">
+      <div>
+        <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+        <p style="margin-top:0.8rem; max-width:22em;">The open-source, self-hosted agent
+        platform for banks and fintechs.</p>
+      </div>
+      <nav aria-label="Product">
+        <span class="col-title">Product</span>
+        <a href="/docs/">Documentation</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/#platform">Platform</a>
+        <a href="/#compare">Comparison</a>
+        <a href="https://pypi.org/project/zolva/" target="_blank" rel="noopener noreferrer">PyPI</a>
+      </nav>
+      <nav aria-label="Project">
+        <span class="col-title">Project</span>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="/security/">Security policy</a>
+        <a href="/contributing/">Contributing</a>
+        <a href="/legal/">Trust &amp; legal</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Apache-2.0 license</a>
+      </nav>
+      <nav aria-label="For machines">
+        <span class="col-title">For machines</span>
+        <a href="/llms.txt">llms.txt</a>
+        <a href="/llms-full.txt">llms-full.txt</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/AGENTS.md" target="_blank" rel="noopener noreferrer">AGENTS.md</a>
+      </nav>
+    </div>
+    <div class="wrap footer-sig">
+      <span>© 2026 Zolva. Apache-2.0.</span>
+      <span>Self-hosted by design; your data never leaves.</span>
+    </div>
+  </footer>
+</body>
+</html>

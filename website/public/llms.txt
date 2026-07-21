@@ -2,20 +2,25 @@
 
 > Open-source, self-hosted agent platform for banks and fintechs. Agents are
 > declared in YAML + Markdown config; tools are the bank's own APIs registered
-> as typed Python functions; guardrails, evals, feedback loop, audit, and
-> synthetics attach to every step via a middleware bus. pip-installable, runs
-> entirely inside the bank's infrastructure. Apache-2.0. https://zolva.ai
+> as typed Python functions; guardrails (incl. per-customer contact caps),
+> PII redaction before provider calls, evals, feedback loop, hash-chained
+> audit with pluggable storage, human handover with a resume path, and
+> synthetics attach to every step via a middleware bus. Ships a read-only
+> team dashboard and a reference HTTP entrypoint (`zolva serve`).
+> pip-installable, runs entirely inside the bank's infrastructure.
+> Apache-2.0. https://zolva.ai
 
 Install: `pip install zolva` (dev: `pip install -e ".[dev]"`). Python >=3.11.
-Entry points: `zolva.AgentApp.from_config("agents/")`, `@zolva.tool`, CLI `zolva validate <dir>`.
+Entry points: `zolva.AgentApp.from_config("agents/")`, `@zolva.tool`, CLI `zolva validate <dir>`, `zolva serve`, `zolva dashboard`.
 
 ## Docs
 
 - [AGENTS.md](AGENTS.md): exact setup, verify, and convention instructions for AI coding agents
 - [README.md](README.md): quickstart and public API
-- [Playbooks](https://zolva.ai/playbooks/): six production playbooks (ElevenLabs voice, WhatsApp, CI gating, Slack handover desk, Twilio + Razorpay SMS, Telegram + Zendesk); every provider call verified against and linked to official docs
+- [Playbooks](https://zolva.ai/playbooks/): thirteen production playbooks. Channels: WhatsApp, Twilio+Razorpay SMS, RCS fraud alerts, Telegram+Zendesk, ElevenLabs voice. Platform: CI gating, Slack handover desk, red-team synthetics, feedback-to-fix loop, regulator-ready audit+dashboard, self-hosted LLM gateway, cross-channel contact caps, PII redaction. Every provider call verified against and linked to official docs
 - [docs/specs/2026-07-12-zolva-design.md](docs/specs/2026-07-12-zolva-design.md): full architecture, security model, competitive positioning
 - [examples/mockbank/](examples/mockbank/): runnable end-to-end example (config + tools + orchestrator)
+- [examples/dashboard_demo/](examples/dashboard_demo/): seeded demo for `zolva dashboard` (600 sessions, verifiable audit chain)
 
 ## Optional
 
