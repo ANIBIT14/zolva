@@ -210,6 +210,12 @@ class AuditLog:
         self._checkpoint = last
         return True
 
+    def records(self) -> list[AuditRow]:
+        """Every audit row in append order — the evidence backing the log.
+        Public accessor so callers (e.g. the compliance pack) need not reach
+        into the storage backend."""
+        return self._store.rows()
+
     def step_types_by_session(self) -> dict[str, set[str]]:
         by_session: dict[str, set[str]] = {}
         for session_id, step_type in self._store.session_types():
