@@ -4,14 +4,17 @@
 > declared in YAML + Markdown config; tools are the bank's own APIs registered
 > as typed Python functions; guardrails (incl. per-customer contact caps),
 > PII redaction before provider calls, evals, feedback loop, hash-chained
-> audit with pluggable storage, human handover with a resume path, and
-> synthetics attach to every step via a middleware bus. Ships a read-only
-> team dashboard and a reference HTTP entrypoint (`zolva serve`).
+> audit with pluggable storage (SQLite or Postgres), human handover with a
+> resume path, and synthetics attach to every step via a middleware bus.
+> An EU AI Act compliance evidence pack maps the audit chain, config hashes,
+> handover and eval gates to named articles; OpenTelemetry export drops every
+> step into the bank's existing observability stack. Ships a read-only team
+> dashboard and a reference HTTP entrypoint (`zolva serve`).
 > pip-installable, runs entirely inside the bank's infrastructure.
 > Apache-2.0. https://zolva.ai
 
 Install: `pip install zolva` (dev: `pip install -e ".[dev]"`). Python >=3.11.
-Entry points: `zolva.AgentApp.from_config("agents/")`, `@zolva.tool`, CLI `zolva validate <dir>`, `zolva serve`, `zolva dashboard`.
+Entry points: `zolva.AgentApp.from_config("agents/")`, `@zolva.tool`, CLI `zolva validate <dir>`, `zolva compliance <audit.db>`, `zolva serve`, `zolva dashboard`.
 
 ## Docs
 

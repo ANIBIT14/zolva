@@ -1,4 +1,5 @@
-"""zolva CLI: validate, eval, synthetics, scorecard, dashboard, serve, triage, export-dataset."""
+"""zolva CLI: validate, eval, synthetics, scorecard, compliance, dashboard, serve, triage,
+export-dataset."""
 
 from __future__ import annotations
 
@@ -120,6 +121,29 @@ def _cmd_scorecard(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_compliance(args: argparse.Namespace) -> int:
+    from zolva.audit import AuditLog
+    from zolva.compliance import build_report
+
+    log = AuditLog(args.audit_db)
+    agents = load_agents(args.agents) if args.agents else None
+    eval_report = None
+    if args.eval_report:
+        from zolva.evals import EvalReport
+
+        with open(args.eval_report) as f:
+            eval_report = EvalReport(**json.load(f))
+    report = build_report(log, agents=agents, eval_report=eval_report)
+    print(report.summary())
+    if args.out:
+        with open(args.out, "w") as f:
+            json.dump(report.model_dump(), f, indent=2)
+        print(f"wrote {args.out}")
+    if args.gate and not report.regulator_ready:
+        return 1
+    return 0
+
+
 def _cmd_triage(args: argparse.Namespace) -> int:
     from zolva.feedback import FeedbackQueue
 
@@ -225,6 +249,17 @@ def main(argv: list[str] | None = None) -> int:
     p_score = sub.add_parser("scorecard", help="verify the audit chain and print SARR")
     p_score.add_argument("audit_db")
 
+    p_comp = sub.add_parser(
+        "compliance", help="build an EU AI Act evidence pack from the audit log"
+    )
+    p_comp.add_argument("audit_db")
+    p_comp.add_argument("--agents", default="", help="agent config dir; adds Art.13/14 evidence")
+    p_comp.add_argument(
+        "--eval-report", default="", help="eval report JSON (from `eval --out`); adds Art.15"
+    )
+    p_comp.add_argument("--out", default="", help="write the full evidence bundle JSON here")
+    p_comp.add_argument("--gate", action="store_true", help="exit 1 unless regulator-ready")
+
     p_serve = sub.add_parser("serve", help="serve the reference channel-webhook endpoint")
     p_serve.add_argument("--app", required=True, help="import path to your AgentApp: module:attr")
     p_serve.add_argument("--channels", required=True, help="path to channels.yaml")
@@ -255,6 +290,7 @@ def main(argv: list[str] | None = None) -> int:
         "eval": _cmd_eval,
         "synthetics": _cmd_synthetics,
         "scorecard": _cmd_scorecard,
+        "compliance": _cmd_compliance,
         "dashboard": _cmd_dashboard,
         "serve": _cmd_serve,
         "triage": _cmd_triage,

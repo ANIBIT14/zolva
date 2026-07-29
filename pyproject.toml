@@ -1,6 +1,6 @@
 [project]
 name = "zolva"
-version = "0.5.0"
+version = "0.5.1"
 description = "Open-source, self-hosted agent platform for banks and fintechs"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -26,14 +26,18 @@ Issues = "https://github.com/ANIBIT14/zolva/issues"
 
 [project.optional-dependencies]
 dashboard = ["fastapi>=0.110", "uvicorn>=0.29"]
+otel = ["opentelemetry-api>=1.20"]
+postgres = ["psycopg[binary]>=3.1"]
 dev = [
   "pytest>=8",
   "pytest-asyncio>=0.23",
-  "ruff>=0.4",
-  "mypy>=1.10",
+  "ruff==0.15.21",  # pinned: unpinned linters drift and break CI on unrelated releases
+  "mypy==2.2.0",
   "types-PyYAML",
   "fastapi>=0.110",
   "uvicorn>=0.29",
+  "opentelemetry-sdk>=1.20",
+  "psycopg[binary]>=3.1",
 ]
 
 [project.scripts]
