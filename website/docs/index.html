@@ -598,11 +598,31 @@ print(scorecard(log).summary())   # SARR + containment + velocity</code></pre>
               <h3>Storage and verification at scale</h3>
         <p>The chain sits behind the four-method <code>AuditStore</code> protocol: SQLite is the
         default, <code>InMemoryAuditStore</code> ships as the reference second implementation, and
-        Postgres or WORM-backed storage is the same four methods (the atomicity recipe is in the
-        protocol docstring). <code>verify()</code> is the full pass from genesis by default;
+        <code>PostgresAuditStore</code> ships for production retention (<code>pip install
+        "zolva[postgres]"</code>): the same four methods over one table, with appends serialized
+        across app instances by a transaction-scoped advisory lock. WORM-backed storage is the
+        same four methods (the atomicity recipe is in the protocol docstring).
+        <code>verify()</code> is the full pass from genesis by default;
         monitors call <code>verify(incremental=True)</code>, which checkpoints proven rows and
         re-hashes the boundary, paired with a periodic full pass. The dashboard does exactly
         this, and once a break is detected the badge stays red.</p>
+        <h3>Compliance evidence pack</h3>
+        <p>The artifacts Zolva already produces map onto the controls a bank must evidence.
+        <code>zolva compliance audit.db --agents agents/ --eval-report eval.json --gate</code>
+        (or <code>build_report()</code> in Python) reads them back and emits one bundle mapping the
+        hash-chained audit (Art. 12 record-keeping), the config hashes (Art. 13 traceable
+        definition), handover events (Art. 14 human oversight), and eval gates plus the SARR
+        scorecard (Art. 15 / SR 11-7) to named articles. The audit chain's head hash is the
+        tamper-evidence anchor and <code>bundle_sha256</code> self-seals the report. It packages
+        existing evidence; your own mapping and sign-off still decide adequacy.</p>
+        <h3>OpenTelemetry export</h3>
+        <p>Every bus step becomes an OpenTelemetry span through the global tracer, so Zolva drops
+        into the observability stack you already run (Datadog, Grafana, Langfuse, any OTLP
+        collector). It depends on the OpenTelemetry API only; you own the SDK and exporter config,
+        and with none configured the tracer is a no-op. Only metadata leaves the process (step
+        type, agent, session, tool and model names), never message bodies, so customer content
+        stays in the in-VPC audit log. <code>OTelExporter().attach(app)</code> after <code>pip
+        install "zolva[otel]"</code>.</p>
 </section>
 
       <section id="synthetics">
@@ -667,6 +687,7 @@ goal: "customer obtains their dues amount and a valid repayment option"</code></
             <tr><td><code>zolva eval &lt;dir&gt; --gate</code></td><td>Run all cohorts; exit 1 if any cohort misses <code>min_pass_rate</code>. <code>--app module:attr</code> imports your app from the current directory; <code>--agents agents/</code> runs the cohorts declared by <code>evals:</code> in agent YAML instead of a directory.</td></tr>
             <tr><td><code>zolva synthetics &lt;dir&gt; --gate</code></td><td>Run persona patrols against your real agent; exit 1 if any synthetic fails. <code>--driver-provider</code>/<code>--judge-provider</code> pick the bridge adapters.</td></tr>
             <tr><td><code>zolva scorecard &lt;audit.db&gt;</code></td><td>SARR + quadrant metrics from the audit log.</td></tr>
+            <tr><td><code>zolva compliance &lt;audit.db&gt; --gate</code></td><td>Build an EU AI Act evidence pack from the audit log: maps the hash chain (Art. 12), config hashes (Art. 13), handover events (Art. 14), and eval gates + scorecard (Art. 15 / SR 11-7) to named articles. <code>--agents</code> and <code>--eval-report</code> add evidence; <code>--gate</code> exits 1 unless every control passes.</td></tr>
             <tr><td><code>zolva serve --app module:attr --channels channels.yaml</code></td><td>Reference HTTP entrypoint: HMAC-verified channel webhooks in, agent replies out, plus the human-loop resume endpoint. Needs <code>pip install "zolva[dashboard]"</code>.</td></tr>
             <tr><td><code>zolva dashboard &lt;dir&gt; --audit &lt;audit.db&gt;</code></td><td>Serve the local read-only dashboard UI: topology, live session tail, tool stats, scorecard. Needs <code>pip install "zolva[dashboard]"</code>. <a href="/docs/dashboard/">Full architecture &rarr;</a></td></tr>
             <tr><td><code>zolva triage &lt;failures.db&gt;</code></td><td>Interactive review of the failure queue; accept into an eval cohort or reject.</td></tr>
