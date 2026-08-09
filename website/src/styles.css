@@ -384,6 +384,9 @@ section { position: relative; }
 .section + .section { border-top: 1px solid var(--hairline-soft); }
 
 .section-head { max-width: 46em; margin-bottom: clamp(2rem, 5vh, 3.5rem); }
+/* Hub pages (playbooks, use cases, blog) lead with an h1 for document outline;
+   it is the same size as a section h2 on purpose. */
+.section-head h1,
 .section-head h2 {
   font-size: clamp(1.9rem, 3.4vw, 2.8rem);
   margin: 1.2rem 0 1rem;

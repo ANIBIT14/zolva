@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI agent use cases for regulated industries | Zolva</title>
+  <meta name="description" content="Where self-hosted AI agents earn their place in regulated work: banking support, loan collections, fraud and disputes, KYC onboarding, insurance claims, patient support, and telecom operations. Each use case with the guardrails, evidence, and eval gates it needs." />
+  <link rel="canonical" href="https://zolva.ai/use-cases/" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/mark-512.png" />
+  <meta name="theme-color" content="#08011A" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Zolva" />
+  <meta property="og:title" content="AI agent use cases for regulated industries" />
+  <meta property="og:description" content="Banking support, collections, fraud, KYC, insurance claims, patient support, telecom. Each with the guardrails and audit evidence the regulator asks for." />
+  <meta property="og:url" content="https://zolva.ai/use-cases/" />
+  <meta property="og:image" content="https://zolva.ai/mark-512.png" />
+  <meta name="twitter:card" content="summary" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "AI agent use cases for regulated industries",
+    "url": "https://zolva.ai/use-cases/",
+    "description": "Self-hosted AI agent use cases across banking, lending, insurance, healthcare, and telecom.",
+    "isPartOf": { "@type": "WebSite", "name": "Zolva", "url": "https://zolva.ai" }
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links">menu</button>
+      <nav class="nav-links" id="nav-links" aria-label="Main">
+        <a href="/#why">Why Zolva</a>
+        <a href="/use-cases/" aria-current="page">Use cases</a>
+        <a href="/docs/">Docs</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/blog/">Blog</a>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a class="nav-cta" href="/docs/#quickstart">pip install zolva</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="section">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="eyebrow">Use cases</p>
+          <h1>The work that cannot ship without evidence.</h1>
+          <p>Plenty of teams can put a language model in front of a customer. The hard part in a
+          regulated industry is everything after that: proving what the agent was allowed to do,
+          what it actually did, who reviewed it, and that the version you shipped passed its worst
+          cohort before release. These pages describe the use cases where that burden decides the
+          architecture, and how the same set of controls covers each one.</p>
+          <p>Every use case below runs on the same primitives: agents declared as YAML plus
+          Markdown, your own APIs registered as typed Python tools, guardrails enforced as config
+          on every step, a hash-chained audit trail, human handover with a resume path, and eval
+          cohorts that gate the release. Nothing leaves your network.</p>
+        </div>
+
+        <div class="section-head" style="max-width:46em; margin:clamp(1.5rem,4vh,3rem) 0 1.4rem;">
+          <p class="eyebrow">Banking &amp; lending</p>
+          <p>High interaction volume, hard conduct rules, and a supervisor who will eventually ask
+          for the transcript.</p>
+        </div>
+        <div class="why-grid">
+          <a class="why-card" href="/use-cases/banking-customer-support/" style="display:block">
+            <span class="num">01</span>
+            <h3>Banking customer support agents</h3>
+            <p>Balance queries, card controls, statement questions, and payment troubleshooting,
+            answered from your core systems rather than from model memory, with third-party
+            disclosure hard-blocked and a human one step away.</p>
+            <p style="margin-top:0.8rem"><code>tools</code> · <code>guardrails</code> · <code>handover</code></p>
+          </a>
+          <a class="why-card" href="/use-cases/loan-collections/" style="display:block">
+            <span class="num">02</span>
+            <h3>Loan collections and repayment assistance</h3>
+            <p>Contact windows, per-customer contact caps that count across channels, hardship
+            detection that escalates instead of pressing, and a record of every message for the
+            day someone alleges harassment.</p>
+            <p style="margin-top:0.8rem"><code>contact caps</code> · <code>windows</code> · <code>audit</code></p>
+          </a>
+          <a class="why-card" href="/use-cases/fraud-and-disputes/" style="display:block">
+            <span class="num">03</span>
+            <h3>Fraud alerts and dispute intake</h3>
+            <p>The customer taps "I did not make this" and the agent verifies the transaction,
+            gathers a clean statement of facts, and files the case, never deciding the outcome and
+            never revealing another customer's data.</p>
+            <p style="margin-top:0.8rem"><code>tools</code> · <code>never-rules</code> · <code>handover</code></p>
+          </a>
+          <a class="why-card" href="/use-cases/kyc-onboarding/" style="display:block">
+            <span class="num">04</span>
+            <h3>KYC and onboarding operations</h3>
+            <p>Document chasing, mismatch explanation, and case preparation for the analyst who
+            makes the actual decision, with PII masked before any model call and every step
+            attributable after the fact.</p>
+            <p style="margin-top:0.8rem"><code>redaction</code> · <code>oversight</code> · <code>audit</code></p>
+          </a>
+        </div>
+
+        <div class="section-head" style="max-width:46em; margin:clamp(2rem,5vh,3.5rem) 0 1.4rem;">
+          <p class="eyebrow">Beyond banking</p>
+          <p>The same evidence problem shows up wherever an automated decision touches a person's
+          money, health, or service.</p>
+        </div>
+        <div class="why-grid">
+          <a class="why-card" href="/use-cases/insurance-claims/" style="display:block">
+            <span class="num">05</span>
+            <h3>Insurance claims and policy service</h3>
+            <p>First notice of loss, status chasing, and renewal questions handled end to end,
+            with coverage decisions left to a human and a per-claim record of what informed each
+            step.</p>
+            <p style="margin-top:0.8rem"><code>claims</code> · <code>oversight</code> · <code>evals</code></p>
+          </a>
+          <a class="why-card" href="/use-cases/healthcare-patient-support/" style="display:block">
+            <span class="num">06</span>
+            <h3>Healthcare patient and billing support</h3>
+            <p>Appointment logistics, billing and claim status, and coverage questions, with
+            clinical advice refused by policy, identifiers masked before any provider call, and
+            the whole exchange retained inside your own perimeter.</p>
+            <p style="margin-top:0.8rem"><code>redaction</code> · <code>refuse_topics</code> · <code>self-hosted</code></p>
+          </a>
+          <a class="why-card" href="/use-cases/telecom-customer-operations/" style="display:block">
+            <span class="num">07</span>
+            <h3>Telecom customer operations</h3>
+            <p>Plan changes, billing disputes, port-out retention, and outage updates at call-centre
+            volume, with retention offers bounded by policy rather than by a model's enthusiasm.</p>
+            <p style="margin-top:0.8rem"><code>tools</code> · <code>guardrails</code> · <code>scorecard</code></p>
+          </a>
+        </div>
+
+        <div class="section-head" style="max-width:46em; margin:clamp(2rem,5vh,3.5rem) 0 1.4rem;">
+          <p class="eyebrow">Next</p>
+          <p>Use cases describe the shape of the problem. <a href="/playbooks/">Playbooks</a> give
+          you the working code for a specific channel or control, and the
+          <a href="/blog/">blog</a> covers the regulatory and architectural background. Start
+          anywhere; they link into each other.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap footer-grid">
+      <div>
+        <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+        <p style="margin-top:0.8rem; max-width:22em;">The open-source, self-hosted agent
+        platform for banks and fintechs.</p>
+      </div>
+      <nav aria-label="Product">
+        <span class="col-title">Product</span>
+        <a href="/docs/">Documentation</a>
+        <a href="/use-cases/">Use cases</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/blog/">Blog</a>
+        <a href="/#compare">Comparison</a>
+        <a href="https://pypi.org/project/zolva/" target="_blank" rel="noopener noreferrer">PyPI</a>
+      </nav>
+      <nav aria-label="Project">
+        <span class="col-title">Project</span>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="/security/">Security policy</a>
+        <a href="/contributing/">Contributing</a>
+        <a href="/legal/">Trust &amp; legal</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Apache-2.0 license</a>
+      </nav>
+      <nav aria-label="For machines">
+        <span class="col-title">For machines</span>
+        <a href="/llms.txt">llms.txt</a>
+        <a href="/llms-full.txt">llms-full.txt</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/AGENTS.md" target="_blank" rel="noopener noreferrer">AGENTS.md</a>
+      </nav>
+    </div>
+    <div class="wrap footer-sig">
+      <span>© 2026 Zolva. Apache-2.0.</span>
+      <span>Self-hosted by design; your data never leaves.</span>
+    </div>
+  </footer>
+</body>
+</html>

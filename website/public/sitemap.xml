@@ -21,6 +21,76 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://zolva.ai/use-cases/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://zolva.ai/use-cases/banking-customer-support/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://zolva.ai/use-cases/loan-collections/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://zolva.ai/use-cases/fraud-and-disputes/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://zolva.ai/use-cases/kyc-onboarding/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://zolva.ai/use-cases/insurance-claims/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://zolva.ai/use-cases/healthcare-patient-support/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://zolva.ai/use-cases/telecom-customer-operations/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://zolva.ai/blog/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://zolva.ai/blog/choosing-an-agent-framework-for-regulated-industries/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://zolva.ai/blog/eu-ai-act-ai-agents-financial-services/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://zolva.ai/blog/dora-llm-vendor-concentration-risk/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://zolva.ai/blog/guardrails-are-config-not-prompts/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://zolva.ai/blog/what-a-defensible-ai-audit-trail-contains/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://zolva.ai/playbooks/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>

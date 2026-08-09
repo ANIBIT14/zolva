@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>What a defensible AI agent audit trail actually contains | Zolva</title>
+  <meta name="description" content="Application logs are not an audit trail. The seven things a per-record AI audit trail needs, why hash chaining is the cheap part, how config hashes answer the which-version question, and how the same artefacts map onto EU AI Act record-keeping and SR 11-7 monitoring expectations." />
+  <link rel="canonical" href="https://zolva.ai/blog/what-a-defensible-ai-audit-trail-contains/" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/mark-512.png" />
+  <meta name="theme-color" content="#08011A" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Zolva" />
+  <meta property="og:title" content="What a defensible AI agent audit trail actually contains" />
+  <meta property="og:description" content="Seven fields, one hash chain, and the difference between logs and evidence." />
+  <meta property="og:url" content="https://zolva.ai/blog/what-a-defensible-ai-audit-trail-contains/" />
+  <meta property="og:image" content="https://zolva.ai/mark-512.png" />
+  <meta name="twitter:card" content="summary" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "headline": "What a defensible AI agent audit trail actually contains",
+    "description": "The contents, the tamper-evidence mechanism, and the mapping to regulatory expectations.",
+    "url": "https://zolva.ai/blog/what-a-defensible-ai-audit-trail-contains/",
+    "datePublished": "2026-07-14",
+    "author": { "@type": "Organization", "name": "Zolva", "url": "https://zolva.ai" },
+    "publisher": { "@type": "Organization", "name": "Zolva", "url": "https://zolva.ai" }
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links">menu</button>
+      <nav class="nav-links" id="nav-links" aria-label="Main">
+        <a href="/#why">Why Zolva</a>
+        <a href="/use-cases/">Use cases</a>
+        <a href="/docs/">Docs</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/blog/" aria-current="page">Blog</a>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a class="nav-cta" href="/docs/#quickstart">pip install zolva</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="wrap docs-shell">
+    <aside class="docs-sidebar" aria-label="On this page">
+      <p class="group">Article</p>
+      <a href="#logs">Logs are not records</a>
+      <a href="#seven">The seven fields</a>
+      <p class="group">Mechanism</p>
+      <a href="#chain">Hash chaining</a>
+      <a href="#config">The which-version question</a>
+      <a href="#storage">Storage and retention</a>
+      <p class="group">Practice</p>
+      <a href="#redaction">Redaction versus evidence</a>
+      <a href="#mapping">Mapping to obligations</a>
+    </aside>
+
+    <main class="docs-main">
+      <section id="logs">
+        <p class="eyebrow" style="margin-bottom:1rem">2026-07-14 · Compliance</p>
+        <h1>What a defensible AI agent audit trail actually contains</h1>
+        <p>Ask a team whether their agent is auditable and the answer is usually yes, we log
+        everything. Then ask three follow-up questions. Can you prove nobody edited a record from
+        eighteen months ago? Can you say which version of the policy was live during a specific
+        conversation? Are the logs still there after the retention window your log platform applies
+        by default?</p>
+        <p>The answers are typically no, no, and no. That is not negligence; application logs were
+        designed for debugging, where mutability is a feature and thirty days is generous. An audit
+        trail is a different artefact with different properties, and the gap becomes expensive at
+        exactly the moment you cannot close it retroactively.</p>
+        <p>The expectation has also tightened. Per-record trails capturing the input, the version in
+        force, the output, and the trigger have become the standard in regulated sectors, replacing
+        aggregate statistics as adequate evidence.</p>
+      </section>
+
+      <section id="seven">
+        <h2>The seven fields <a class="anchor-link" href="#seven">#</a></h2>
+        <p>For every step an agent takes, not every conversation, a record needs:</p>
+        <ol>
+          <li><strong>What came in.</strong> The customer message or the trigger that started the
+          step, with the session and, where relevant, a stable customer reference.</li>
+          <li><strong>What the system did.</strong> The step type: a model call, a tool call, a
+          guardrail evaluation, a handover. Naming the tool and the model matters; a conversation
+          that called <code>create_payment_link</code> is materially different from one that only
+          read a balance.</li>
+          <li><strong>Which rules were applied and what they decided.</strong> Including the ones
+          that passed. A record showing that eleven guardrails evaluated and one blocked is evidence;
+          a record that only mentions blocks tells you nothing about coverage.</li>
+          <li><strong>What went out.</strong> The reply as delivered, after any post-rules
+          modified or blocked it.</li>
+          <li><strong>Under which version.</strong> A hash of the agent definition, the
+          instructions, and the policy in force at that moment.</li>
+          <li><strong>When, precisely and in a stable timezone.</strong> Contact-window disputes turn
+          entirely on this.</li>
+          <li><strong>Its position in the chain.</strong> The hash of the previous entry, which is
+          what makes the whole thing tamper-evident.</li>
+        </ol>
+        <p>Note what is not on the list: model confidence scores, token counts, latency. Useful for
+        operations, irrelevant to whether the record is defensible.</p>
+      </section>
+
+      <section id="chain">
+        <h2>Hash chaining is the cheap part <a class="anchor-link" href="#chain">#</a></h2>
+        <p>Each entry includes the hash of the one before it. Change an old entry and every
+        subsequent hash is wrong, so tampering is detectable by recomputing the chain rather than by
+        trusting anyone's access controls. The head hash is a single value that commits to the entire
+        history, so you can record it externally, in a separate system or a periodic report, and
+        later prove the whole history was already fixed at that time.</p>
+        <p>This is a well-understood construction and it costs a hash per write. What it buys is a
+        change of claim: instead of "our access controls make edits unlikely" you can say "an edit
+        would be detectable, and here is the verification". Those are different sentences in a
+        supervisory conversation.</p>
+        <p>What it does not do is prevent deletion of the tail, or prove an entry was written when it
+        claims. Anchoring the head hash somewhere you do not control closes the second gap; ordinary
+        backups and append-only storage handle the first. Verify continuously rather than on request:
+        <code>zolva scorecard audit.db</code> checks the chain and prints the operating picture, and
+        running it on a schedule means a break surfaces in hours rather than during an audit.</p>
+      </section>
+
+      <section id="config">
+        <h2>The which-version question <a class="anchor-link" href="#config">#</a></h2>
+        <p>This is the field teams most often lack, and the one reviewers most reliably ask about. A
+        conversation from March is being reviewed. The agent said something the current policy would
+        have blocked. Did the policy not cover it then, or did the guardrail fail?</p>
+        <p>Without a config hash in the record, that is unanswerable, and unanswerable tends to be
+        read unfavourably. With one, you resolve the hash to the exact revision in version control
+        and read the policy that was actually live. It also makes a subtler question answerable: when
+        did behaviour change, and which change caused it, which is the difference between a
+        one-paragraph explanation and a week of archaeology.</p>
+        <p>This works because the agent is declared as data. YAML plus Markdown plus a policy file
+        hashes to a stable value and resolves back to a commit. Behaviour spread across a Python
+        graph, a prompt template, and a few environment variables does not.</p>
+      </section>
+
+      <section id="storage">
+        <h2>Storage and retention <a class="anchor-link" href="#storage">#</a></h2>
+        <p>The audit store should be pluggable, because a pilot and a production deployment have
+        genuinely different needs. SQLite is right for a pilot: no infrastructure, a file you can
+        copy, fine for a single process. Postgres is right once you have concurrent writers, real
+        retention obligations, and a backup regime that a supervisor may ask about.</p>
+        <p>Two things to decide early rather than late. Retention, which for financial services is
+        usually measured in years and may outlast the agent, the vendor, and the project team, so it
+        belongs on infrastructure you control. And residency, because if the store is inside your
+        perimeter, the answer to where customer conversations live is your existing data policy
+        rather than a new one. The
+        <a href="/playbooks/regulator-ready-audit/">audit playbook</a> covers both backends.</p>
+      </section>
+
+      <section id="redaction">
+        <h2>Redaction versus evidence <a class="anchor-link" href="#redaction">#</a></h2>
+        <p>These pull in opposite directions and the resolution is to apply them at different points.
+        Redaction exists so PII does not reach a third-party model. Evidence exists so you can show
+        what actually happened. Mask everything in the audit log and it stops being evidence; mask
+        nothing before the model call and you have exported customer data to a vendor.</p>
+        <p>Mask on the way out to the provider, not on the way into the record. Card numbers, emails,
+        phone numbers, and your own identifier formats are redacted before any text reaches the
+        model, while sessions, the audit chain, and human handover keep the true transcript inside
+        your perimeter, where it is subject to your access controls rather than someone else's. Data
+        exports mask again, because a fine-tuning dataset or an analytics extract is a different
+        trust boundary from the audit store. The
+        <a href="/playbooks/pii-redaction-data-residency/">redaction playbook</a> has the
+        mechanics.</p>
+      </section>
+
+      <section id="mapping">
+        <h2>Mapping to obligations <a class="anchor-link" href="#mapping">#</a></h2>
+        <p>The same artefacts answer several regimes at once, which is the practical argument for
+        building them once and properly:</p>
+        <ul>
+          <li><strong>Record-keeping.</strong> The hash-chained log of every step, retained on your
+          own infrastructure.</li>
+          <li><strong>A traceable system definition.</strong> Config hashes tying each conversation
+          to an exact revision of the agent, instructions, and policy.</li>
+          <li><strong>Human oversight.</strong> Handover events recorded as fact, including the
+          resolution the human gave, rather than asserted in a policy document.</li>
+          <li><strong>Accuracy and ongoing monitoring.</strong> Eval gate results and the scorecard
+          over time, which is what SR 11-7 has always meant by ongoing monitoring.</li>
+        </ul>
+        <div class="code">
+          <div class="code-bar"><span>terminal</span><button class="copy-btn" data-copy="#c-comp">copy</button></div>
+          <pre><code data-lang="bash" id="c-comp">zolva compliance audit.sqlite --agents agents/ --eval-report eval.json --out pack.json --gate</code></pre>
+        </div>
+        <p>That reads the artefacts back and emits one signed bundle mapped to named articles, with
+        the chain head hash as the tamper-evidence anchor and <code>bundle_sha256</code> self-sealing
+        the report. <code>--gate</code> exits non-zero unless every control passes, so a missing
+        control is a build failure rather than an audit finding. It is packaging of evidence you
+        already produce, not a compliance guarantee; your own mapping and sign-off decide
+        adequacy.</p>
+        <p>Related: <a href="/blog/eu-ai-act-ai-agents-financial-services/">the obligations this
+        evidence answers</a>, and <a href="/blog/guardrails-are-config-not-prompts/">why the
+        guardrail decisions are in the record at all</a>.</p>
+        <p style="margin-top:1.5rem"><a href="/blog/">← All posts</a></p>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div class="wrap footer-grid">
+      <div>
+        <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+        <p style="margin-top:0.8rem; max-width:22em;">The open-source, self-hosted agent
+        platform for banks and fintechs.</p>
+      </div>
+      <nav aria-label="Product">
+        <span class="col-title">Product</span>
+        <a href="/docs/">Documentation</a>
+        <a href="/use-cases/">Use cases</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/blog/">Blog</a>
+        <a href="/#compare">Comparison</a>
+        <a href="https://pypi.org/project/zolva/" target="_blank" rel="noopener noreferrer">PyPI</a>
+      </nav>
+      <nav aria-label="Project">
+        <span class="col-title">Project</span>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="/security/">Security policy</a>
+        <a href="/contributing/">Contributing</a>
+        <a href="/legal/">Trust &amp; legal</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Apache-2.0 license</a>
+      </nav>
+      <nav aria-label="For machines">
+        <span class="col-title">For machines</span>
+        <a href="/llms.txt">llms.txt</a>
+        <a href="/llms-full.txt">llms-full.txt</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/AGENTS.md" target="_blank" rel="noopener noreferrer">AGENTS.md</a>
+      </nav>
+    </div>
+    <div class="wrap footer-sig">
+      <span>© 2026 Zolva. Apache-2.0.</span>
+      <span>Self-hosted by design; your data never leaves.</span>
+    </div>
+  </footer>
+</body>
+</html>

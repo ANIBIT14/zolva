@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The EU AI Act moved. What financial services still has to build. | Zolva</title>
+  <meta name="description" content="The Digital Omnibus deferred the EU AI Act's Annex III high-risk compliance date to December 2027, but the obligations are unchanged and the transparency duties still apply. What record-keeping, transparency, human oversight and accuracy monitoring mean concretely for an AI agent deployment in a bank." />
+  <link rel="canonical" href="https://zolva.ai/blog/eu-ai-act-ai-agents-financial-services/" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/mark-512.png" />
+  <meta name="theme-color" content="#08011A" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Zolva" />
+  <meta property="og:title" content="The EU AI Act moved. What financial services still has to build." />
+  <meta property="og:description" content="A deferred deadline is not a deferred obligation. The four duties, and the artefacts that satisfy each." />
+  <meta property="og:url" content="https://zolva.ai/blog/eu-ai-act-ai-agents-financial-services/" />
+  <meta property="og:image" content="https://zolva.ai/mark-512.png" />
+  <meta name="twitter:card" content="summary" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "headline": "The EU AI Act moved. What financial services still has to build.",
+    "description": "What the deferred Annex III deadline changes, what it does not, and which artefacts satisfy each obligation.",
+    "url": "https://zolva.ai/blog/eu-ai-act-ai-agents-financial-services/",
+    "datePublished": "2026-08-04",
+    "author": { "@type": "Organization", "name": "Zolva", "url": "https://zolva.ai" },
+    "publisher": { "@type": "Organization", "name": "Zolva", "url": "https://zolva.ai" }
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links">menu</button>
+      <nav class="nav-links" id="nav-links" aria-label="Main">
+        <a href="/#why">Why Zolva</a>
+        <a href="/use-cases/">Use cases</a>
+        <a href="/docs/">Docs</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/blog/" aria-current="page">Blog</a>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a class="nav-cta" href="/docs/#quickstart">pip install zolva</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="wrap docs-shell">
+    <aside class="docs-sidebar" aria-label="On this page">
+      <p class="group">Article</p>
+      <a href="#what-moved">What actually moved</a>
+      <a href="#scope">Is your agent high-risk?</a>
+      <p class="group">Obligations</p>
+      <a href="#records">Record-keeping</a>
+      <a href="#transparency">Transparency</a>
+      <a href="#oversight">Human oversight</a>
+      <a href="#accuracy">Accuracy and monitoring</a>
+      <p class="group">Practice</p>
+      <a href="#pack">Packaging the evidence</a>
+      <a href="#start">Where to start</a>
+    </aside>
+
+    <main class="docs-main">
+      <section id="what-moved">
+        <p class="eyebrow" style="margin-bottom:1rem">2026-08-04 · Regulation</p>
+        <h1>The EU AI Act moved. What financial services still has to build.</h1>
+        <p>The original schedule put obligations for Annex III high-risk systems, the category that
+        includes creditworthiness assessment, at 2 August 2026. In 2026 the Digital Omnibus was
+        agreed and moves that date to 2 December 2027, with AI embedded in regulated products under
+        Annex I deferred to August 2028. Several teams have read the headline and concluded the
+        programme can slip a year.</p>
+        <p>Three reasons that reading is expensive.</p>
+        <ul>
+          <li><strong>The obligations did not change.</strong> The deferral moves a date. Record
+          keeping, transparency, human oversight, and accuracy monitoring are the same duties with
+          the same content.</li>
+          <li><strong>The transparency duties already apply.</strong> The rules that took effect in
+          earlier phases, including telling people they are interacting with an AI system, were not
+          part of the deferral.</li>
+          <li><strong>Evidence is slow.</strong> Ongoing monitoring means a history. A bank that
+          starts collecting in mid-2027 will have months of it in December 2027; one that started in
+          2026 will have years. You cannot backfill an audit trail, and that is rather the
+          point.</li>
+        </ul>
+        <div class="callout warn">
+          <strong>This is not legal advice.</strong> Timelines shift, and the Omnibus amendments take
+          effect on their own schedule once published. Read the primary sources with your own
+          counsel. What follows is about the engineering consequences, which are stable regardless of
+          which date lands.
+        </div>
+      </section>
+
+      <section id="scope">
+        <h2>Is your agent actually high-risk? <a class="anchor-link" href="#scope">#</a></h2>
+        <p>Most agent deployments in a bank are not. A support agent that answers balance queries
+        and explains fees is not making a decision about access to an essential service. An agent
+        that evaluates creditworthiness, or that materially shapes a decision about access to
+        credit, is squarely in Annex III.</p>
+        <p>The uncomfortable middle is where most projects actually live: an agent that does not
+        decide but does influence. If the agent summarises an applicant's case for the analyst who
+        decides, the summary is part of the decision path. If it chases documents and explains
+        rejection codes without touching the outcome, it is not. The
+        <a href="/use-cases/kyc-onboarding/">onboarding use case</a> is written around keeping that
+        line clean, because staying clearly outside the category is cheaper than being marginally
+        inside it.</p>
+        <p>Two practical notes. Classification is a decision you should record with reasons, because
+        someone will ask how you reached it. And a lower-risk classification does not exempt you from
+        the transparency duties, from GDPR, or from the sectoral supervisor who has their own view
+        about model risk regardless of what the AI Act says.</p>
+      </section>
+
+      <section id="records">
+        <h2>Record-keeping: logs are not the same as records <a class="anchor-link" href="#records">#</a></h2>
+        <p>The record-keeping obligation is about traceability of the system's functioning over its
+        lifetime. Application logs fail this in a specific way: they are mutable, usually retained
+        for weeks rather than years, and they do not tie an interaction to the version of the
+        configuration that produced it.</p>
+        <p>What passes is a record where each entry covers what came in, what the system did, what
+        rules were applied, what went out, and under which version, and where tampering is
+        detectable rather than merely discouraged. Hash chaining gets you the last property cheaply:
+        each entry includes the hash of the previous one, so altering an old entry invalidates
+        everything after it, and the head hash is a single anchor you can verify or publish.</p>
+        <p>Zolva writes every bus step, message, tool call, guardrail decision, and handover, into
+        that chain by default, with config hashes pinning the exact agent definition, instructions,
+        and policy in force. <code>zolva scorecard audit.db</code> verifies the chain. The
+        <a href="/blog/what-a-defensible-ai-audit-trail-contains/">audit trail article</a> goes
+        through the contents field by field.</p>
+      </section>
+
+      <section id="transparency">
+        <h2>Transparency: two different duties <a class="anchor-link" href="#transparency">#</a></h2>
+        <p>They get conflated. One is disclosure to the person: they should know they are
+        interacting with an AI system, which is a product decision about first-message copy and one
+        of the easiest things on this list to get right.</p>
+        <p>The other is transparency to the deployer and the supervisor: the system's capabilities,
+        limitations, and intended purpose have to be documented well enough that a person operating
+        it can understand what it does. Here declarative configuration earns its keep. An agent
+        defined as YAML plus a Markdown instructions file plus a policy file <em>is</em> the
+        documentation, and it cannot drift from the running system because it is the running system.
+        A compliance officer can read the policy file and see the rules. That is not true of an agent
+        whose behaviour is spread across a Python graph, a prompt template, and three environment
+        variables.</p>
+      </section>
+
+      <section id="oversight">
+        <h2>Human oversight: a path, not a paragraph <a class="anchor-link" href="#oversight">#</a></h2>
+        <p>The oversight requirement asks for effective supervision by people, with the ability to
+        intervene or interrupt. The common failure is a policy document asserting that humans review
+        outputs, with no mechanism that produces evidence of it happening.</p>
+        <p>Make the mechanism real and the evidence is a by-product. Declare a handoff on the agent,
+        route it somewhere your team already works, whether a
+        <a href="/playbooks/slack-handover-desk/">Slack desk</a> or your ticketing system, resume the
+        session with the human's resolution, and record all of it. Then test it: a
+        <code>handoff</code>-graded eval cohort passes only when a session actually escalated, so
+        "escalates on hardship" becomes a gate rather than an aspiration.</p>
+        <p>Handover also has to be the failure mode. Provider errors and tool crashes should degrade
+        to a human rather than to a vague apology, because an agent that silently fails is an agent
+        with no oversight at exactly the moment oversight matters.</p>
+      </section>
+
+      <section id="accuracy">
+        <h2>Accuracy and ongoing monitoring <a class="anchor-link" href="#accuracy">#</a></h2>
+        <p>This is the obligation teams underestimate, and it overlaps almost exactly with what SR
+        11-7 has asked of model risk management for years: documented validation before deployment,
+        and monitoring that continues afterwards.</p>
+        <p>Three habits cover it, and each produces its own evidence:</p>
+        <ul>
+          <li><strong>Gate releases on the worst cohort.</strong> Not an average. Define cohorts
+          around the behaviours that must never regress, require a full pass, and run
+          <code>zolva eval evals/ --gate</code> in CI so a prompt change that breaks one cannot
+          ship.</li>
+          <li><strong>Keep running after release.</strong> A scheduled drift run and
+          <a href="/playbooks/red-team-synthetics/">adversarial synthetics</a> against staging turn
+          monitoring into a time series rather than a snapshot.</li>
+          <li><strong>Close the loop.</strong> Every production failure becomes a permanent
+          regression case, so the same defect cannot return quietly. That
+          <a href="/playbooks/feedback-to-fix-loop/">loop</a> is also the clearest evidence of a
+          functioning quality management process.</li>
+        </ul>
+      </section>
+
+      <section id="pack">
+        <h2>Packaging the evidence <a class="anchor-link" href="#pack">#</a></h2>
+        <p>If the controls above are in place, the artefacts already exist; the remaining work is
+        presenting them. That is what <code>zolva compliance</code> does:</p>
+        <div class="code">
+          <div class="code-bar"><span>terminal</span><button class="copy-btn" data-copy="#c-comp">copy</button></div>
+          <pre><code data-lang="bash" id="c-comp">zolva compliance audit.sqlite --agents agents/ --eval-report eval.json --out pack.json --gate</code></pre>
+        </div>
+        <p>It maps the hash-chained audit to record-keeping, the config hashes to the traceable
+        system definition, handover events to human oversight, and eval gates plus the scorecard to
+        accuracy and ongoing monitoring, all against named articles. The chain's head hash is the
+        tamper-evidence anchor, <code>bundle_sha256</code> self-seals the report, and
+        <code>--gate</code> exits non-zero unless every control passes, which makes it usable in
+        CI.</p>
+        <p>To be clear about what it is: packaging of evidence you already produce, not a compliance
+        guarantee. Your own mapping and your own sign-off decide adequacy.</p>
+      </section>
+
+      <section id="start">
+        <h2>Where to start <a class="anchor-link" href="#start">#</a></h2>
+        <ol>
+          <li>Classify each agent, write down the reasoning, and keep it with the config.</li>
+          <li>Turn on a tamper-evident audit store now, because retention starts when you start.</li>
+          <li>Move every rule that matters out of the prompt and into
+          <a href="/blog/guardrails-are-config-not-prompts/">policy config</a>.</li>
+          <li>Make handover real and testable, and route it where humans already look.</li>
+          <li>Write the worst-cohort evals and gate CI on them.</li>
+          <li>Run <code>zolva compliance --gate</code> weekly so gaps surface as build failures
+          rather than as findings.</li>
+        </ol>
+        <p>None of this is faster to do in December 2027 than it is now, and the monitoring history
+        is worth more the earlier it starts.</p>
+        <p style="margin-top:1.5rem"><a href="/blog/">← All posts</a></p>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div class="wrap footer-grid">
+      <div>
+        <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+        <p style="margin-top:0.8rem; max-width:22em;">The open-source, self-hosted agent
+        platform for banks and fintechs.</p>
+      </div>
+      <nav aria-label="Product">
+        <span class="col-title">Product</span>
+        <a href="/docs/">Documentation</a>
+        <a href="/use-cases/">Use cases</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/blog/">Blog</a>
+        <a href="/#compare">Comparison</a>
+        <a href="https://pypi.org/project/zolva/" target="_blank" rel="noopener noreferrer">PyPI</a>
+      </nav>
+      <nav aria-label="Project">
+        <span class="col-title">Project</span>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="/security/">Security policy</a>
+        <a href="/contributing/">Contributing</a>
+        <a href="/legal/">Trust &amp; legal</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Apache-2.0 license</a>
+      </nav>
+      <nav aria-label="For machines">
+        <span class="col-title">For machines</span>
+        <a href="/llms.txt">llms.txt</a>
+        <a href="/llms-full.txt">llms-full.txt</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/AGENTS.md" target="_blank" rel="noopener noreferrer">AGENTS.md</a>
+      </nav>
+    </div>
+    <div class="wrap footer-sig">
+      <span>© 2026 Zolva. Apache-2.0.</span>
+      <span>Self-hosted by design; your data never leaves.</span>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Choosing an AI agent framework when a supervisor will read the transcript | Zolva</title>
+  <meta name="description" content="LangGraph, CrewAI, the OpenAI Agents SDK, Pydantic AI and Parlant compared on the axes that decide a regulated deployment rather than the usual orchestration benchmarks: independent policy enforcement, release gating, tamper-evident records, and where the data runs." />
+  <link rel="canonical" href="https://zolva.ai/blog/choosing-an-agent-framework-for-regulated-industries/" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/mark-512.png" />
+  <meta name="theme-color" content="#08011A" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Zolva" />
+  <meta property="og:title" content="Choosing an AI agent framework when a supervisor will read the transcript" />
+  <meta property="og:description" content="Four questions a second line of defence will ask, and how the common frameworks answer them." />
+  <meta property="og:url" content="https://zolva.ai/blog/choosing-an-agent-framework-for-regulated-industries/" />
+  <meta property="og:image" content="https://zolva.ai/mark-512.png" />
+  <meta name="twitter:card" content="summary" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "headline": "Choosing an AI agent framework when a supervisor will read the transcript",
+    "description": "A framework selection checklist for regulated deployments, and where a generic framework plus glue code is the right answer.",
+    "url": "https://zolva.ai/blog/choosing-an-agent-framework-for-regulated-industries/",
+    "datePublished": "2026-08-09",
+    "author": { "@type": "Organization", "name": "Zolva", "url": "https://zolva.ai" },
+    "publisher": { "@type": "Organization", "name": "Zolva", "url": "https://zolva.ai" }
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links">menu</button>
+      <nav class="nav-links" id="nav-links" aria-label="Main">
+        <a href="/#why">Why Zolva</a>
+        <a href="/use-cases/">Use cases</a>
+        <a href="/docs/">Docs</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/blog/" aria-current="page">Blog</a>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a class="nav-cta" href="/docs/#quickstart">pip install zolva</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="wrap docs-shell">
+    <aside class="docs-sidebar" aria-label="On this page">
+      <p class="group">Article</p>
+      <a href="#wrong-axis">The usual comparison</a>
+      <a href="#questions">Four questions</a>
+      <p class="group">The landscape</p>
+      <a href="#orchestration">Orchestration frameworks</a>
+      <a href="#guardrail-libs">Guardrail libraries</a>
+      <a href="#hosted">Hosted platforms</a>
+      <p class="group">Deciding</p>
+      <a href="#glue">The glue-code estimate</a>
+      <a href="#choose">How to choose</a>
+    </aside>
+
+    <main class="docs-main">
+      <section id="wrong-axis">
+        <p class="eyebrow" style="margin-bottom:1rem">2026-08-09 · Frameworks</p>
+        <h1>Choosing an AI agent framework when a supervisor will read the transcript</h1>
+        <p>The comparison articles all measure the same things. Orchestration expressiveness. State
+        persistence and checkpointing. Multi-agent handoff ergonomics. Developer experience and
+        download counts. LangGraph gets credit for explicit control over state transitions, CrewAI
+        for a fast role-based abstraction, the OpenAI Agents SDK for a small surface with built-in
+        tracing, and the recommended pattern is often to combine them.</p>
+        <p>All of that is real and none of it decides a deployment in a bank, an insurer, or a
+        hospital. Those decisions turn on a different set of questions, and they get asked by people
+        who will never read the orchestration code.</p>
+        <div class="callout">
+          <strong>Disclosure.</strong> We build one of the options discussed here. The
+          recommendation at the end includes the cases where you should not use it, because a
+          framework comparison that concludes "use ours" for every scenario is worth nothing.
+        </div>
+      </section>
+
+      <section id="questions">
+        <h2>Four questions that actually decide it <a class="anchor-link" href="#questions">#</a></h2>
+        <ol>
+          <li><strong>Where are the rules enforced, and can a non-engineer read them?</strong> If
+          the answer is "in the system prompt", the rules are not independently enforced and cannot
+          be reviewed by the people accountable for them.
+          <a href="/blog/guardrails-are-config-not-prompts/">Why that matters</a>.</li>
+          <li><strong>What stops a bad change from shipping?</strong> A release process that relies
+          on someone reading a diff and running the agent by hand is not a control. There has to be
+          a gate that fails the build.</li>
+          <li><strong>What can you show eighteen months later?</strong> Not logs. A record where
+          tampering is detectable and where each conversation resolves to the exact version of the
+          configuration that produced it.
+          <a href="/blog/what-a-defensible-ai-audit-trail-contains/">What that contains</a>.</li>
+          <li><strong>Where does the data run, and could you leave?</strong> Under DORA's
+          third-party regime this is a register entry and an exit-strategy question, not a
+          preference. <a href="/blog/dora-llm-vendor-concentration-risk/">The consequences</a>.</li>
+        </ol>
+        <p>Notice that none of the four is about agent quality. Quality is table stakes and every
+        serious option clears it. These are the questions that determine whether the thing can go to
+        production at all.</p>
+      </section>
+
+      <section id="orchestration">
+        <h2>Orchestration frameworks <a class="anchor-link" href="#orchestration">#</a></h2>
+        <p><strong>LangGraph</strong> gives the most explicit control over state transitions, with
+        checkpointing and rollback, which is genuinely why enterprise teams picked it up through
+        early 2026. Its graph model makes execution deterministic and inspectable, and that is a real
+        asset in a regulated setting. What it does not give you is a policy layer with independent
+        enforcement, an eval gating system, or a tamper-evident audit store. Those remain yours to
+        build, and the graph being auditable is not the same as the deployment being audited.</p>
+        <p><strong>CrewAI</strong> optimises for speed of assembly with role-based agents, and it
+        is excellent for that. The abstraction deliberately trades fine-grained control for
+        simplicity, with limited control over agent-to-agent communication. For a regulated
+        deployment where you need to reason precisely about what happens between two steps, that
+        trade goes the wrong way.</p>
+        <p><strong>The OpenAI Agents SDK</strong> has a small, clean surface, parallel input
+        validation that halts on failure, and tracing through the provider's observability platform.
+        The guardrail primitives are the closest of the three to what this article is about. The
+        catch for a bank is in the last clause: the tracing path and the default deployment shape
+        assume a provider relationship, which is exactly the dependency the third-party regime asks
+        you to minimise.</p>
+        <p><strong>Pydantic AI</strong> deserves a mention for treating validation as a first-class
+        concern, which removes an entire class of failure at the tool boundary. It is a strong
+        foundation and a small part of the total requirement.</p>
+      </section>
+
+      <section id="guardrail-libs">
+        <h2>Guardrail libraries and conversation control <a class="anchor-link" href="#guardrail-libs">#</a></h2>
+        <p>NeMo Guardrails and Guardrails AI both do independent, declarative rule enforcement, which
+        is the first question answered properly. Bolting one onto an orchestration framework is a
+        legitimate architecture and plenty of teams run it.</p>
+        <p><strong>Parlant</strong> is the most interesting adjacent option, because it is built
+        around compliance-minded conversation control rather than around orchestration. If your
+        problem is purely "keep the conversation inside defined behaviour", it is worth a look. It
+        does not bring an eval and regression system, a feedback loop, or a banking-specific
+        scorecard.</p>
+        <p>The pattern to notice: each of these solves one of the four questions well. The
+        integration between them, and the evidence that the integration works, is where the effort
+        goes.</p>
+      </section>
+
+      <section id="hosted">
+        <h2>Hosted agent platforms <a class="anchor-link" href="#hosted">#</a></h2>
+        <p>Hosted platforms answer questions one and two well, often better than anything you would
+        build, with policy consoles and release workflows that are genuinely mature. They answer
+        question three partially, with audit features that are usually adequate. Question four is
+        where they struggle, and not because of any deficiency in the product: customer conversations
+        are in the vendor's infrastructure, the agent definition is in the vendor's format, the audit
+        trail is subject to the vendor's retention, and the exit strategy depends on an export
+        endpoint working when you need it.</p>
+        <p>If your institution is comfortable with that as an ICT third-party arrangement, and some
+        are, a hosted platform is a reasonable and fast choice. The point is to make that a decision
+        with its diligence attached, rather than something discovered at the first resilience
+        review.</p>
+      </section>
+
+      <section id="glue">
+        <h2>The glue-code estimate <a class="anchor-link" href="#glue">#</a></h2>
+        <p>Teams that pick a generic framework and plan to add the rest usually underestimate the
+        remainder. In our experience the list is:</p>
+        <ul>
+          <li>A policy layer with pre and post rules, judge-backed refusals with a strictness
+          setting, and hard blocks that cannot be configured off.</li>
+          <li>A deterministic rule engine for windows and contact caps, with a ledger keyed on a
+          customer reference so counts work across channels.</li>
+          <li>An eval harness with cohorts, worst-cohort gating, a judge from a different model
+          family, and a handoff grader that inspects whether escalation actually happened.</li>
+          <li>A hash-chained audit store with config hashes, a verification command, and a
+          production-grade backend.</li>
+          <li>A handover path with resume, wired into wherever your humans already work.</li>
+          <li>A feedback loop that promotes production failures into regression cohorts.</li>
+          <li>Channel adapters, with session identity namespaced so ids from different channels
+          cannot collide.</li>
+          <li>Redaction before provider calls that does not corrupt the audit record.</li>
+        </ul>
+        <p>Each item is a few weeks including the tests that make it trustworthy. It is a year of
+        platform work before the first agent does anything a customer notices, and it is the same
+        year at every institution, which is the observation the project started from.</p>
+      </section>
+
+      <section id="choose">
+        <h2>How to choose <a class="anchor-link" href="#choose">#</a></h2>
+        <p><strong>Use a generic orchestration framework</strong> when the agent is internal, the
+        data is not sensitive, no supervisor will ever ask about it, or the workflow is genuinely
+        complex in shape and orchestration expressiveness is the binding constraint. Most agent
+        projects are here, and reaching for a compliance-oriented platform would be
+        over-engineering.</p>
+        <p><strong>Use a hosted platform</strong> when speed matters more than the third-party
+        position, and your risk function has explicitly accepted that position.</p>
+        <p><strong>Use something built for this</strong> when the agent talks to customers about
+        money, health, or access to a service; when a rule breaking would produce a complaint or a
+        fine; when the record has to survive years and a change of team; or when your risk function
+        has already told you the data cannot leave. That is the case Zolva is built for: agents as
+        YAML plus Markdown, your APIs as typed tools, guardrails as config on a middleware bus,
+        CI-gated evals, a hash-chained audit, human handover with resume, and synthetics, installed
+        inside your own perimeter with <code>pip install zolva</code> and Apache-2.0 licensed so your
+        security team can read every line.</p>
+        <p>The honest summary: if none of the four questions applies to your project, do not pay the
+        cost of answering them. If two or more do, they will be answered eventually, and the
+        expensive path is answering them after the first deployment rather than before.</p>
+        <p>Start with the <a href="/docs/#quickstart">quickstart</a>, the
+        <a href="/use-cases/">use cases</a>, or the
+        <a href="/playbooks/">playbooks</a> if you want working code first.</p>
+        <p style="margin-top:1.5rem"><a href="/blog/">← All posts</a></p>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div class="wrap footer-grid">
+      <div>
+        <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+        <p style="margin-top:0.8rem; max-width:22em;">The open-source, self-hosted agent
+        platform for banks and fintechs.</p>
+      </div>
+      <nav aria-label="Product">
+        <span class="col-title">Product</span>
+        <a href="/docs/">Documentation</a>
+        <a href="/use-cases/">Use cases</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/blog/">Blog</a>
+        <a href="/#compare">Comparison</a>
+        <a href="https://pypi.org/project/zolva/" target="_blank" rel="noopener noreferrer">PyPI</a>
+      </nav>
+      <nav aria-label="Project">
+        <span class="col-title">Project</span>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="/security/">Security policy</a>
+        <a href="/contributing/">Contributing</a>
+        <a href="/legal/">Trust &amp; legal</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Apache-2.0 license</a>
+      </nav>
+      <nav aria-label="For machines">
+        <span class="col-title">For machines</span>
+        <a href="/llms.txt">llms.txt</a>
+        <a href="/llms-full.txt">llms-full.txt</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/AGENTS.md" target="_blank" rel="noopener noreferrer">AGENTS.md</a>
+      </nav>
+    </div>
+    <div class="wrap footer-sig">
+      <span>© 2026 Zolva. Apache-2.0.</span>
+      <span>Self-hosted by design; your data never leaves.</span>
+    </div>
+  </footer>
+</body>
+</html>
