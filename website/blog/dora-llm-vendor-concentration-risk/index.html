@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DORA turned your LLM vendor into an ICT third party | Zolva</title>
+  <meta name="description" content="Under DORA Articles 28 to 30, an LLM or hosted agent vendor supporting a critical function is an ICT third-party service provider: register entry, pre-contract diligence, contract content rules, and a credible exit strategy. Why self-hosting stopped being a preference and became an architecture decision." />
+  <link rel="canonical" href="https://zolva.ai/blog/dora-llm-vendor-concentration-risk/" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/mark-512.png" />
+  <meta name="theme-color" content="#08011A" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Zolva" />
+  <meta property="og:title" content="DORA turned your LLM vendor into an ICT third party" />
+  <meta property="og:description" content="Register entries, concentration risk, and the exit strategy question that hosted agent platforms cannot answer." />
+  <meta property="og:url" content="https://zolva.ai/blog/dora-llm-vendor-concentration-risk/" />
+  <meta property="og:image" content="https://zolva.ai/mark-512.png" />
+  <meta name="twitter:card" content="summary" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "headline": "DORA turned your LLM vendor into an ICT third party",
+    "description": "What DORA's third-party regime means for AI agent platforms, and why exit strategy favours self-hosting.",
+    "url": "https://zolva.ai/blog/dora-llm-vendor-concentration-risk/",
+    "datePublished": "2026-07-28",
+    "author": { "@type": "Organization", "name": "Zolva", "url": "https://zolva.ai" },
+    "publisher": { "@type": "Organization", "name": "Zolva", "url": "https://zolva.ai" }
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links">menu</button>
+      <nav class="nav-links" id="nav-links" aria-label="Main">
+        <a href="/#why">Why Zolva</a>
+        <a href="/use-cases/">Use cases</a>
+        <a href="/docs/">Docs</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/blog/" aria-current="page">Blog</a>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a class="nav-cta" href="/docs/#quickstart">pip install zolva</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="wrap docs-shell">
+    <aside class="docs-sidebar" aria-label="On this page">
+      <p class="group">Article</p>
+      <a href="#regime">The regime, briefly</a>
+      <a href="#stack">Your stack, re-read</a>
+      <p class="group">Consequences</p>
+      <a href="#register">Register and diligence</a>
+      <a href="#concentration">Concentration risk</a>
+      <a href="#exit">The exit strategy test</a>
+      <p class="group">Practice</p>
+      <a href="#architecture">What this implies</a>
+      <a href="#residual">What self-hosting does not fix</a>
+    </aside>
+
+    <main class="docs-main">
+      <section id="regime">
+        <p class="eyebrow" style="margin-bottom:1rem">2026-07-28 · Architecture</p>
+        <h1>DORA turned your LLM vendor into an ICT third party</h1>
+        <p>The Digital Operational Resilience Act has applied since January 2025, and Articles 28 to
+        30 govern how a financial entity manages ICT third-party risk. Nothing in it mentions
+        language models, which is precisely why it applies to them. An LLM provider or a hosted
+        agent platform supporting a critical or important function is an ICT third-party service
+        provider, with everything that follows.</p>
+        <p>The oversight layer landed next. In November 2025 the European Supervisory Authorities
+        designated the first critical ICT third-party providers, nineteen of them, including AWS,
+        Microsoft Azure, Google Cloud, Oracle, IBM, SAP, Deutsche Telekom, Equinix and Swift, and
+        those providers came under direct EU oversight from 2026. Almost every production AI
+        workload runs on one of them. Even an AI vendor not designated in its own right is typically
+        sitting on one that is.</p>
+        <div class="callout">
+          <strong>The reframing.</strong> The question stopped being "is this model good enough".
+          It is now "can I describe this dependency in my register, evidence diligence on it,
+          contract for the required terms, and demonstrate I could leave". Model quality is a
+          procurement input. The rest is an architecture problem.
+        </div>
+      </section>
+
+      <section id="stack">
+        <h2>Your stack, re-read as a dependency graph <a class="anchor-link" href="#stack">#</a></h2>
+        <p>A typical hosted agent deployment has more third parties in the critical path than the
+        architecture diagram suggests:</p>
+        <ul>
+          <li>The agent platform vendor, holding your conversations and your configuration.</li>
+          <li>The model provider, receiving your prompts, which contain your customer data.</li>
+          <li>The cloud the platform runs on, frequently a designated critical provider.</li>
+          <li>The observability, vector, and storage services the platform uses, which you may
+          never have been told about.</li>
+        </ul>
+        <p>Each is a register entry if the function is critical or important. Each needs diligence,
+        contract terms, and an answer to the resilience questions. And the fourth category is the one
+        that causes trouble in an audit, because subcontracting chains are exactly what Article 30
+        asks you to be able to describe.</p>
+      </section>
+
+      <section id="register">
+        <h2>Register entries and pre-contract diligence <a class="anchor-link" href="#register">#</a></h2>
+        <p>The mechanics are unglamorous and they are where projects stall. You maintain a register
+        of ICT third-party arrangements, classify which support critical or important functions, run
+        diligence on those before contracting, and meet specific contract content rules: access and
+        audit rights, subcontracting conditions, service levels, incident cooperation, data location,
+        and termination rights.</p>
+        <p>Two of those are consistently hard to get from an AI vendor. Audit rights over a
+        multi-tenant inference service tend to arrive as a certification rather than a right. And
+        data location commitments get vague once you follow the chain to where inference actually
+        runs. Neither is unreasonable of the vendor. They are simply facts about the delivery model,
+        and they belong in your risk assessment rather than in a hopeful clause.</p>
+      </section>
+
+      <section id="concentration">
+        <h2>Concentration risk is the quiet one <a class="anchor-link" href="#concentration">#</a></h2>
+        <p>Concentration risk in AI is easy to underestimate because the concentration is layered.
+        Ten agent products from ten vendors can resolve to two model providers running on one
+        hyperscaler. A rate limit, a policy change, or a regional outage at that layer takes out
+        capabilities you had assumed were independent.</p>
+        <p>Running the agent platform yourself does not eliminate the model dependency, but it
+        separates the layers so they can fail and be replaced independently. If the platform is a
+        library inside your own perimeter and the model is reached through an OpenAI-compatible
+        gateway you operate, then switching provider is a configuration change rather than a
+        migration. The <a href="/playbooks/self-hosted-llm-gateway/">gateway playbook</a> covers
+        pointing at LiteLLM, vLLM, or a Bedrock or Azure proxy inside your VPC, with bounded retries
+        and per-gateway timeouts.</p>
+      </section>
+
+      <section id="exit">
+        <h2>The exit strategy test <a class="anchor-link" href="#exit">#</a></h2>
+        <p>DORA expects exit strategies for critical arrangements, and it is the requirement that
+        most cleanly separates architectures. Ask four questions about any agent platform:</p>
+        <ol>
+          <li><strong>Where is the conversation history, and in what format?</strong> If the answer
+          is a vendor database with an export endpoint, your exit depends on that endpoint working
+          at the moment you need it most.</li>
+          <li><strong>Where is the agent definition?</strong> Behaviour encoded in a vendor's visual
+          builder does not port. YAML and Markdown in your own repository does.</li>
+          <li><strong>Where is the audit trail?</strong> This is the one with a retention obligation
+          measured in years, potentially outlasting the vendor.</li>
+          <li><strong>How long would a switch take, and have you tested it?</strong> An untested
+          exit plan is a document, not a strategy.</li>
+        </ol>
+        <p>A self-hosted platform answers all four structurally. The institution operates it on
+        infrastructure it controls, stores data in open formats, and does not depend on a vendor's
+        continued cooperation to keep running, which is what makes the exit credible rather than
+        asserted.</p>
+      </section>
+
+      <section id="architecture">
+        <h2>What this implies for how you build <a class="anchor-link" href="#architecture">#</a></h2>
+        <ul>
+          <li><strong>The platform is a library, not a service.</strong> <code>pip install</code>
+          into your own runtime, no control plane, no outbound telemetry you did not configure. Your
+          register entry for the platform is a software dependency rather than an ICT service
+          arrangement.</li>
+          <li><strong>The model is behind a gateway you own.</strong> One place where provider
+          credentials live, one place to swap providers, one place to enforce timeouts and
+          fallbacks.</li>
+          <li><strong>The data stores are yours.</strong> Sessions, contact ledgers, and the audit
+          chain in your SQLite or Postgres, under your backup and retention policy.</li>
+          <li><strong>The configuration is in your repository.</strong> Agents as YAML plus Markdown
+          means the definition is versioned, reviewable, and portable, and the config hash in the
+          audit chain ties each conversation to an exact revision.</li>
+          <li><strong>Observability goes to your stack.</strong> OpenTelemetry spans into whatever
+          collector you already run, with only metadata leaving the process by default rather than
+          message bodies.</li>
+        </ul>
+        <p>Open source matters here for a specific reason rather than a philosophical one: you can
+        read the code that handles customer data, your security team can review it, and the
+        dependency does not disappear if the company does.</p>
+      </section>
+
+      <section id="residual">
+        <h2>What self-hosting does not fix <a class="anchor-link" href="#residual">#</a></h2>
+        <p>Worth being honest about the residual.</p>
+        <ul>
+          <li><strong>You still depend on a model.</strong> Unless you serve open weights yourself,
+          there is a provider in the path, and it is a register entry. Self-hosting narrows the
+          dependency to inference rather than to your whole agent estate.</li>
+          <li><strong>You inherit the operational burden.</strong> Patching, capacity, incident
+          response, and resilience testing become yours. DORA has opinions about all of them.</li>
+          <li><strong>Your cloud is still your cloud.</strong> Running in your own account on a
+          designated critical provider is still concentration on that provider.</li>
+          <li><strong>Nothing here is a compliance guarantee.</strong> Architecture makes the
+          obligations satisfiable. It does not satisfy them.</li>
+        </ul>
+        <p>The argument is narrower than "self-host everything". It is that the exit strategy
+        question has a structural answer and a contractual one, and only the structural one survives
+        the scenario where the vendor is the problem.</p>
+        <p>Related: <a href="/blog/eu-ai-act-ai-agents-financial-services/">the AI Act obligations
+        that sit alongside this</a>, and the
+        <a href="/playbooks/regulator-ready-audit/">audit playbook</a> for the retention side.</p>
+        <p style="margin-top:1.5rem"><a href="/blog/">← All posts</a></p>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div class="wrap footer-grid">
+      <div>
+        <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+        <p style="margin-top:0.8rem; max-width:22em;">The open-source, self-hosted agent
+        platform for banks and fintechs.</p>
+      </div>
+      <nav aria-label="Product">
+        <span class="col-title">Product</span>
+        <a href="/docs/">Documentation</a>
+        <a href="/use-cases/">Use cases</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/blog/">Blog</a>
+        <a href="/#compare">Comparison</a>
+        <a href="https://pypi.org/project/zolva/" target="_blank" rel="noopener noreferrer">PyPI</a>
+      </nav>
+      <nav aria-label="Project">
+        <span class="col-title">Project</span>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="/security/">Security policy</a>
+        <a href="/contributing/">Contributing</a>
+        <a href="/legal/">Trust &amp; legal</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Apache-2.0 license</a>
+      </nav>
+      <nav aria-label="For machines">
+        <span class="col-title">For machines</span>
+        <a href="/llms.txt">llms.txt</a>
+        <a href="/llms-full.txt">llms-full.txt</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/AGENTS.md" target="_blank" rel="noopener noreferrer">AGENTS.md</a>
+      </nav>
+    </div>
+    <div class="wrap footer-sig">
+      <span>© 2026 Zolva. Apache-2.0.</span>
+      <span>Self-hosted by design; your data never leaves.</span>
+    </div>
+  </footer>
+</body>
+</html>

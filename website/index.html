@@ -52,10 +52,11 @@
       <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links">menu</button>
       <nav class="nav-links" id="nav-links" aria-label="Main">
         <a href="/#why">Why Zolva</a>
-        <a href="/#platform">Platform</a>
+        <a href="/use-cases/">Use cases</a>
         <a href="/#agents">For AI agents</a>
         <a href="/docs/">Docs</a>
         <a href="/playbooks/">Playbooks</a>
+        <a href="/blog/">Blog</a>
         <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
         <a class="nav-cta" href="/docs/#quickstart">pip install zolva</a>
       </nav>
@@ -83,7 +84,7 @@
             <a class="btn btn-ghost" href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">Star on GitHub</a>
           </div>
           <p class="hero-meta rise" style="--i:4">
-            <span>Python ≥ 3.11</span><span>121 tests, mypy --strict</span><span>3 runtime deps</span><span>Beta</span>
+            <span>Python ≥ 3.11</span><span>270 tests, mypy --strict</span><span>3 runtime deps</span><span>Beta</span>
           </p>
         </div>
 
@@ -470,9 +471,74 @@ reply = await hub.dispatch("whatsapp", "collections-agent", webhook_payload)</co
       </div>
     </section>
 
+    <!-- ================= USE CASES ================= -->
+    <section class="section" id="use-cases">
+      <span class="folio" aria-hidden="true">04</span>
+      <div class="wrap">
+        <div class="section-head reveal">
+          <p class="eyebrow">Use cases</p>
+          <h2>The work that cannot ship without evidence.</h2>
+          <p>Wherever an automated conversation touches someone's money, health, or access to a
+          service, the hard part is not the answer. It is proving what the agent was allowed to do,
+          what it did, who reviewed it, and that the release passed its worst cohort first. Seven
+          use cases, one set of controls.</p>
+        </div>
+        <div class="why-grid reveal">
+          <a class="why-card" href="/use-cases/banking-customer-support/" style="display:block">
+            <span class="num">01</span>
+            <h3>Banking customer support</h3>
+            <p>Answers grounded in your core systems, third-party disclosure hard-blocked, a human
+            one step away, and every turn on the audit chain.</p>
+          </a>
+          <a class="why-card" href="/use-cases/loan-collections/" style="display:block">
+            <span class="num">02</span>
+            <h3>Loan collections</h3>
+            <p>Contact windows and per-customer caps counted across channels, hardship escalation
+            that is tested rather than hoped for.</p>
+          </a>
+          <a class="why-card" href="/use-cases/fraud-and-disputes/" style="display:block">
+            <span class="num">03</span>
+            <h3>Fraud and disputes</h3>
+            <p>Fast triage and clean intake, credential solicitation impossible, the outcome
+            decision left where it belongs.</p>
+          </a>
+          <a class="why-card" href="/use-cases/kyc-onboarding/" style="display:block">
+            <span class="num">04</span>
+            <h3>KYC and onboarding</h3>
+            <p>Chase documents and explain rejections without going anywhere near the identity
+            decision, with PII masked before any model call.</p>
+          </a>
+          <a class="why-card" href="/use-cases/insurance-claims/" style="display:block">
+            <span class="num">05</span>
+            <h3>Insurance claims</h3>
+            <p>First notice of loss and status handled end to end, coverage never quoted, a
+            per-claim record for the review two years later.</p>
+          </a>
+          <a class="why-card" href="/use-cases/healthcare-patient-support/" style="display:block">
+            <span class="num">06</span>
+            <h3>Healthcare support</h3>
+            <p>Logistics and billing by agent, clinical questions escalated unconditionally,
+            protected data never leaving your perimeter.</p>
+          </a>
+          <a class="why-card" href="/use-cases/telecom-customer-operations/" style="display:block">
+            <span class="num">07</span>
+            <h3>Telecom operations</h3>
+            <p>Billing, outages and retention at call-centre volume, with offers bounded by the
+            price book instead of the model's enthusiasm.</p>
+          </a>
+          <a class="why-card" href="/blog/" style="display:block">
+            <span class="num">→</span>
+            <h3>From the blog</h3>
+            <p>The EU AI Act timeline for financial services, DORA and LLM vendor concentration
+            risk, and why guardrails belong in config rather than the prompt.</p>
+          </a>
+        </div>
+      </div>
+    </section>
+
     <!-- ================= FOR AI AGENTS ================= -->
     <section class="section" id="agents">
-      <span class="folio" aria-hidden="true">04</span>
+      <span class="folio" aria-hidden="true">05</span>
       <div class="wrap">
         <div class="section-head reveal">
           <p class="eyebrow">For AI coding agents</p>
@@ -503,10 +569,10 @@ use live provider keys. Follow the AGENTS.md conventions in the file exactly.</c
         <div class="section-head reveal">
           <p class="eyebrow">Start</p>
           <h2>Battle-test it in staging. Tell us what breaks.</h2>
-          <p>Beta: APIs may change before 1.0. Core runtime, all six plugins (guardrails, evals,
-          feedback, audit, synthetics, channels), and the CLI are
-          implemented and tested: 121 tests, <code>mypy --strict</code>, a 3-version CI matrix,
-          and the platform gates its own releases with its own evals.</p>
+          <p>Beta: APIs may change before 1.0. Core runtime, all eight plugins (guardrails, evals,
+          feedback, audit, synthetics, channels, redaction, OpenTelemetry export), the dashboard,
+          and the CLI are implemented and tested: 270 tests, <code>mypy --strict</code>, a
+          3-version CI matrix, and the platform gates its own releases with its own evals.</p>
         </div>
         <div class="hero-actions reveal">
           <span class="pip"><span class="ps1">$</span><span id="pip-cmd-2">pip install zolva</span>
@@ -529,7 +595,9 @@ use live provider keys. Follow the AGENTS.md conventions in the file exactly.</c
       <nav aria-label="Product">
         <span class="col-title">Product</span>
         <a href="/docs/">Documentation</a>
+        <a href="/use-cases/">Use cases</a>
         <a href="/playbooks/">Playbooks</a>
+        <a href="/blog/">Blog</a>
         <a href="/#platform">Platform</a>
         <a href="/#compare">Comparison</a>
         <a href="https://pypi.org/project/zolva/" target="_blank" rel="noopener noreferrer">PyPI</a>

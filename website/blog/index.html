@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blog | Zolva</title>
+  <meta name="description" content="Notes on shipping AI agents in regulated industries: the EU AI Act timeline for financial services, DORA and LLM vendor concentration risk, guardrails as config rather than prompts, what a defensible audit trail contains, and how to choose an agent framework when a supervisor will read the transcript." />
+  <link rel="canonical" href="https://zolva.ai/blog/" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/mark-512.png" />
+  <meta name="theme-color" content="#08011A" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Zolva" />
+  <meta property="og:title" content="Zolva blog" />
+  <meta property="og:description" content="Regulation, architecture, and hard-won detail on running AI agents inside a bank." />
+  <meta property="og:url" content="https://zolva.ai/blog/" />
+  <meta property="og:image" content="https://zolva.ai/mark-512.png" />
+  <meta name="twitter:card" content="summary" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Blog",
+    "name": "Zolva blog",
+    "url": "https://zolva.ai/blog/",
+    "description": "Notes on shipping AI agents in regulated industries.",
+    "publisher": { "@type": "Organization", "name": "Zolva", "url": "https://zolva.ai" }
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links">menu</button>
+      <nav class="nav-links" id="nav-links" aria-label="Main">
+        <a href="/#why">Why Zolva</a>
+        <a href="/use-cases/">Use cases</a>
+        <a href="/docs/">Docs</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/blog/" aria-current="page">Blog</a>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a class="nav-cta" href="/docs/#quickstart">pip install zolva</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="section">
+      <div class="wrap">
+        <div class="section-head">
+          <p class="eyebrow">Blog</p>
+          <h1>Regulation, architecture, and the parts nobody demos.</h1>
+          <p>Writing about what it actually takes to run an agent in a regulated environment: the
+          rules that are landing, the design decisions they force, and the controls that turn out to
+          matter once real customers are on the other end. No predictions about the future of work.</p>
+        </div>
+
+        <article class="entry">
+          <div>
+            <span class="no">2026-08-09 · Frameworks</span>
+            <h3><a href="/blog/choosing-an-agent-framework-for-regulated-industries/">Choosing an AI agent framework when a supervisor will read the transcript</a></h3>
+          </div>
+          <div>
+            <p>LangGraph, CrewAI, the OpenAI Agents SDK, Pydantic AI and Parlant are all real
+            options, and the comparison articles all measure the same things: orchestration
+            expressiveness, state handling, and developer ergonomics. None of those decide a
+            regulated deployment.</p>
+            <p>A framework-selection checklist built around the four questions a second line of
+            defence will actually ask, and an honest account of where a generic framework plus glue
+            code is the right answer.</p>
+          </div>
+        </article>
+
+        <article class="entry">
+          <div>
+            <span class="no">2026-08-04 · Regulation</span>
+            <h3><a href="/blog/eu-ai-act-ai-agents-financial-services/">The EU AI Act moved. What financial services still has to build.</a></h3>
+          </div>
+          <div>
+            <p>The Digital Omnibus deferred the Annex III high-risk compliance date, which several
+            teams have read as permission to stop. That is the wrong lesson: the obligations did not
+            change, the transparency duties that applied from August 2025 are untouched, and the
+            evidence takes longer to build than the extension buys.</p>
+            <p>What the four core obligations mean concretely for an agent deployment, and which
+            artefacts satisfy each one.</p>
+          </div>
+        </article>
+
+        <article class="entry">
+          <div>
+            <span class="no">2026-07-28 · Architecture</span>
+            <h3><a href="/blog/dora-llm-vendor-concentration-risk/">DORA turned your LLM vendor into an ICT third party</a></h3>
+          </div>
+          <div>
+            <p>The first critical ICT third-party providers were designated in late 2025 and came
+            under direct EU oversight in 2026. Almost every hosted agent product runs on one of
+            them, which makes your model dependency a register entry, a diligence exercise, and an
+            exit-strategy problem.</p>
+            <p>Why self-hosting stopped being a preference and became an architecture decision, and
+            what a credible exit strategy for an agent platform looks like.</p>
+          </div>
+        </article>
+
+        <article class="entry">
+          <div>
+            <span class="no">2026-07-21 · Engineering</span>
+            <h3><a href="/blog/guardrails-are-config-not-prompts/">Guardrails belong in config, not in the prompt</a></h3>
+          </div>
+          <div>
+            <p>Every team starts by writing the rules into the system prompt. It works in the demo,
+            degrades under adversarial input, and cannot be reviewed, versioned, or evidenced. The
+            fix is not a better prompt.</p>
+            <p>The four properties a rule needs before you can call it a control, why hard blocks
+            must be non-configurable, and what changes when guardrails run as steps on a bus.</p>
+          </div>
+        </article>
+
+        <article class="entry">
+          <div>
+            <span class="no">2026-07-14 · Compliance</span>
+            <h3><a href="/blog/what-a-defensible-ai-audit-trail-contains/">What a defensible AI agent audit trail actually contains</a></h3>
+          </div>
+          <div>
+            <p>Most teams have logs. Logs are not an audit trail. The distinction becomes expensive
+            the first time somebody has to prove that a record was not edited, or say which version
+            of a policy was live during a conversation eighteen months ago.</p>
+            <p>The seven things a record needs, why hash chaining is the cheap part, and how the
+            same artefacts map onto EU AI Act articles and SR 11-7 expectations.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap footer-grid">
+      <div>
+        <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+        <p style="margin-top:0.8rem; max-width:22em;">The open-source, self-hosted agent
+        platform for banks and fintechs.</p>
+      </div>
+      <nav aria-label="Product">
+        <span class="col-title">Product</span>
+        <a href="/docs/">Documentation</a>
+        <a href="/use-cases/">Use cases</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/blog/">Blog</a>
+        <a href="/#compare">Comparison</a>
+        <a href="https://pypi.org/project/zolva/" target="_blank" rel="noopener noreferrer">PyPI</a>
+      </nav>
+      <nav aria-label="Project">
+        <span class="col-title">Project</span>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="/security/">Security policy</a>
+        <a href="/contributing/">Contributing</a>
+        <a href="/legal/">Trust &amp; legal</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Apache-2.0 license</a>
+      </nav>
+      <nav aria-label="For machines">
+        <span class="col-title">For machines</span>
+        <a href="/llms.txt">llms.txt</a>
+        <a href="/llms-full.txt">llms-full.txt</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/AGENTS.md" target="_blank" rel="noopener noreferrer">AGENTS.md</a>
+      </nav>
+    </div>
+    <div class="wrap footer-sig">
+      <span>© 2026 Zolva. Apache-2.0.</span>
+      <span>Self-hosted by design; your data never leaves.</span>
+    </div>
+  </footer>
+</body>
+</html>
