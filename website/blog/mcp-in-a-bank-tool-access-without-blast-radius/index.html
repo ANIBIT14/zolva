@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MCP in a bank: connecting agents to core systems without the blast radius | Zolva</title>
+  <meta name="description" content="Model Context Protocol makes it trivial to give an agent access to core banking, CRM and payment systems. Tool poisoning, over-privileged service accounts and unreviewed third-party servers are what comes with it. A practical control set for using MCP inside a regulated perimeter." />
+  <link rel="canonical" href="https://zolva.ai/blog/mcp-in-a-bank-tool-access-without-blast-radius/" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/mark-512.png" />
+  <meta name="theme-color" content="#08011A" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Zolva" />
+  <meta property="og:title" content="MCP in a bank: tool access without the blast radius" />
+  <meta property="og:description" content="Tool poisoning, over-privileged agent identities, and how to keep an integration protocol from becoming an access-control decision." />
+  <meta property="og:url" content="https://zolva.ai/blog/mcp-in-a-bank-tool-access-without-blast-radius/" />
+  <meta property="og:image" content="https://zolva.ai/mark-512.png" />
+  <meta name="twitter:card" content="summary" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "headline": "MCP in a bank: connecting agents to core systems without the blast radius",
+    "description": "A control set for using Model Context Protocol inside a regulated perimeter.",
+    "url": "https://zolva.ai/blog/mcp-in-a-bank-tool-access-without-blast-radius/",
+    "datePublished": "2026-08-13",
+    "author": { "@type": "Organization", "name": "Zolva", "url": "https://zolva.ai" },
+    "publisher": { "@type": "Organization", "name": "Zolva", "url": "https://zolva.ai" }
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links">menu</button>
+      <nav class="nav-links" id="nav-links" aria-label="Main">
+        <a href="/#why">Why Zolva</a>
+        <a href="/use-cases/">Use cases</a>
+        <a href="/docs/">Docs</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/blog/" aria-current="page">Blog</a>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a class="nav-cta" href="/docs/#quickstart">pip install zolva</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="wrap docs-shell">
+    <aside class="docs-sidebar" aria-label="On this page">
+      <p class="group">Article</p>
+      <a href="#appeal">Why everyone adopted it</a>
+      <a href="#poisoning">Tool descriptions are input</a>
+      <p class="group">Controls</p>
+      <a href="#identity">The identity question</a>
+      <a href="#pinning">Pin the surface</a>
+      <a href="#wrap">Wrap, do not expose</a>
+      <p class="group">Practice</p>
+      <a href="#checklist">A review checklist</a>
+      <a href="#verdict">When not to use it</a>
+    </aside>
+
+    <main class="docs-main">
+      <section id="appeal">
+        <p class="eyebrow" style="margin-bottom:1rem">2026-08-13 · Architecture</p>
+        <h1>MCP in a bank: connecting agents to core systems without the blast radius</h1>
+        <p>Model Context Protocol won the integration argument quickly and for good reasons. Writing
+        one adapter per system per framework was miserable work with no intellectual content, and a
+        common protocol makes that problem go away. Through 2026 the adoption curve inside financial
+        services has been steep, with agents wired into lending, claims, underwriting and servicing
+        systems, and the security research has been arriving at roughly the same pace.</p>
+        <p>The recurring finding in that research is not subtle. Tool poisoning, where instructions
+        are embedded in a tool's description or parameter metadata, is the most prevalent
+        client-side issue, and it works because the description is text the model reads and treats
+        as guidance. No breach is needed. Whoever controls the description controls a channel into
+        the agent's reasoning, and the resulting action executes with the agent's own credentials
+        through an approved path, which is exactly the shape that logging and monitoring were not
+        built to notice.</p>
+        <div class="callout">
+          <strong>The framing that matters.</strong> MCP is an integration protocol that is being
+          used as an access-control decision. Connecting a server is not like adding a library. It
+          is like granting a service account, except the grant is described in a config file that a
+          developer edited on a Thursday and nobody reviewed as a permissions change.
+        </div>
+      </section>
+
+      <section id="poisoning">
+        <h2>Tool descriptions are untrusted input <a class="anchor-link" href="#poisoning">#</a></h2>
+        <p>Start here, because it reorders everything else. If tool metadata can steer behaviour,
+        then the trust boundary sits at the server, and a server you did not write is a supplier
+        with write access to your agent's instructions.</p>
+        <p>Three consequences follow directly:</p>
+        <ul>
+          <li><strong>Dynamic tool discovery in production is a bad default.</strong> A server that
+          can change the set of tools, or the text of their descriptions, after review has an
+          unreviewed path into behaviour. Pin what is available and treat changes as changes.</li>
+          <li><strong>Third-party servers need supplier diligence, not a pull request.</strong> The
+          question is not whether the code is good, it is who can push to it, what it can reach, and
+          what happens to that access if the project is abandoned or transferred.</li>
+          <li><strong>Composition creates paths nobody drew.</strong> An agent holding a read tool
+          for one system and a write tool for another has an exfiltration path between them that
+          appears in no diagram, because each tool was approved separately.</li>
+        </ul>
+      </section>
+
+      <section id="identity">
+        <h2>The identity question underneath it <a class="anchor-link" href="#identity">#</a></h2>
+        <p>Agent access sits on top of a governance gap that predates agents. Machine identities
+        already outnumber human ones in a typical enterprise by a wide margin, and the 2026 industry
+        reporting is consistent that most organisations cannot say how many they have, what those
+        identities can reach, or when anyone last reviewed the grants. Surveys through the year have
+        put the share of organisations without a formal policy for AI agent credentials in the high
+        seventies.</p>
+        <p>An agent makes this acute because its scope is variable per task. The same agent acts for
+        different customers at different moments, and the naive implementation gives it one service
+        account with the union of everything any customer interaction might need. That account is
+        then, functionally, a standing grant to the entire customer base, exercised by a component
+        that can be talked to by strangers.</p>
+        <p>The correction is unexciting and effective. Credentials scoped to the action, authorised
+        per invocation, resolved against the authenticated session rather than against anything the
+        model produced. If a customer identifier can appear as a model-chosen tool argument, you have
+        built a cross-customer lookup and given it a helpful name.</p>
+      </section>
+
+      <section id="pinning">
+        <h2>Pin the surface, version the config <a class="anchor-link" href="#pinning">#</a></h2>
+        <p>Whatever tools an agent can reach should be enumerable from your repository, not
+        discoverable at runtime. In a configuration-first setup that falls out naturally: the agent
+        is YAML plus Markdown, the tool set is declared, and the config hash lands in the audit
+        record next to every session. Which means "what could this agent do on the ninth of March"
+        is a lookup rather than an archaeology project.</p>
+        <p>Pinning also gives you the diff. A new tool appearing in an agent's surface should show
+        up in code review as a line someone approved, in the same way a new IAM policy does. Silent
+        capability expansion is the failure mode that turns a contained deployment into an
+        uncontained one over six months, with no single decision to point at afterwards.</p>
+      </section>
+
+      <section id="wrap">
+        <h2>Wrap the server, do not expose it <a class="anchor-link" href="#wrap">#</a></h2>
+        <p>The pattern we would defend in a review: MCP servers, if you use them, sit behind your
+        own typed tool layer rather than being handed to the model directly.</p>
+        <p>Concretely, the agent calls a Python function you wrote. That function validates
+        arguments, resolves identity from the session, calls the MCP server or the underlying API,
+        validates what comes back, and returns a narrow structured result. It costs you a thin
+        adapter per tool, and it buys four things worth more than the adapter:</p>
+        <ol>
+          <li><strong>Descriptions you control.</strong> What the model reads about the tool is your
+          text, in your repository, in the diff.</li>
+          <li><strong>Response validation.</strong> Free-text fields coming back from a third party
+          get treated as data rather than as instructions, and can be truncated, redacted or
+          rejected.</li>
+          <li><strong>Guardrails on the call path.</strong> Contact caps, PII redaction before any
+          provider call, and hard blocks all run as middleware around the invocation rather than
+          being expressed as advice to the model.</li>
+          <li><strong>One audit format.</strong> Every tool call, whether it terminates in an MCP
+          server or a mainframe adapter, produces the same record with the same fields.</li>
+        </ol>
+        <p>This is the same argument as <a href="/blog/guardrails-are-config-not-prompts/">guardrails
+        belonging in config</a>, applied to integration: the enforcement point has to be somewhere
+        the model does not reach.</p>
+      </section>
+
+      <section id="checklist">
+        <h2>A review checklist for a proposed server <a class="anchor-link" href="#checklist">#</a></h2>
+        <ul>
+          <li>Who operates it, and where does it run relative to your perimeter?</li>
+          <li>Can its tool list or descriptions change without a deployment on your side?</li>
+          <li>What identity does it authenticate as downstream, and what is that identity's
+          scope?</li>
+          <li>Does any tool accept a customer or account identifier the model can choose?</li>
+          <li>Which tools write, and what are the numeric bounds on those writes?</li>
+          <li>Does customer data traverse anything outside your data residency boundary in the
+          process? The <a href="/playbooks/pii-redaction-data-residency/">redaction playbook</a>
+          covers the ordering that keeps this answerable.</li>
+          <li>Is there a synthetic conversation that exercises this tool and asserts on the
+          guardrail firing? See the <a href="/playbooks/red-team-synthetics/">synthetics
+          playbook</a>.</li>
+        </ul>
+        <p>Anything unanswered on that list is not a blocker in itself. It is a risk position that
+        somebody senior should be knowingly accepting rather than inheriting by default.</p>
+      </section>
+
+      <section id="verdict">
+        <h2>When not to use it <a class="anchor-link" href="#verdict">#</a></h2>
+        <p>MCP earns its keep where the alternative is genuinely many adapters against many systems,
+        or where you want an ecosystem of tools maintained by someone else. Inside a bank, the
+        second benefit is often the one you least want, because the tools that matter are your own
+        core systems and the adapters are written once against APIs that change on a release
+        calendar you control.</p>
+        <p>For that case, typed functions registered directly are simpler, cheaper to reason about,
+        and remove an entire class of risk by removing the dynamic surface. Fewer moving parts is
+        not a nostalgic preference here, it is a smaller thing to explain to a supervisor. Use MCP
+        deliberately, at the edges, behind a wrapper, with the identity question answered first.</p>
+        <p>Related: <a href="/blog/prompt-injection-owasp-agentic-2026/">why prompt injection is an
+        architecture problem</a>, and <a href="/blog/dora-llm-vendor-concentration-risk/">what the
+        third-party regime says about dependencies you did not choose</a>.</p>
+        <p style="margin-top:1.5rem"><a href="/blog/">← All posts</a></p>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div class="wrap footer-grid">
+      <div>
+        <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+        <p style="margin-top:0.8rem; max-width:22em;">The open-source, self-hosted agent
+        platform for banks and fintechs.</p>
+      </div>
+      <nav aria-label="Product">
+        <span class="col-title">Product</span>
+        <a href="/docs/">Documentation</a>
+        <a href="/use-cases/">Use cases</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/blog/">Blog</a>
+        <a href="/#compare">Comparison</a>
+        <a href="https://pypi.org/project/zolva/" target="_blank" rel="noopener noreferrer">PyPI</a>
+      </nav>
+      <nav aria-label="Project">
+        <span class="col-title">Project</span>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="/security/">Security policy</a>
+        <a href="/contributing/">Contributing</a>
+        <a href="/legal/">Trust &amp; legal</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Apache-2.0 license</a>
+      </nav>
+      <nav aria-label="For machines">
+        <span class="col-title">For machines</span>
+        <a href="/llms.txt">llms.txt</a>
+        <a href="/llms-full.txt">llms-full.txt</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/AGENTS.md" target="_blank" rel="noopener noreferrer">AGENTS.md</a>
+      </nav>
+    </div>
+    <div class="wrap footer-sig">
+      <span>© 2026 Zolva. Apache-2.0.</span>
+      <span>Self-hosted by design; your data never leaves.</span>
+    </div>
+  </footer>
+</body>
+</html>

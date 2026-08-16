@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Blog | Zolva</title>
-  <meta name="description" content="Notes on shipping AI agents in regulated industries: the EU AI Act timeline for financial services, DORA and LLM vendor concentration risk, guardrails as config rather than prompts, what a defensible audit trail contains, and how to choose an agent framework when a supervisor will read the transcript." />
+  <meta name="description" content="Notes on shipping AI agents in regulated industries: RBI's FREE-AI framework as an engineering spec, prompt injection and the 2026 OWASP agentic risks, MCP tool access inside a bank, AI voice disclosure in collections, the EU AI Act timeline, DORA and LLM vendor concentration risk, guardrails as config, and what a defensible audit trail contains." />
   <link rel="canonical" href="https://zolva.ai/blog/" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="apple-touch-icon" href="/mark-512.png" />
@@ -60,6 +60,65 @@
           rules that are landing, the design decisions they force, and the controls that turn out to
           matter once real customers are on the other end. No predictions about the future of work.</p>
         </div>
+
+        <article class="entry">
+          <div>
+            <span class="no">2026-08-16 · Regulation</span>
+            <h3><a href="/blog/rbi-free-ai-framework-what-to-build/">RBI's FREE-AI framework, read as an engineering spec</a></h3>
+          </div>
+          <div>
+            <p>India's framework is enablement-first, which is a harder brief than a prohibition
+            would have been: a prohibition needs a policy document, enablement needs working
+            software. Seven sutras, and six of them resolve to the same underlying capability.</p>
+            <p>What each principle costs in build time, why oversight only counts when the agent
+            stops, and what the lifecycle language means if you bought rather than built.</p>
+          </div>
+        </article>
+
+        <article class="entry">
+          <div>
+            <span class="no">2026-08-15 · Security</span>
+            <h3><a href="/blog/prompt-injection-owasp-agentic-2026/">Prompt injection is an architecture problem, not a prompt problem</a></h3>
+          </div>
+          <div>
+            <p>OWASP's 2026 list for agentic applications leads with goal hijack, rogue agents and
+            unsafe tool execution. The mechanics have not changed: your instructions and the
+            attacker's text arrive in the same token stream, and the boundary is a convention rather
+            than a property of the system.</p>
+            <p>Assume the model gets convinced, then ask what the worst reachable action is. Typed
+            tools, limits the model cannot participate in, and a record that scopes the incident in
+            an afternoon.</p>
+          </div>
+        </article>
+
+        <article class="entry">
+          <div>
+            <span class="no">2026-08-13 · Architecture</span>
+            <h3><a href="/blog/mcp-in-a-bank-tool-access-without-blast-radius/">MCP in a bank: connecting agents to core systems without the blast radius</a></h3>
+          </div>
+          <div>
+            <p>Tool poisoning works because a tool description is text the model reads and treats as
+            guidance. No breach required, and the resulting action runs with the agent's own
+            credentials through an approved path.</p>
+            <p>Why connecting a server is a permissions decision rather than a dependency bump, the
+            identity question underneath it, and the wrapper pattern that keeps the dynamic surface
+            out of production.</p>
+          </div>
+        </article>
+
+        <article class="entry">
+          <div>
+            <span class="no">2026-08-11 · Compliance</span>
+            <h3><a href="/blog/ai-voice-agent-disclosure-collections/">What a compliant AI voice call in collections actually says</a></h3>
+          </div>
+          <div>
+            <p>AI disclosure, the mini-Miranda, local calling hours, cross-channel frequency caps
+            and validation notices all land in the first fifteen seconds, which is exactly where an
+            improvising model is least predictable.</p>
+            <p>Three rulebooks on one call, why nothing in the opening should be generated, and the
+            stop conditions that tell you what was actually built.</p>
+          </div>
+        </article>
 
         <article class="entry">
           <div>
