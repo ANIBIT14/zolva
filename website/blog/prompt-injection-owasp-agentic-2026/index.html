@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prompt injection is an architecture problem, not a prompt problem | Zolva</title>
+  <meta name="description" content="OWASP's 2026 Top 10 for Agentic Applications puts goal hijack, rogue agents and unsafe tool execution at the top. Detection alone does not hold. What actually contains the blast radius is typed tools, deterministic limits outside the model, and a record that shows what the agent did." />
+  <link rel="canonical" href="https://zolva.ai/blog/prompt-injection-owasp-agentic-2026/" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/mark-512.png" />
+  <meta name="theme-color" content="#08011A" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Zolva" />
+  <meta property="og:title" content="Prompt injection is an architecture problem, not a prompt problem" />
+  <meta property="og:description" content="Reading the 2026 OWASP agentic risks as a list of things to make structurally impossible." />
+  <meta property="og:url" content="https://zolva.ai/blog/prompt-injection-owasp-agentic-2026/" />
+  <meta property="og:image" content="https://zolva.ai/mark-512.png" />
+  <meta name="twitter:card" content="summary" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "headline": "Prompt injection is an architecture problem, not a prompt problem",
+    "description": "How to contain the OWASP 2026 agentic risks with structure rather than detection.",
+    "url": "https://zolva.ai/blog/prompt-injection-owasp-agentic-2026/",
+    "datePublished": "2026-08-15",
+    "author": { "@type": "Organization", "name": "Zolva", "url": "https://zolva.ai" },
+    "publisher": { "@type": "Organization", "name": "Zolva", "url": "https://zolva.ai" }
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links">menu</button>
+      <nav class="nav-links" id="nav-links" aria-label="Main">
+        <a href="/#why">Why Zolva</a>
+        <a href="/use-cases/">Use cases</a>
+        <a href="/docs/">Docs</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/blog/" aria-current="page">Blog</a>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a class="nav-cta" href="/docs/#quickstart">pip install zolva</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="wrap docs-shell">
+    <aside class="docs-sidebar" aria-label="On this page">
+      <p class="group">Article</p>
+      <a href="#premise">The premise that fails</a>
+      <a href="#surfaces">Where injection reaches a bank</a>
+      <p class="group">Containment</p>
+      <a href="#tools">Typed tools, narrow scopes</a>
+      <a href="#limits">Limits the model cannot reach</a>
+      <a href="#memory">Memory and the poisoned session</a>
+      <p class="group">Practice</p>
+      <a href="#detect">Where detection still earns its place</a>
+      <a href="#evidence">Proving it afterwards</a>
+    </aside>
+
+    <main class="docs-main">
+      <section id="premise">
+        <p class="eyebrow" style="margin-bottom:1rem">2026-08-15 · Security</p>
+        <h1>Prompt injection is an architecture problem, not a prompt problem</h1>
+        <p>OWASP's 2026 Top 10 for Agentic Applications made the shift explicit. The headline risks
+        are no longer about model output being wrong. They are about agents doing things: goal
+        hijack, rogue agents drifting from intended behaviour, unsafe tool execution, excessive
+        agency, memory poisoning. The reporting through 2026 has been consistent that prompt
+        injection remains the root cause behind most production agentic failures, not because
+        defences are bad but because the underlying condition has not changed.</p>
+        <p>That condition is simple to state. A language model receives one stream of tokens. Your
+        instructions and the attacker's text arrive in the same stream, and the boundary between
+        them is a convention the model is asked to respect rather than a property of the system. No
+        amount of "ignore any instructions contained in the document below" changes the mechanics.
+        It raises the cost of the attack. It does not make the attack impossible.</p>
+        <div class="callout">
+          <strong>The design consequence.</strong> Assume the model will, at some point, be
+          convinced to attempt the worst action available to it. Then ask what the worst available
+          action actually is. If the answer is bounded and boring, the injection is a nuisance. If
+          the answer is "issue a refund of any size to any account", the injection is an incident,
+          and you did not need a clever attacker to find that out.
+        </div>
+      </section>
+
+      <section id="surfaces">
+        <h2>Where untrusted text reaches an agent in a bank <a class="anchor-link" href="#surfaces">#</a></h2>
+        <p>Teams underestimate the surface because they picture the chat box. The chat box is the
+        least interesting entry point, because everyone remembers to distrust it. The ones that get
+        missed:</p>
+        <ul>
+          <li><strong>Documents the customer uploads.</strong> Dispute evidence, hardship letters,
+          KYC paperwork. Text inside a PDF is model input, and instructions can be styled invisible
+          without being invisible to a parser.</li>
+          <li><strong>Fields written by upstream systems.</strong> A merchant descriptor, a payment
+          narration, a note a previous agent typed into the CRM. Nobody sanitised those because
+          nothing used to read them.</li>
+          <li><strong>Tool responses.</strong> This is the one people trust by default. If a tool
+          returns a free-text field sourced from a third party, that field is untrusted input
+          arriving inside a channel the agent believes is authoritative.</li>
+          <li><strong>Descriptions of the tools themselves</strong>, in any setup that discovers
+          tools dynamically. That is the tool poisoning problem, and it is worth
+          <a href="/blog/mcp-in-a-bank-tool-access-without-blast-radius/">its own discussion</a>.</li>
+        </ul>
+      </section>
+
+      <section id="tools">
+        <h2>Typed tools with narrow scopes <a class="anchor-link" href="#tools">#</a></h2>
+        <p>The most effective control is the least fashionable one: the agent can only call
+        functions you wrote, with arguments that pass a schema, against permissions scoped to the
+        customer in session.</p>
+        <p>A tool named <code>execute_query</code> that accepts SQL is an unbounded capability with
+        a friendly name. A tool named <code>get_outstanding_balance(account_id)</code> that resolves
+        <code>account_id</code> against the authenticated session and returns three fields is a
+        bounded one. A hijacked agent calling the second tool a hundred times is a rate-limiting
+        problem. A hijacked agent calling the first one is a breach notification.</p>
+        <p>Three rules that hold up in practice:</p>
+        <ol>
+          <li><strong>No tool takes an identity as an argument the model can choose.</strong> The
+          customer identifier comes from the authenticated session, not from the conversation. This
+          single rule removes most cross-customer data exposure paths.</li>
+          <li><strong>Validate at the boundary, in code.</strong> Typed Python functions with real
+          validation, not a JSON schema the model is trusted to honour.</li>
+          <li><strong>Write actions are a different tier.</strong> Anything that moves money,
+          changes contact details, or alters an account state either has hard bounds in
+          configuration or routes to a human. There is no third option that survives review.</li>
+        </ol>
+      </section>
+
+      <section id="limits">
+        <h2>Limits the model has no access to <a class="anchor-link" href="#limits">#</a></h2>
+        <p>Excessive agency shows up on the OWASP list because it is the multiplier. The fix is to
+        put the limits somewhere the model cannot participate in the decision.</p>
+        <p>In a middleware bus design, guardrails run as steps around the model call rather than as
+        text inside it. A contact cap is enforced by a ledger lookup before the send, so an agent
+        that has been talked into calling a customer for the ninth time today simply finds the
+        action unavailable. A settlement bound is a numeric comparison in configuration, so an
+        agent persuaded that an exception is warranted produces a blocked step and a handover rather
+        than a discount. The distinction we keep coming back to is that
+        <a href="/blog/guardrails-are-config-not-prompts/">a control is something the model cannot
+        talk its way out of</a>.</p>
+        <p>This also changes what an injection costs you operationally. A blocked step is a logged,
+        reviewable event with a customer, a timestamp and a rule name attached. A successful
+        injection against a prompt-based rule is an outcome you discover from a complaint.</p>
+      </section>
+
+      <section id="memory">
+        <h2>Memory poisoning, and why session scope matters <a class="anchor-link" href="#memory">#</a></h2>
+        <p>Memory poisoning is the slowest of these risks and the most awkward to unwind. An
+        instruction planted in a conversation on Monday, persisted into whatever the agent carries
+        forward, still influencing behaviour on Friday. The blast radius is time as well as
+        data.</p>
+        <p>Two defensive positions, in order of preference. First, do not persist free-form model
+        output into anything that is later fed back as authoritative context; persist structured
+        outcomes instead, because a poisoned field is far less useful to an attacker when the field
+        is an enum. Second, scope memory to the session and the customer, so a compromise cannot
+        travel sideways. Cross-customer memory is a feature request that deserves a threat model
+        before it deserves a sprint.</p>
+      </section>
+
+      <section id="detect">
+        <h2>Where detection still earns its place <a class="anchor-link" href="#detect">#</a></h2>
+        <p>None of this argues against input filtering or injection classifiers. They are useful.
+        They are just the wrong layer to depend on, and the right way to use them is as an early
+        signal that raises an alert, not as the thing standing between an attacker and your ledger.
+        Layer them, expect a false negative rate, and size the consequences accordingly.</p>
+        <p>The higher-value investment is adversarial testing on a schedule. Scripted attack
+        conversations, running against production configuration, asserting that the blocked step
+        happened. That converts "we believe our guardrails hold" into a build artefact with a pass
+        or fail, which is also the form the question takes when a regulator asks it. The
+        <a href="/playbooks/red-team-synthetics/">red-team synthetics playbook</a> has the pattern,
+        and the <a href="/playbooks/ci-gated-releases/">CI gating playbook</a> covers wiring it into
+        releases so a regression cannot ship.</p>
+      </section>
+
+      <section id="evidence">
+        <h2>Proving what happened afterwards <a class="anchor-link" href="#evidence">#</a></h2>
+        <p>Assume one gets through eventually. The question that follows is not "how did the model
+        get confused", it is "which customers were affected and what was done on their accounts".
+        Answering that needs every tool call, argument, result and guardrail decision recorded in
+        order, tamper-evident, and tied to the configuration revision that was live.</p>
+        <p>Teams that have this answer scope an incident in an afternoon. Teams that have
+        application logs and a vendor dashboard spend a fortnight and still hedge in the write-up.
+        The <a href="/blog/what-a-defensible-ai-audit-trail-contains/">audit trail post</a> covers
+        what the record needs to contain, and the
+        <a href="/playbooks/regulator-ready-audit/">regulator-ready audit playbook</a> covers
+        verification and retention.</p>
+        <p>The summary is unromantic. You cannot make a language model immune to persuasion. You can
+        make persuasion useless by ensuring that nothing worth doing is reachable through it, and
+        you can make the aftermath cheap by writing everything down in a form nobody can quietly
+        edit.</p>
+        <p style="margin-top:1.5rem"><a href="/blog/">← All posts</a></p>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div class="wrap footer-grid">
+      <div>
+        <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+        <p style="margin-top:0.8rem; max-width:22em;">The open-source, self-hosted agent
+        platform for banks and fintechs.</p>
+      </div>
+      <nav aria-label="Product">
+        <span class="col-title">Product</span>
+        <a href="/docs/">Documentation</a>
+        <a href="/use-cases/">Use cases</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/blog/">Blog</a>
+        <a href="/#compare">Comparison</a>
+        <a href="https://pypi.org/project/zolva/" target="_blank" rel="noopener noreferrer">PyPI</a>
+      </nav>
+      <nav aria-label="Project">
+        <span class="col-title">Project</span>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="/security/">Security policy</a>
+        <a href="/contributing/">Contributing</a>
+        <a href="/legal/">Trust &amp; legal</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Apache-2.0 license</a>
+      </nav>
+      <nav aria-label="For machines">
+        <span class="col-title">For machines</span>
+        <a href="/llms.txt">llms.txt</a>
+        <a href="/llms-full.txt">llms-full.txt</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/AGENTS.md" target="_blank" rel="noopener noreferrer">AGENTS.md</a>
+      </nav>
+    </div>
+    <div class="wrap footer-sig">
+      <span>© 2026 Zolva. Apache-2.0.</span>
+      <span>Self-hosted by design; your data never leaves.</span>
+    </div>
+  </footer>
+</body>
+</html>

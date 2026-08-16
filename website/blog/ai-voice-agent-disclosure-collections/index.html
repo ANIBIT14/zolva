@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>What a compliant AI voice call in collections actually says | Zolva</title>
+  <meta name="description" content="AI disclosure, the mini-Miranda, calling hours, frequency caps and validation notices are all things a voice agent has to get right in the first fifteen seconds. A control-by-control account of what has to be enforced outside the model on an AI collections call." />
+  <link rel="canonical" href="https://zolva.ai/blog/ai-voice-agent-disclosure-collections/" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/mark-512.png" />
+  <meta name="theme-color" content="#08011A" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Zolva" />
+  <meta property="og:title" content="What a compliant AI voice call in collections actually says" />
+  <meta property="og:description" content="Disclosure, mini-Miranda, hours and caps, treated as enforced steps rather than prompt instructions." />
+  <meta property="og:url" content="https://zolva.ai/blog/ai-voice-agent-disclosure-collections/" />
+  <meta property="og:image" content="https://zolva.ai/mark-512.png" />
+  <meta name="twitter:card" content="summary" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "headline": "What a compliant AI voice call in collections actually says",
+    "description": "The controls an AI voice agent needs in collections, and why none of them belong in the prompt.",
+    "url": "https://zolva.ai/blog/ai-voice-agent-disclosure-collections/",
+    "datePublished": "2026-08-11",
+    "author": { "@type": "Organization", "name": "Zolva", "url": "https://zolva.ai" },
+    "publisher": { "@type": "Organization", "name": "Zolva", "url": "https://zolva.ai" }
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links">menu</button>
+      <nav class="nav-links" id="nav-links" aria-label="Main">
+        <a href="/#why">Why Zolva</a>
+        <a href="/use-cases/">Use cases</a>
+        <a href="/docs/">Docs</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/blog/" aria-current="page">Blog</a>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a class="nav-cta" href="/docs/#quickstart">pip install zolva</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="wrap docs-shell">
+    <aside class="docs-sidebar" aria-label="On this page">
+      <p class="group">Article</p>
+      <a href="#fifteen">The first fifteen seconds</a>
+      <a href="#layers">Three rulebooks, one call</a>
+      <p class="group">Controls</p>
+      <a href="#preflight">Everything decided before dialling</a>
+      <a href="#turn">What has to hold mid-call</a>
+      <a href="#stop">Stop conditions</a>
+      <p class="group">Practice</p>
+      <a href="#evidence">Evidence per call</a>
+      <a href="#scope">Where AI voice does not belong yet</a>
+    </aside>
+
+    <main class="docs-main">
+      <section id="fifteen">
+        <p class="eyebrow" style="margin-bottom:1rem">2026-08-11 · Compliance</p>
+        <h1>What a compliant AI voice call in collections actually says</h1>
+        <p>Voice is where AI agents in financial services go from interesting to consequential. The
+        quality bar cleared some time ago, the latency is conversational, and the economics on
+        outbound collections are compelling enough that nearly every lender has run a pilot. What
+        stops most pilots reaching production is not the voice. It is that a collections call is a
+        regulated speech act, and the obligations concentrate in the opening seconds where an
+        improvising model is least predictable.</p>
+        <p>The disclosure position hardened over the past two years. The FCC's 2024 ruling brought
+        AI-generated voices inside the definition of artificial voices under the TCPA. Federal
+        rulemaking on a universal real-time AI disclosure has stayed at the proposal stage, and
+        state law has filled the gap unevenly: Utah requires a clear disclosure that the consumer is
+        interacting with generative AI, California requires it for automated systems used to
+        influence a commercial or political decision, Florida amended its telemarketing statute in
+        the same direction. If you dial nationally you are subject to the union of those, so build
+        for the strictest and stop tracking the delta.</p>
+        <div class="callout">
+          <strong>The design point.</strong> Nothing in the opening should be generated. Disclosure,
+          caller identification and the mini-Miranda are fixed text selected by configuration and
+          spoken before the model gets the turn. A model that paraphrases a required disclosure has
+          produced a defect, and it will paraphrase, because that is what it is for.
+        </div>
+      </section>
+
+      <section id="layers">
+        <h2>Three rulebooks arriving on the same call <a class="anchor-link" href="#layers">#</a></h2>
+        <p>Teams tend to hold one of these in their head and get surprised by the others.</p>
+        <ul>
+          <li><strong>TCPA and FCC rules</strong> govern the dialling: consent for artificial or
+          prerecorded voice, revocation handling, identification requirements. This is the layer
+          most voice AI vendors talk about.</li>
+          <li><strong>FDCPA and Regulation F</strong> govern the collecting, and they are stricter
+          than the dialling rules on hours and frequency. The mini-Miranda on initial communication,
+          the validation information within five days covering the amount, the creditor and dispute
+          rights, and the restrictions on third-party contact and workplace calls all live
+          here.</li>
+          <li><strong>State AI disclosure statutes</strong> govern the fact that the caller is a
+          machine, independently of the other two.</li>
+        </ul>
+        <p>Missing any one of them makes the call unlawful regardless of how well the other two were
+        handled. A perfect consent record does not rescue a missing mini-Miranda.</p>
+      </section>
+
+      <section id="preflight">
+        <h2>Everything that can be decided before dialling, should be <a class="anchor-link" href="#preflight">#</a></h2>
+        <p>The single most useful architectural move in voice collections is to shrink what the
+        model is responsible for. Almost every compliance obligation on the call is a function of
+        data you already hold at dial time, which means it belongs in a preflight check that either
+        returns a permitted call or blocks it.</p>
+        <ol>
+          <li><strong>Local time at the consumer's location.</strong> Not your time zone, and not
+          the area code if you have a better signal. A call outside permitted hours is a violation
+          that no in-call behaviour can undo.</li>
+          <li><strong>Frequency, across channels.</strong> Regulation F's presumptions are about
+          attempts, and your SMS campaign, your WhatsApp reminders and your voice dialler are
+          usually three systems that do not know about each other. They need one ledger. This is the
+          most common gap we see, and the <a href="/playbooks/cross-channel-contact-caps/">contact
+          caps playbook</a> exists because of it.</li>
+          <li><strong>Consent and revocation state</strong>, including revocations captured by a
+          human agent on a previous call, which is where they most often fail to propagate.</li>
+          <li><strong>Account state.</strong> Disputed, in hardship, in bankruptcy, represented by
+          counsel, deceased. Each of these changes whether the call may happen at all, and none of
+          them are things you want a model discovering conversationally.</li>
+        </ol>
+        <p>Structured this way, a blocked call produces a logged decision with a rule name attached
+        rather than a silent absence. That log is what turns "we honour hardship flags" into
+        something you can demonstrate.</p>
+      </section>
+
+      <section id="turn">
+        <h2>What has to hold once the call is live <a class="anchor-link" href="#turn">#</a></h2>
+        <p>Three controls run per turn rather than per call.</p>
+        <p><strong>Amounts are read, never computed.</strong> The outstanding balance, the settlement
+        figure, the instalment amount all come from a tool call against the system of record and are
+        spoken as returned. A model that arithmetics its way to a number will eventually state a
+        wrong one with total confidence, and on a recorded line that is a misrepresentation.</p>
+        <p><strong>Offers stay inside numeric bounds.</strong> Settlement percentages, term lengths
+        and fee waivers are configuration with hard limits. Anything outside routes to a human. This
+        matters more on voice than on chat because the pressure of a live conversation is exactly
+        the condition under which a model becomes accommodating.</p>
+        <p><strong>Handover triggers are deterministic.</strong> A stated dispute, a hardship
+        declaration, a request for a human, any mention of counsel or bankruptcy, sustained
+        distress. These end the automated portion of the call. On voice the transfer has to carry
+        context so the customer does not repeat themselves, which is a warm-transfer problem worth
+        solving properly rather than a callback promise. The
+        <a href="/playbooks/voice-cx-elevenlabs/">voice playbook</a> covers the wiring, and the
+        <a href="/playbooks/slack-handover-desk/">handover desk playbook</a> covers the receiving
+        end.</p>
+      </section>
+
+      <section id="stop">
+        <h2>Stop conditions deserve their own review <a class="anchor-link" href="#stop">#</a></h2>
+        <p>Ask a team to demo their voice agent and you will see the happy path. Ask them to
+        demonstrate the stop conditions and you learn what was actually built. Worth testing
+        explicitly, with recorded synthetic calls:</p>
+        <ul>
+          <li>The consumer says stop calling. Does the revocation land in every channel's ledger, or
+          just the dialler's?</li>
+          <li>Somebody else answers. Does the agent avoid disclosing the debt to a third party?</li>
+          <li>The consumer says they are at work and cannot take calls there. Is that captured as a
+          durable restriction, or as a sentence in a transcript?</li>
+          <li>The consumer disputes the amount. Does the agent stop negotiating?</li>
+          <li>Voicemail picks up. Does the message meet the requirements for a message left for a
+          consumer, and does it avoid disclosing the debt to anyone else who might hear it?</li>
+        </ul>
+        <p>Each of these is a scripted synthetic conversation that asserts on an outcome, run on a
+        schedule against production configuration. That is the difference between believing the
+        controls hold and knowing when they stopped.</p>
+      </section>
+
+      <section id="evidence">
+        <h2>What you should be able to produce per call <a class="anchor-link" href="#evidence">#</a></h2>
+        <p>The complaint arrives months later and names a date. What resolves it quickly:</p>
+        <ul>
+          <li>The preflight decision, with the hours, consent and frequency inputs as they were
+          evaluated at that moment.</li>
+          <li>The disclosure and mini-Miranda as spoken, tied to the configuration revision they
+          came from, so "which script was live in March" is a lookup.</li>
+          <li>Every tool call and result, so a stated balance can be traced to the system of record
+          rather than defended as plausible.</li>
+          <li>Every guardrail decision including the blocks, because the blocks are the evidence the
+          controls were running.</li>
+          <li>The handover, if there was one, with the trigger that caused it.</li>
+        </ul>
+        <p>Recording the call is table stakes and does not cover this. An audio file tells you what
+        was said, not why the system decided to say it, and the second question is the one that
+        arrives from the second line of defence. See
+        <a href="/blog/what-a-defensible-ai-audit-trail-contains/">what a defensible record
+        contains</a> for the general form.</p>
+      </section>
+
+      <section id="scope">
+        <h2>Where AI voice does not belong yet <a class="anchor-link" href="#scope">#</a></h2>
+        <p>Being straight about scope makes the rest more credible. Early-stage reminders,
+        payment-intent capture, arrangement confirmations and inbound balance queries are good fits:
+        bounded, high volume, and the failure modes are recoverable. Hardship assessment, dispute
+        resolution and anything involving a vulnerable customer are not, and the right design has
+        the agent recognise them and hand over rather than attempt them well.</p>
+        <p>The teams that get voice into production are not the ones with the best model. They are
+        the ones that narrowed the job until the compliance surface was small enough to enforce
+        outside the model, then proved the enforcement with synthetics on a schedule.</p>
+        <p>Related: the <a href="/use-cases/loan-collections/">collections use case</a> for the
+        control set end to end, and
+        <a href="/playbooks/sms-collections-twilio-razorpay/">SMS collections</a> for the channel
+        most deployments start with.</p>
+        <p style="margin-top:1.5rem"><a href="/blog/">← All posts</a></p>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div class="wrap footer-grid">
+      <div>
+        <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+        <p style="margin-top:0.8rem; max-width:22em;">The open-source, self-hosted agent
+        platform for banks and fintechs.</p>
+      </div>
+      <nav aria-label="Product">
+        <span class="col-title">Product</span>
+        <a href="/docs/">Documentation</a>
+        <a href="/use-cases/">Use cases</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/blog/">Blog</a>
+        <a href="/#compare">Comparison</a>
+        <a href="https://pypi.org/project/zolva/" target="_blank" rel="noopener noreferrer">PyPI</a>
+      </nav>
+      <nav aria-label="Project">
+        <span class="col-title">Project</span>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="/security/">Security policy</a>
+        <a href="/contributing/">Contributing</a>
+        <a href="/legal/">Trust &amp; legal</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Apache-2.0 license</a>
+      </nav>
+      <nav aria-label="For machines">
+        <span class="col-title">For machines</span>
+        <a href="/llms.txt">llms.txt</a>
+        <a href="/llms-full.txt">llms-full.txt</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/AGENTS.md" target="_blank" rel="noopener noreferrer">AGENTS.md</a>
+      </nav>
+    </div>
+    <div class="wrap footer-sig">
+      <span>© 2026 Zolva. Apache-2.0.</span>
+      <span>Self-hosted by design; your data never leaves.</span>
+    </div>
+  </footer>
+</body>
+</html>

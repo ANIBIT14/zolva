@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RBI's FREE-AI framework, read as an engineering spec | Zolva</title>
+  <meta name="description" content="The RBI FREE-AI committee's seven sutras and its recommendations on audit, incident reporting, human oversight and vendor risk, translated into the artefacts an Indian bank, NBFC or payment operator has to be able to produce for an AI agent in production." />
+  <link rel="canonical" href="https://zolva.ai/blog/rbi-free-ai-framework-what-to-build/" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/mark-512.png" />
+  <meta name="theme-color" content="#08011A" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Zolva" />
+  <meta property="og:title" content="RBI's FREE-AI framework, read as an engineering spec" />
+  <meta property="og:description" content="Seven sutras, one uncomfortable question: which of these can you evidence on a Tuesday afternoon?" />
+  <meta property="og:url" content="https://zolva.ai/blog/rbi-free-ai-framework-what-to-build/" />
+  <meta property="og:image" content="https://zolva.ai/mark-512.png" />
+  <meta name="twitter:card" content="summary" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "headline": "RBI's FREE-AI framework, read as an engineering spec",
+    "description": "What the RBI FREE-AI framework means concretely for teams shipping AI agents inside Indian regulated entities.",
+    "url": "https://zolva.ai/blog/rbi-free-ai-framework-what-to-build/",
+    "datePublished": "2026-08-16",
+    "author": { "@type": "Organization", "name": "Zolva", "url": "https://zolva.ai" },
+    "publisher": { "@type": "Organization", "name": "Zolva", "url": "https://zolva.ai" }
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links">menu</button>
+      <nav class="nav-links" id="nav-links" aria-label="Main">
+        <a href="/#why">Why Zolva</a>
+        <a href="/use-cases/">Use cases</a>
+        <a href="/docs/">Docs</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/blog/" aria-current="page">Blog</a>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a class="nav-cta" href="/docs/#quickstart">pip install zolva</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="wrap docs-shell">
+    <aside class="docs-sidebar" aria-label="On this page">
+      <p class="group">Article</p>
+      <a href="#shape">The shape of the framework</a>
+      <a href="#sutras">Seven sutras, seven artefacts</a>
+      <p class="group">The hard parts</p>
+      <a href="#oversight">Human oversight that is real</a>
+      <a href="#incident">Incident reporting on an agent</a>
+      <a href="#vendor">Vendors and the lifecycle clause</a>
+      <p class="group">Practice</p>
+      <a href="#build">What to build first</a>
+      <a href="#honest">What this does not settle</a>
+    </aside>
+
+    <main class="docs-main">
+      <section id="shape">
+        <p class="eyebrow" style="margin-bottom:1rem">2026-08-16 · Regulation</p>
+        <h1>RBI's FREE-AI framework, read as an engineering spec</h1>
+        <p>The Reserve Bank's Framework for Responsible and Ethical Enablement of Artificial
+        Intelligence came out of a committee process with more than a hundred stakeholders, and it
+        reads differently from most AI guidance. It is enablement-first. It does not tell regulated
+        entities to slow down, it tells them what has to be true while they move. That is a harder
+        brief for an engineering team than a prohibition would have been, because a prohibition
+        needs a policy document and enablement needs working software.</p>
+        <p>The scope is wide: scheduled commercial banks, NBFCs, all-India financial institutions,
+        payment system operators and providers. And it reaches through you to your suppliers. If
+        your AI capability arrives via a fintech partner, a cloud vendor or a model provider, the
+        expectation is that the principles hold across the whole lifecycle, not just the part you
+        wrote yourself.</p>
+        <div class="callout">
+          <strong>The useful reframing.</strong> Treat the sutras as acceptance criteria rather than
+          values. Fairness is not a sentiment, it is a test you run and store the result of.
+          Explainability is not a promise, it is a record you can retrieve eighteen months later.
+          Every principle in the framework either has an artefact behind it or it is decoration.
+        </div>
+      </section>
+
+      <section id="sutras">
+        <h2>Seven sutras, seven artefacts <a class="anchor-link" href="#sutras">#</a></h2>
+        <p>The framework distils its ethics into seven principles: safety, transparency,
+        accountability, fairness, inclusivity, sustainability and explainability. Here is what each
+        one costs you in build time, stated as the thing an internal auditor can ask for.</p>
+        <ul>
+          <li><strong>Safety.</strong> Deterministic limits that the model cannot argue its way
+          past. A hard block on a category of action is a control; an instruction in a system prompt
+          asking the model to be careful is a hope. The two look identical in a demo and diverge
+          under pressure.</li>
+          <li><strong>Transparency.</strong> The customer knows they are talking to a machine, at
+          the start, in the language of the conversation, on every channel including voice.</li>
+          <li><strong>Accountability.</strong> A named owner per agent, and a record that ties each
+          conversation to the exact configuration revision that was live at the time.</li>
+          <li><strong>Fairness.</strong> Outcome testing across the segments your product actually
+          serves, run on a schedule and versioned, not once before launch.</li>
+          <li><strong>Inclusivity.</strong> Language coverage and a fallback that does not punish
+          the customer for it. In practice this means a handover path, not a better prompt.</li>
+          <li><strong>Sustainability.</strong> The one most teams skip. It is answerable with
+          per-session token and inference accounting, which you want anyway for cost control.</li>
+          <li><strong>Explainability.</strong> Given a session ID, reconstruct what the agent did,
+          which tools it called, what came back, and which rule fired. Reconstruct, not
+          approximate.</li>
+        </ul>
+        <p>Six of the seven resolve to the same underlying capability: a durable, tamper-evident
+        record of every step, keyed to a config version. Build that once and most of the framework
+        becomes a query rather than a project. We have written separately on
+        <a href="/blog/what-a-defensible-ai-audit-trail-contains/">what that record has to
+        contain</a>.</p>
+      </section>
+
+      <section id="oversight">
+        <h2>Human oversight that survives contact with volume <a class="anchor-link" href="#oversight">#</a></h2>
+        <p>Every AI framework asks for human oversight and almost every implementation of it is
+        theatre. A reviewer with a queue of four thousand items and a target handle time is not
+        oversight, they are a rubber stamp with a salary.</p>
+        <p>What makes oversight real is that the agent stops. Not flags, not logs for later review,
+        stops and waits. That means picking the conditions where a human must decide before the
+        action happens: a settlement outside policy bounds, a hardship declaration, a dispute over a
+        stated amount, any request to change contact details, anything the guardrail layer scored as
+        ambiguous. The rest runs unattended, which is the only way the reviewed set stays small
+        enough for review to mean anything.</p>
+        <p>The second half is resumption. An agent that stops and cannot cleanly pick the
+        conversation back up creates a worse customer outcome than one that never stopped. The
+        handover needs to carry the full context to the human, and the return path needs to restore
+        state without replaying side effects. Our <a href="/playbooks/slack-handover-desk/">handover
+        desk playbook</a> covers the mechanics.</p>
+      </section>
+
+      <section id="incident">
+        <h2>Incident reporting when the incident is a conversation <a class="anchor-link" href="#incident">#</a></h2>
+        <p>Existing incident machinery in a regulated entity is built for systems that are up or
+        down. An agent incident is rarely either. It is a policy that was misread for nine days, or
+        a tool that returned stale balances to one segment of customers, or a rule that stopped
+        firing after a config change nobody flagged as material.</p>
+        <p>Detecting that class of failure needs three things running continuously rather than at
+        release time:</p>
+        <ol>
+          <li><strong>Synthetic traffic.</strong> Scripted conversations that assert on outcomes,
+          running against production configuration on a schedule. This is the only mechanism that
+          catches silent degradation before a customer does. See the
+          <a href="/playbooks/red-team-synthetics/">synthetics and red-team playbook</a>.</li>
+          <li><strong>A blast radius query.</strong> When something is found, the first question is
+          how many customers were affected and which ones. If the answer requires a data engineering
+          project, you will report late. If sessions are indexed by config hash, it is a
+          <code>WHERE</code> clause.</li>
+          <li><strong>Config diffs in version control.</strong> "When did this change and who
+          approved it" should be answerable from git history, because agent behaviour lives in YAML
+          and Markdown rather than in a vendor's UI.</li>
+        </ol>
+      </section>
+
+      <section id="vendor">
+        <h2>Vendors, and the phrase "throughout the AI lifecycle" <a class="anchor-link" href="#vendor">#</a></h2>
+        <p>The lifecycle language is where the framework gets expensive for teams that bought rather
+        than built. You are expected to ensure the principles hold across partners, which means you
+        need answers about a system you do not operate. Three questions decide whether that is
+        tractable:</p>
+        <ul>
+          <li><strong>Does customer data leave your perimeter, and to where?</strong> Prompts contain
+          customer data. A hosted agent platform sends them to its own infrastructure and then to a
+          model provider, which is at least two hops you have to describe and localise.</li>
+          <li><strong>Can you read the code that handles it?</strong> Assurance through independent
+          audit is easier to arrange when the artefact under audit is a library in your repository
+          rather than a multi-tenant service you have a certificate about.</li>
+          <li><strong>Where does the audit record live?</strong> Retention obligations outlast
+          commercial relationships. A record that only exists in a vendor's database is a record you
+          have rented.</li>
+        </ul>
+        <p>None of this makes hosted platforms unusable. It makes them a documented risk position
+        rather than an unexamined default, which is the same conclusion
+        <a href="/blog/dora-llm-vendor-concentration-risk/">DORA reaches from the European
+        side</a>.</p>
+      </section>
+
+      <section id="build">
+        <h2>What to build first <a class="anchor-link" href="#build">#</a></h2>
+        <p>If you are starting a deployment now and want the compliance conversation to be short
+        later, the order that pays off is:</p>
+        <ol>
+          <li><strong>Hash-chained audit with config hashes</strong>, before any customer traffic.
+          Retrofitting a record is the single most painful thing on this list.</li>
+          <li><strong>Guardrails as declared configuration</strong>, including per-customer contact
+          caps across channels, so frequency limits hold when SMS and voice and WhatsApp are running
+          independently. The <a href="/playbooks/cross-channel-contact-caps/">contact caps
+          playbook</a> covers the shared-ledger pattern.</li>
+          <li><strong>Redaction before the provider call</strong>, so the localisation question is
+          about metadata rather than about customer identifiers. See the
+          <a href="/playbooks/pii-redaction-data-residency/">redaction playbook</a>.</li>
+          <li><strong>Evals wired into CI</strong>, so a config change that degrades behaviour fails
+          a build instead of reaching customers.</li>
+          <li><strong>Handover with a resume path</strong>, sized so the human queue is small.</li>
+        </ol>
+        <p>That sequence is deliberately unglamorous. It is also the part of an agent deployment
+        that determines whether the second line of defence signs off in a week or a quarter.</p>
+      </section>
+
+      <section id="honest">
+        <h2>What this does not settle <a class="anchor-link" href="#honest">#</a></h2>
+        <p>Two honest caveats. First, the framework is a set of recommendations and the supervisory
+        detail will keep arriving; anything written today about exact reporting mechanics should be
+        treated as provisional and checked against current RBI circulars before you rely on it.</p>
+        <p>Second, architecture makes obligations satisfiable, it does not satisfy them. A
+        tamper-evident audit chain does not make your model fair, it makes unfairness detectable and
+        provable. That is a genuinely different claim, and it is the only one software can make.</p>
+        <p>Related reading: <a href="/blog/guardrails-are-config-not-prompts/">why guardrails belong
+        in config</a>, and the <a href="/use-cases/loan-collections/">collections use case</a> where
+        most Indian deployments start.</p>
+        <p style="margin-top:1.5rem"><a href="/blog/">← All posts</a></p>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div class="wrap footer-grid">
+      <div>
+        <a class="brand" href="/"><img src="/favicon.svg" alt="" width="30" height="30" />Zolva</a>
+        <p style="margin-top:0.8rem; max-width:22em;">The open-source, self-hosted agent
+        platform for banks and fintechs.</p>
+      </div>
+      <nav aria-label="Product">
+        <span class="col-title">Product</span>
+        <a href="/docs/">Documentation</a>
+        <a href="/use-cases/">Use cases</a>
+        <a href="/playbooks/">Playbooks</a>
+        <a href="/blog/">Blog</a>
+        <a href="/#compare">Comparison</a>
+        <a href="https://pypi.org/project/zolva/" target="_blank" rel="noopener noreferrer">PyPI</a>
+      </nav>
+      <nav aria-label="Project">
+        <span class="col-title">Project</span>
+        <a href="https://github.com/ANIBIT14/zolva" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="/security/">Security policy</a>
+        <a href="/contributing/">Contributing</a>
+        <a href="/legal/">Trust &amp; legal</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">Apache-2.0 license</a>
+      </nav>
+      <nav aria-label="For machines">
+        <span class="col-title">For machines</span>
+        <a href="/llms.txt">llms.txt</a>
+        <a href="/llms-full.txt">llms-full.txt</a>
+        <a href="https://github.com/ANIBIT14/zolva/blob/main/AGENTS.md" target="_blank" rel="noopener noreferrer">AGENTS.md</a>
+      </nav>
+    </div>
+    <div class="wrap footer-sig">
+      <span>© 2026 Zolva. Apache-2.0.</span>
+      <span>Self-hosted by design; your data never leaves.</span>
+    </div>
+  </footer>
+</body>
+</html>
