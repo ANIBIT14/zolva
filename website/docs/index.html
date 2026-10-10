@@ -513,7 +513,7 @@ Guardrails.from_file("policies/collections.yaml", agent="collections-agent",
         </div>
         <ul>
           <li><code>require_approval</code>: a list of tool names that always hand over instead of executing.</li>
-          <li><code>max_calls</code>: caps how many times one session may call a tool, or one customer when <code>customer_ref</code> is passed to <code>app.run</code> (so rotating session ids cannot reset it). Blocked calls do not use up the budget.</li>
+          <li><code>max_calls</code>: caps how many times a tool may be called, counted against the session and, when <code>customer_ref</code> is passed to <code>app.run</code>, the customer too; either one being spent blocks, so rotating session ids or dropping the ref cannot open a new budget. <code>customer_ref</code> is only as trustworthy as its source: set it from your gateway behind a signed route, never from customer input. Blocked calls do not use up the budget.</li>
           <li><code>max_amount</code>: caps a numeric argument (int, float, or Decimal). It <strong>fails closed</strong>: a missing, non-numeric, or non-finite amount is not provably under the cap, so it blocks.</li>
         </ul>
         <p>Every rule judges the arguments <em>after</em> the tool contract has validated and coerced them, the exact values the tool receives, never the raw model output. An unknown policy section (a typo like <code>tool:</code>) fails startup rather than silently disabling its rules.</p>

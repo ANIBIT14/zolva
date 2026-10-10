@@ -230,3 +230,22 @@ async def test_policy_sees_the_args_the_tool_receives() -> None:
     (tc,) = [s for s in seen if s.type == "tool_call"]
     assert tc.data["args"] == {"amount": 50} and ran == [50]
     assert tc.data["customer_ref"] == "cust-1"
+
+
+async def test_max_calls_cannot_be_doubled_by_toggling_customer_ref() -> None:
+    """Budget counts against session AND customer: dropping or swapping the
+    caller-supplied customer_ref mid-session must not open a second budget."""
+    g = Guardrails(
+        {"tools": [{"max_calls": {"tool": "send_payment_link", "per_session": 1}}]}, agent=AGENT
+    )
+
+    def mk(ref: str | None) -> Step:
+        data: dict[str, Any] = {"name": "send_payment_link", "args": {}}
+        if ref:
+            data["customer_ref"] = ref
+        return Step(type="tool_call", session_id="s1", agent=AGENT, data=data)
+
+    assert await g._hook(mk("cust-1")) is None
+    for attempt in (None, "cust-2"):
+        v = await g._hook(mk(attempt))
+        assert v is not None and not v.allow, attempt
