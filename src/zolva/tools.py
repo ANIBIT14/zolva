@@ -61,14 +61,23 @@ class ToolRegistry:
     def specs(self, names: list[str]) -> list[ToolSpec]:
         return [self._get(n).spec for n in names]
 
-    async def call(self, name: str, args: dict[str, Any]) -> Any:
+    def validate(self, name: str, args: dict[str, Any]) -> dict[str, Any]:
+        """Contract-checked, coerced kwargs for a call: the exact values the
+        tool will receive, so policy can judge those rather than raw model output."""
         t = self._get(name)
         try:
             params = t.params_model(**args)
         except (ValidationError, TypeError) as e:
             raise ToolContractError(f"{name}: invalid arguments: {e}") from e
-        kwargs = {k: getattr(params, k) for k in t.params_model.model_fields}
         # getattr, not model_dump(): a deep dump would turn Pydantic-typed params into dicts
+        return {k: getattr(params, k) for k in t.params_model.model_fields}
+
+    async def call(self, name: str, args: dict[str, Any]) -> Any:
+        return await self.invoke(name, self.validate(name, args))
+
+    async def invoke(self, name: str, kwargs: dict[str, Any]) -> Any:
+        """Run a tool on kwargs already returned by `validate` (no re-coercion)."""
+        t = self._get(name)
         if inspect.iscoroutinefunction(t.fn):
             return await t.fn(**kwargs)
         # sync bank clients must not stall every concurrent session

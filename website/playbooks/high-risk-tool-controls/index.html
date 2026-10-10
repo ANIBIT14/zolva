@@ -435,11 +435,12 @@ zolva compliance audit.sqlite --agents agents/ --out pack.json</code></pre>
           <li><strong>Before the model, not after:</strong> <code>tool_output:</code> rules run on
           the <code>tool_result</code> step; blocked content is kept out of session history and goes
           to the human in the ticket.</li>
-          <li><strong>Fail closed:</strong> an amount that is missing or not a number is blocked;
+          <li><strong>Fail closed:</strong> an amount that is missing, not a number, or not finite (NaN, infinity) is blocked; rules see the contract-validated arguments, not raw model output; an unknown policy section fails startup;
           a judge answer that is not an explicit PASS is a block; a guardrail that raises blocks the
           step and escalates.</li>
           <li><strong>Budgets are per app instance:</strong> <code>max_calls</code> counts in
-          process memory, keyed on session and tool. If one session can move between replicas
+          process memory, keyed on the customer (when <code>customer_ref</code> is passed, so a caller
+          rotating session ids cannot reset it) or else the session, and the tool. If one customer can move between replicas
           mid-conversation, each replica counts separately, and a restart resets the count.</li>
           <li><strong>Amount caps are per call:</strong> <code>max_amount</code> checks one call's
           argument. Pair it with <code>max_calls</code> on the same tool so a large refund cannot
