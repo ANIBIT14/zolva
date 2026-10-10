@@ -233,7 +233,7 @@ section { position: relative; }
   gap: clamp(2rem, 5vw, 4.5rem);
   align-items: center;
 }
-@media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .hero-grid { grid-template-columns: minmax(0, 1fr); } }
 
 .hero h1 {
   font-size: clamp(2.6rem, 5.6vw, 4.4rem);
@@ -410,12 +410,12 @@ section { position: relative; }
 /* Why cards */
 .why-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1px;
   background: var(--hairline-soft);
   border: 1px solid var(--hairline-soft);
 }
-@media (max-width: 860px) { .why-grid { grid-template-columns: 1fr; } }
+@media (max-width: 860px) { .why-grid { grid-template-columns: minmax(0, 1fr); } }
 .why-card {
   background: var(--ink);
   padding: 2rem 1.75rem;
@@ -473,7 +473,7 @@ table.compare th.hl { color: var(--mint); }
   align-items: start;
 }
 .entry + .entry { border-top: 1px solid var(--hairline-soft); }
-@media (max-width: 900px) { .entry { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .entry { grid-template-columns: minmax(0, 1fr); } }
 .entry .no {
   font-family: var(--font-mono);
   font-size: 0.78rem;
@@ -576,7 +576,7 @@ footer {
   align-items: start;
   padding-top: 2.5rem;
 }
-@media (max-width: 860px) { .docs-shell { grid-template-columns: 1fr; } }
+@media (max-width: 860px) { .docs-shell { grid-template-columns: minmax(0, 1fr); } }
 
 .docs-sidebar {
   position: sticky;
@@ -610,7 +610,7 @@ footer {
 .docs-sidebar a:hover { color: var(--text); }
 .docs-sidebar a.active { color: var(--mint); border-left-color: var(--mint); }
 
-.docs-main { max-width: 46rem; padding-bottom: 6rem; }
+.docs-main { max-width: 46rem; min-width: 0; padding-bottom: 6rem; } /* min-width: grid/flex items must be allowed to shrink below their code blocks */
 .docs-main > section { padding: 2.6rem 0; border-top: 1px solid var(--hairline-soft); scroll-margin-top: 3rem; }
 .docs-main > section:first-of-type { border-top: none; padding-top: 0.5rem; }
 .docs-main h1 { font-size: clamp(2.2rem, 4vw, 3rem); margin-bottom: 1rem; }
@@ -627,6 +627,11 @@ footer {
 .docs-main li::marker { color: var(--mint-dim); }
 .docs-main .code { margin: 1.1rem 0 1.3rem; }
 .docs-main table:not(.compare) {
+  /* block + overflow: a wide reference table scrolls in place on phones
+     instead of widening the page */
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
   width: 100%;
   border-collapse: collapse;
   font-size: 0.92rem;
@@ -648,6 +653,11 @@ footer {
   font-weight: 500;
 }
 .docs-main table:not(.compare) td { color: var(--muted); }
+
+/* phones: long inline identifiers wrap instead of widening the page */
+@media (max-width: 640px) {
+  p code, li code, td code, h3 code { white-space: normal; overflow-wrap: anywhere; }
+}
 
 /* ---- Toasts (sonner-style, vanilla) ---- */
 
