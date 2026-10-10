@@ -222,12 +222,29 @@ class AgentApp:
                     cfg.tools
                 )  # the batch belongs to the agent that requested it, even across a mid-batch handoff
                 for i, tc in enumerate(response.tool_calls):
+                    # validate BEFORE policy: guardrails must judge the coerced
+                    # values the tool will actually receive, never raw model output
+                    kwargs: dict[str, Any] | None = None
+                    contract_error: ToolContractError | None = None
+                    if tc.name != "handoff":
+                        try:
+                            if tc.name not in batch_allowed:
+                                # undeclared == unknown to this agent; same error as an
+                                # unregistered tool so nothing leaks about other agents' tools
+                                raise ToolContractError(f"unknown tool {tc.name!r}")
+                            kwargs = self._registry.validate(tc.name, tc.args)
+                        except ToolContractError as e:
+                            contract_error = e
                     verdict = await self.bus.emit(
                         Step(
                             type="tool_call",
                             session_id=session_id,
                             agent=batch_agent,
-                            data={"name": tc.name, "args": tc.args},
+                            data={
+                                "name": tc.name,
+                                "args": kwargs if kwargs is not None else tc.args,
+                                **ref_data,
+                            },
                         )
                     )
                     if not verdict.allow:
@@ -271,11 +288,9 @@ class AgentApp:
                         )
                         continue
                     try:
-                        if tc.name not in batch_allowed:
-                            # undeclared == unknown to this agent; same error as an
-                            # unregistered tool so nothing leaks about other agents' tools
-                            raise ToolContractError(f"unknown tool {tc.name!r}")
-                        result = await self._registry.call(tc.name, tc.args)
+                        if contract_error is not None or kwargs is None:
+                            raise contract_error or ToolContractError(f"unknown tool {tc.name!r}")
+                        result = await self._registry.invoke(tc.name, kwargs)
                         if isinstance(result, BaseModel):
                             content = result.model_dump_json()
                         else:

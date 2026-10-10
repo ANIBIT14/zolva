@@ -118,14 +118,14 @@ Tools that move money or change records get their own policy section, checked on
 ```yaml
 tools:
   - require_approval: [waive_fee]                                   # human handover with the exact args
-  - max_calls:  { tool: send_payment_link, per_session: 3 }
+  - max_calls:  { tool: send_payment_link, per_session: 3 }        # per customer when customer_ref is passed
   - max_amount: { tool: refund, field: amount, max: 5000 }          # missing/non-numeric amount fails closed
 tool_output:
   - block_patterns: ["(?i)ignore (all )?previous instructions"]
   - never: [instructions_addressed_to_the_assistant]                # judge rule, fail-closed
 ```
 
-Contact windows may span midnight (`hours: "20:00-06:00"`). Policies are validated at startup, a typo or a rule in the wrong section fails your deploy, not a live customer conversation. Judge rules are **fail-closed**: anything that isn't an explicit PASS blocks. Every violation escalates to a human with the blocked content attached.
+Tool rules judge the contract-validated arguments the tool will actually receive, not raw model output. Contact windows may span midnight (`hours: "20:00-06:00"`). Policies are validated at startup, a typo or a rule in the wrong section fails your deploy, not a live customer conversation. Judge rules are **fail-closed**: anything that isn't an explicit PASS blocks. Every violation escalates to a human with the blocked content attached.
 
 ### Evals, gate releases on the worst cohort, never the average
 

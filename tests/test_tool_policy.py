@@ -144,3 +144,89 @@ async def test_end_to_end_tool_output_injection_escalates() -> None:
     history = await app.sessions.history("s1")
     assert all("waive the fee" not in m.content for m in history)  # never reached the model
     assert history[-1].role == "tool" and history[-1].tool_call_id == "c1"  # provider-valid
+
+
+async def test_max_amount_rejects_nan_and_infinity() -> None:
+    # NaN compares False against everything: `nan > max` would wave it through
+    g = Guardrails(
+        {"tools": [{"max_amount": {"tool": "refund", "field": "amount", "max": 5000}}]},
+        agent=AGENT,
+    )
+    for bad in (float("nan"), float("inf")):
+        v = await g._hook(call("refund", {"amount": bad}))
+        assert v is not None and not v.allow, bad
+
+
+async def test_max_amount_accepts_decimal() -> None:
+    from decimal import Decimal
+
+    g = Guardrails(
+        {"tools": [{"max_amount": {"tool": "refund", "field": "amount", "max": 5000}}]},
+        agent=AGENT,
+    )
+    assert await g._hook(call("refund", {"amount": Decimal("4999.99")})) is None
+    v = await g._hook(call("refund", {"amount": Decimal("5000.01")}))
+    assert v is not None and not v.allow
+
+
+def test_unknown_policy_section_fails_closed() -> None:
+    # a typo'd section must not silently disable every rule in it
+    with pytest.raises(ConfigError, match="unknown policy section"):
+        Guardrails({"tool": [{"require_approval": ["refund"]}]}, agent=AGENT)
+
+
+async def test_max_calls_keys_on_customer_ref_across_sessions() -> None:
+    """A caller who rotates session ids must not reset a per-customer budget."""
+    g = Guardrails(
+        {"tools": [{"max_calls": {"tool": "send_payment_link", "per_session": 1}}]}, agent=AGENT
+    )
+
+    def ref_call(session: str) -> Step:
+        return Step(
+            type="tool_call",
+            session_id=session,
+            agent=AGENT,
+            data={"name": "send_payment_link", "args": {}, "customer_ref": "cust-1"},
+        )
+
+    assert await g._hook(ref_call("s1")) is None
+    v = await g._hook(ref_call("s2"))
+    assert v is not None and not v.allow
+
+
+async def test_policy_sees_the_args_the_tool_receives() -> None:
+    """Guardrail and tool must judge the SAME value: the contract-coerced one,
+    not the raw model output (a string '9000' coerced to int after the check)."""
+    reg = ToolRegistry()
+    ran: list[int] = []
+
+    @reg.register
+    def refund(amount: int) -> str:
+        ran.append(amount)
+        return "ok"
+
+    seen: list[Step] = []
+    app = AgentApp(
+        {AGENT: make_cfg(tools=["refund"])},
+        registry=reg,
+        adapter=FakeAdapter(
+            script=[
+                LLMResponse(tool_calls=[ToolCall(id="c1", name="refund", args={"amount": "50"})]),
+                LLMResponse(text="done"),
+            ]
+        ),
+        handover=CapturingHandover(),
+    )
+
+    async def spy(step: Step) -> None:
+        seen.append(step)
+
+    app.bus.on(spy)
+    Guardrails(
+        {"tools": [{"max_amount": {"tool": "refund", "field": "amount", "max": 5000}}]},
+        agent=AGENT,
+    ).attach(app.bus)
+    assert await app.run(AGENT, "s1", "refund 50", customer_ref="cust-1") == "done"
+    (tc,) = [s for s in seen if s.type == "tool_call"]
+    assert tc.data["args"] == {"amount": 50} and ran == [50]
+    assert tc.data["customer_ref"] == "cust-1"

@@ -17,8 +17,10 @@ disable a rule at runtime, remove it from the policy file or it runs.
 from __future__ import annotations
 
 import logging
+import math
 import re
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Callable
 from zoneinfo import ZoneInfo
@@ -74,6 +76,12 @@ def validate_policy(policy: dict[str, Any], *, judge_available: bool = True) -> 
     `judge_available=True` skips the judge-adapter requirement so `zolva
     validate` can check shapes without constructing adapters; Guardrails
     passes the real availability at attach time."""
+    unknown = set(policy) - set(_SECTIONS)
+    if unknown:
+        # fail closed: a typo'd section ("tool:") would silently disable its rules
+        raise ConfigError(
+            f"unknown policy section(s) {sorted(unknown)}; known: {sorted(_SECTIONS)}"
+        )
     for section_name, allowed in _SECTIONS.items():
         for rule in policy.get(section_name) or []:
             for name, spec in rule.items():
@@ -139,7 +147,7 @@ def _validate_extra_rule(name: str, spec: Any) -> None:
         isinstance(spec, dict)
         and isinstance(spec.get("tool"), str)
         and isinstance(spec.get("field"), str)
-        and isinstance(spec.get("max"), (int, float))
+        and _finite_number(spec.get("max")) is not None
     ):
         raise ConfigError(f"max_amount needs {{tool, field, max}}, got {spec!r}")
     if name == "block_patterns":
@@ -150,6 +158,16 @@ def _validate_extra_rule(name: str, spec: Any) -> None:
                 re.compile(str(pattern))
             except re.error as e:
                 raise ConfigError(f"block_patterns: invalid regex {pattern!r}: {e}") from e
+
+
+def _finite_number(value: Any) -> float | None:
+    """The value as a float, or None unless it is a real, finite number. bool
+    is an int subclass and NaN compares False against everything; either
+    would let an amount slip past a cap."""
+    if isinstance(value, bool) or not isinstance(value, (int, float, Decimal)):
+        return None
+    number = float(value)
+    return number if math.isfinite(number) else None
 
 
 class Guardrails:
@@ -209,20 +227,24 @@ class Guardrails:
                     # the human gets the exact args in the ticket trigger and acts on them
                     return self._violation(f"tool requires human approval: {tool}")
                 if name == "max_amount" and spec["tool"] == tool:
-                    amount = args.get(spec["field"]) if isinstance(args, dict) else None
-                    # bool is an int subclass; a missing/non-numeric amount is not
-                    # provably under the cap, so it fails closed
-                    if isinstance(amount, bool) or not isinstance(amount, (int, float)):
+                    raw = args.get(spec["field"]) if isinstance(args, dict) else None
+                    # a missing/non-numeric/non-finite amount is not provably
+                    # under the cap, so it fails closed
+                    amount = _finite_number(raw)
+                    if amount is None:
                         return self._violation(f"amount limit: {tool}.{spec['field']} missing")
-                    if amount > spec["max"]:
+                    if amount > float(spec["max"]):
                         return self._violation(
                             f"amount limit: {tool}.{spec['field']} {amount:g} > {spec['max']:g}"
                         )
-        # counted last, so a call blocked above doesn't use up the session's budget
+        # counted last, so a call blocked above doesn't use up the budget. Keyed
+        # on customer_ref when the caller supplies one: session ids come from
+        # the channel payload, so rotating them must not reset the budget
+        subject = str(step.data.get("customer_ref") or step.session_id)
         for rule in self._tools:
             spec = rule.get("max_calls")
             if spec is not None and spec["tool"] == tool:
-                key = (step.session_id, tool)
+                key = (subject, tool)
                 if self._tool_counts.get(key, 0) >= spec["per_session"]:
                     return self._violation(
                         f"call limit: {tool} max {spec['per_session']} per session"
