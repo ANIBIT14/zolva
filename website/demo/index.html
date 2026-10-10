@@ -3,19 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Dashboard demo | Zolva</title>
-<meta name="description" content="A static replica of the read-only Zolva team dashboard: session volume, guardrail blocks, handovers, eval cohort pass rates, and a verifiable hash-chained audit trail. Self-contained by design, no CDN and no webfonts, so it renders inside an air-gapped VPC." />
-<link rel="canonical" href="https://zolva.ai/demo/" />
-<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-<link rel="apple-touch-icon" href="/mark-512.png" />
-<meta name="theme-color" content="#08011A" />
-<meta property="og:type" content="website" />
-<meta property="og:site_name" content="Zolva" />
-<meta property="og:title" content="Zolva dashboard demo" />
-<meta property="og:description" content="The read-only team dashboard: sessions, guardrail blocks, handovers, eval pass rates, and a verifiable audit chain." />
-<meta property="og:url" content="https://zolva.ai/demo/" />
-<meta property="og:image" content="https://zolva.ai/mark-512.png" />
-<meta name="twitter:card" content="summary" />
+<title>Zolva Dashboard Demo</title>
 <style>
   /* Self-contained by design: no CDN, no webfonts. This page must render
      inside an air-gapped bank VPC. */
@@ -95,8 +83,8 @@
   .tile .v.warn { color: var(--warn); }
   .tile .s { font-size: 11px; color: var(--text-2); }
 
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
-  @media (max-width: 860px) { .grid2 { grid-template-columns: 1fr; } }
+  .grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.25rem; }
+  @media (max-width: 860px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
   .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1.1rem 1.2rem; }
 
   /* topology */
@@ -116,6 +104,7 @@
 
   /* sessions table */
   table { width: 100%; border-collapse: collapse; }
+  .table-scroll { overflow-x: auto; } /* narrow screens: the table scrolls, the page doesn't */
   th { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-3); text-align: left; font-weight: 400; padding: 8px 12px; border-bottom: 1px solid var(--line); }
   th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
   td { padding: 8px 12px; border-bottom: 1px solid rgba(43,32,68,.45); vertical-align: middle; }
@@ -164,6 +153,8 @@
   .chip.response   { background: rgba(12,163,12,.16); color: #5fca5f; }
   .chip.model_call { background: rgba(144,133,233,.15); color: #b0a7f0; }
   .chip.tool_call  { background: rgba(236,131,90,.16); color: #ec835a; }
+  .chip.tool_result { background: rgba(236,131,90,.08); color: #d9a088; }
+  .chip.model_result { background: rgba(144,133,233,.08); color: #9d96c9; }
   .chip.handover   { background: rgba(250,178,25,.15); color: var(--warn); }
   .chip.resume     { background: rgba(25,158,112,.16); color: #4cc39a; }
   .chip.feedback   { background: rgba(213,81,129,.16); color: #e08bb0; }
@@ -176,12 +167,9 @@
   .reasons li b { color: var(--warn); font-weight: 400; }
   footer { margin-top: 3rem; color: var(--text-3); font-size: 11px; text-align: center; }
   footer .sep { margin: 0 0.6em; }
-  footer a { color: var(--text-2); }
-  footer a:hover { color: var(--accent-soft); }
 </style>
 </head>
 <body>
-<h1 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap">Zolva dashboard demo</h1>
 <header>
   <div class="wrap head-inner">
     <div class="brand"><b>Zolva</b> <span>/ dashboard</span></div>
@@ -224,10 +212,10 @@
   <section>
     <h2>Sessions <small>live tail &middot; newest activity first &middot; click a row for the full transcript</small></h2>
     <div class="panel" style="padding:0.15rem 0.35rem 0">
-      <table>
+      <div class="table-scroll"><table>
         <thead><tr><th>session</th><th>agent</th><th class="num">steps</th><th>outcome</th><th>last activity</th></tr></thead>
         <tbody id="sess-body"><tr><td colspan="5"><div class="empty">waiting for audit data&hellip;</div></td></tr></tbody>
-      </table>
+      </table></div>
       <div class="pager" id="pager" hidden>
         <span class="count" id="pg-count"></span>
         <button id="pg-prev" type="button">&larr; newer</button>
@@ -240,10 +228,7 @@
   <footer>
     read-only viewer over the hash-chained audit log
     <span class="sep">&middot;</span> data never leaves this machine
-    <span class="sep">&middot;</span> <a href="/use-cases/">use cases</a>
-    <span class="sep">&middot;</span> <a href="/playbooks/">playbooks</a>
-    <span class="sep">&middot;</span> <a href="/blog/">blog</a>
-    <span class="sep">&middot;</span> <a href="/">zolva.ai</a>
+    <span class="sep">&middot;</span> zolva.ai
   </footer>
 </div>
 
@@ -513,6 +498,8 @@ function stepBody(st) {
     case "response":   return `&ldquo;${esc(d.text)}&rdquo;`;
     case "model_call": return `<span class="k2">provider</span> ${esc(d.provider)} <span class="k2">model</span> ${esc(d.model)}`;
     case "tool_call":  return `${esc(d.name)}(${esc(JSON.stringify(d.args))})`;
+    case "tool_result": return `${esc(d.name)} &rarr; ${esc(String(d.content ?? "").slice(0, 240))}`;
+    case "model_result": return `<span class="k2">tokens in</span> ${esc(d.input_tokens ?? "?")} <span class="k2">out</span> ${esc(d.output_tokens ?? "?")}`;
     case "handover":   return `<span class="k2">reason:</span> ${esc(d.reason)}`;
     case "resume":     return `<span class="k2">resolved:</span> ${esc(d.resolution)}`;
     default:           return esc(JSON.stringify(d));
