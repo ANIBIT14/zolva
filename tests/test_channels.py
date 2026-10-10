@@ -129,6 +129,27 @@ async def test_blocked_outbound_sends_blocked_message() -> None:
     assert ch.sent == [("s1", BLOCKED_MESSAGE)]
 
 
+async def test_failed_delivery_is_on_the_record() -> None:
+    """The audit must not read as if a reply reached the customer when send failed."""
+    app = _app(["Your dues are 4200."])
+    seen: list[Step] = []
+
+    async def spy(step: Step) -> None:
+        seen.append(step)
+
+    app.bus.on(spy)
+    hub, ch = _hub(app)
+
+    async def broken_send(session_id: str, text: str) -> None:
+        raise ChannelError("gateway down")
+
+    ch.send = broken_send  # type: ignore[method-assign]
+    with pytest.raises(ChannelError):
+        await hub.dispatch("whatsapp", "collections-agent", {"session_id": "s1", "text": "hi"})
+    directions = [s.data["direction"] for s in seen if s.type == "channel"]
+    assert directions == ["in", "out", "delivery_failed"]
+
+
 # ---- WebhookChannel ----
 
 

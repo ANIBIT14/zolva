@@ -173,14 +173,16 @@ def build_report(
     *,
     agents: dict[str, AgentConfig] | None = None,
     eval_report: EvalReport | None = None,
+    anchor: str | None = None,
 ) -> ComplianceReport:
     """Assemble the article-mapped evidence bundle from live artifacts.
 
     `regulator_ready` requires the chain to verify and every control to be
     PASS — a `not_configured` control (missing agents or eval evidence) holds
-    the report back rather than passing vacuously.
+    the report back rather than passing vacuously. `anchor` is the head hash
+    of a previous pack: the chain must still contain it (catches a cut tail).
     """
-    chain_ok = audit.verify()
+    chain_ok = audit.verify(anchor=anchor)
     rows = audit.records()  # read the log once; the helpers derive from it
     by_session = audit.step_types_by_session()
     head = rows[-1][7] if rows else ""

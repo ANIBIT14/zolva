@@ -5,6 +5,10 @@ Four rule shapes (spec section "Guardrails"):
   (per-customer contact caps across sessions, keyed on customer_ref)
 - exact/regex: require_disclaimer
 - LLM-judge (binary): refuse_topics, never
+- tool calls (`tools:` section): require_approval, max_calls, max_amount
+- tool results (`tool_output:` section): block_patterns, plus the judge rules,
+  screening what a tool returns before the model ever reads it (prompt
+  injection planted in CRM notes, emails, documents)
 
 `never` violations hard-block; there is deliberately no config switch to
 disable a rule at runtime, remove it from the policy file or it runs.
@@ -42,6 +46,14 @@ _KNOWN_RULES = {
     "never",
 }
 _JUDGE_RULES = {"refuse_topics", "never"}
+_TOOL_RULES = {"require_approval", "max_calls", "max_amount"}
+_TEXT_RULES = _KNOWN_RULES  # pre/post sections
+_SECTIONS: dict[str, set[str]] = {
+    "pre": _TEXT_RULES,
+    "post": _TEXT_RULES,
+    "tools": _TOOL_RULES,
+    "tool_output": {"block_patterns"} | _JUDGE_RULES,
+}
 
 
 def _load_policy_file(path: str | Path) -> dict[str, Any]:
@@ -62,11 +74,14 @@ def validate_policy(policy: dict[str, Any], *, judge_available: bool = True) -> 
     `judge_available=True` skips the judge-adapter requirement so `zolva
     validate` can check shapes without constructing adapters; Guardrails
     passes the real availability at attach time."""
-    for section in (policy.get("pre") or [], policy.get("post") or []):
-        for rule in section:
+    for section_name, allowed in _SECTIONS.items():
+        for rule in policy.get(section_name) or []:
             for name, spec in rule.items():
-                if name not in _KNOWN_RULES:
+                if name not in _KNOWN_RULES | _TOOL_RULES | {"block_patterns"}:
                     raise ConfigError(f"unknown guardrail rule {name!r}")
+                if name not in allowed:
+                    raise ConfigError(f"guardrail rule {name!r} not allowed in {section_name!r}")
+                _validate_extra_rule(name, spec)
                 if name in _JUDGE_RULES:
                     if not judge_available:
                         raise ConfigError(f"guardrails: rule {name!r} requires a judge adapter")
@@ -107,6 +122,36 @@ def validate_policy(policy: dict[str, Any], *, judge_available: bool = True) -> 
                         ) from e
 
 
+def _validate_extra_rule(name: str, spec: Any) -> None:
+    """Shape-check the tool-call and tool-output rules."""
+    if name == "require_approval" and not (
+        isinstance(spec, list) and all(isinstance(t, str) for t in spec)
+    ):
+        raise ConfigError(f"require_approval must be a LIST of tool names, got {spec!r}")
+    if name == "max_calls" and not (
+        isinstance(spec, dict)
+        and isinstance(spec.get("tool"), str)
+        and isinstance(spec.get("per_session"), int)
+        and spec["per_session"] >= 1
+    ):
+        raise ConfigError(f"max_calls needs {{tool, per_session >= 1}}, got {spec!r}")
+    if name == "max_amount" and not (
+        isinstance(spec, dict)
+        and isinstance(spec.get("tool"), str)
+        and isinstance(spec.get("field"), str)
+        and isinstance(spec.get("max"), (int, float))
+    ):
+        raise ConfigError(f"max_amount needs {{tool, field, max}}, got {spec!r}")
+    if name == "block_patterns":
+        if not isinstance(spec, list):
+            raise ConfigError(f"block_patterns must be a LIST of regexes, got {spec!r}")
+        for pattern in spec:
+            try:
+                re.compile(str(pattern))
+            except re.error as e:
+                raise ConfigError(f"block_patterns: invalid regex {pattern!r}: {e}") from e
+
+
 class Guardrails:
     def __init__(
         self,
@@ -121,6 +166,11 @@ class Guardrails:
         self._agent = agent
         self._pre: list[dict[str, Any]] = policy.get("pre") or []
         self._post: list[dict[str, Any]] = policy.get("post") or []
+        self._tools: list[dict[str, Any]] = policy.get("tools") or []
+        self._tool_output: list[dict[str, Any]] = policy.get("tool_output") or []
+        # ponytail: per-process counter; move to a shared ledger if one session
+        # can hop app instances mid-conversation
+        self._tool_counts: dict[tuple[str, str], int] = {}
         self._judge = judge
         self._judge_model = judge_model
         self._now = now if now is not None else (lambda tz: datetime.now(tz))
@@ -144,7 +194,45 @@ class Guardrails:
             return await self._check(self._pre, str(step.data.get("text", "")), step)
         if step.type == "response":
             return await self._check(self._post, str(step.data.get("text", "")), step)
+        if step.type == "tool_call":
+            return self._check_tool_call(step)
+        if step.type == "tool_result":
+            return await self._check(self._tool_output, str(step.data.get("content", "")), step)
         return None
+
+    def _check_tool_call(self, step: Step) -> Verdict | None:
+        tool = str(step.data.get("name", ""))
+        args = step.data.get("args") or {}
+        for rule in self._tools:
+            for name, spec in rule.items():
+                if name == "require_approval" and tool in spec:
+                    # the human gets the exact args in the ticket trigger and acts on them
+                    return self._violation(f"tool requires human approval: {tool}")
+                if name == "max_amount" and spec["tool"] == tool:
+                    amount = args.get(spec["field"]) if isinstance(args, dict) else None
+                    # bool is an int subclass; a missing/non-numeric amount is not
+                    # provably under the cap, so it fails closed
+                    if isinstance(amount, bool) or not isinstance(amount, (int, float)):
+                        return self._violation(f"amount limit: {tool}.{spec['field']} missing")
+                    if amount > spec["max"]:
+                        return self._violation(
+                            f"amount limit: {tool}.{spec['field']} {amount:g} > {spec['max']:g}"
+                        )
+        # counted last, so a call blocked above doesn't use up the session's budget
+        for rule in self._tools:
+            spec = rule.get("max_calls")
+            if spec is not None and spec["tool"] == tool:
+                key = (step.session_id, tool)
+                if self._tool_counts.get(key, 0) >= spec["per_session"]:
+                    return self._violation(
+                        f"call limit: {tool} max {spec['per_session']} per session"
+                    )
+                self._tool_counts[key] = self._tool_counts.get(key, 0) + 1
+        return None
+
+    def _violation(self, reason: str) -> Verdict:
+        logger.warning("guardrail violation agent=%s reason=%s", self._agent, reason)
+        return Verdict(allow=False, reason=reason)
 
     async def _check(self, rules: list[dict[str, Any]], text: str, step: Step) -> Verdict | None:
         for rule in rules:
@@ -159,14 +247,20 @@ class Guardrails:
 
     async def _apply(self, name: str, spec: Any, text: str, step: Step) -> Verdict | None:
         if name == "block_outside_window":
-            # ponytail: assumes start < end (no overnight windows); zero-padded HH:MM compares fine
+            # zero-padded HH:MM compares lexically; start > end means the window spans midnight
             start, end = str(spec["hours"]).split("-")
             now = self._now(ZoneInfo(str(spec["tz"]))).strftime("%H:%M")
-            if not (start <= now <= end):
+            inside = start <= now <= end if start <= end else (now >= start or now <= end)
+            if not inside:
                 return Verdict(allow=False, reason=f"outside contact window {spec['hours']}")
             return None
         if name == "block_contact_frequency":
             return self._check_contact_frequency(spec, step)
+        if name == "block_patterns":
+            for pattern in spec:
+                if re.search(str(pattern), text):
+                    return Verdict(allow=False, reason=f"tool output blocked: {pattern}")
+            return None
         if name == "require_disclaimer":
             if re.search(str(spec["when"]), text, re.IGNORECASE) and str(spec["text"]) not in text:
                 return Verdict(allow=False, reason="required disclaimer missing")

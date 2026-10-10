@@ -2,6 +2,7 @@
 the agent has it when the customer returns."""
 
 import json
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -65,11 +66,28 @@ def serve_client(*, secret: str | None = None) -> tuple[TestClient, AgentApp]:
     return TestClient(create_app(app, hub, inbound_secret=secret)), app
 
 
+def signed_post(client: TestClient, path: str, payload: object, secret: str = "s3cr3t") -> Any:
+    body = json.dumps(payload).encode()
+    ts, sig = sign_payload(secret, body)
+    return client.post(
+        path, content=body, headers={"X-Zolva-Signature": sig, "X-Zolva-Timestamp": ts}
+    )
+
+
+def test_serve_resume_disabled_without_secret() -> None:
+    """Resume writes a trusted '[human teammate]' turn into the session; an
+    unauthenticated caller must never be able to plant one."""
+    client, _ = serve_client()
+    r = client.post(f"/sessions/{AGENT}/resume", json={"session_id": "s1", "resolution": "x"})
+    assert r.status_code == 403 and "ZOLVA_INBOUND_SECRET" in r.json()["error"]
+
+
 async def test_serve_resume_endpoint_happy_path() -> None:
-    client, app = serve_client()
-    r = client.post(
+    client, app = serve_client(secret="s3cr3t")
+    r = signed_post(
+        client,
         f"/sessions/{AGENT}/resume",
-        json={"session_id": "webchat:c1", "resolution": "dispute upheld, refund issued"},
+        {"session_id": "webchat:c1", "resolution": "dispute upheld, refund issued"},
     )
     assert r.status_code == 200 and r.json() == {"ok": True}
     history = await app.sessions.history("webchat:c1")
@@ -90,7 +108,7 @@ def test_serve_resume_requires_signature_when_secret_set() -> None:
 
 
 def test_serve_resume_bad_body_and_unknown_agent() -> None:
-    client, _ = serve_client()
-    assert client.post(f"/sessions/{AGENT}/resume", json={"session_id": "s1"}).status_code == 400
-    r = client.post("/sessions/ghost/resume", json={"session_id": "s1", "resolution": "done"})
+    client, _ = serve_client(secret="s3cr3t")
+    assert signed_post(client, f"/sessions/{AGENT}/resume", {"session_id": "s1"}).status_code == 400
+    r = signed_post(client, "/sessions/ghost/resume", {"session_id": "s1", "resolution": "done"})
     assert r.status_code == 400 and "unknown agent" in r.json()["error"]

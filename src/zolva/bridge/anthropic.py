@@ -90,6 +90,11 @@ class AnthropicAdapter:
         try:
             text = ""
             calls: list[ToolCall] = []
+            u = r.json().get("usage") or {}
+            usage = {
+                "input_tokens": int(u.get("input_tokens", 0)),
+                "output_tokens": int(u.get("output_tokens", 0)),
+            }
             for block in r.json()["content"]:
                 if block["type"] == "text":
                     text += block["text"]
@@ -97,7 +102,7 @@ class AnthropicAdapter:
                     calls.append(ToolCall(id=block["id"], name=block["name"], args=block["input"]))
         except (KeyError, IndexError, TypeError, ValueError) as e:
             raise BridgeError(f"anthropic: unexpected response: {e!r}") from e
-        return LLMResponse(text=text, tool_calls=calls)
+        return LLMResponse(text=text, tool_calls=calls, usage=usage if u else {})
 
 
 register_adapter("anthropic", AnthropicAdapter)

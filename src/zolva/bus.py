@@ -12,7 +12,9 @@ logger = logging.getLogger("zolva.bus")
 StepType = Literal[
     "user_msg",
     "model_call",
+    "model_result",
     "tool_call",
+    "tool_result",
     "response",
     "handover",
     "resume",
@@ -40,8 +42,13 @@ class Bus:
     def __init__(self) -> None:
         self._hooks: list[Hook] = []
 
-    def on(self, hook: Hook) -> None:
-        self._hooks.append(hook)
+    def on(self, hook: Hook, *, first: bool = False) -> None:
+        """`first=True` runs the hook ahead of those already attached: the
+        audit uses it so a step a guardrail blocks is still on the record."""
+        if first:
+            self._hooks.insert(0, hook)
+        else:
+            self._hooks.append(hook)
 
     async def emit(self, step: Step) -> Verdict:
         for hook in self._hooks:

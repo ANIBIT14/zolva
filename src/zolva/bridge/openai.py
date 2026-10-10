@@ -88,9 +88,14 @@ class OpenAIAdapter:
                 for tc in (msg.get("tool_calls") or [])
             ]
             text = msg.get("content") or ""
+            u = r.json().get("usage") or {}
+            usage = {
+                "input_tokens": int(u.get("prompt_tokens", 0)),
+                "output_tokens": int(u.get("completion_tokens", 0)),
+            }
         except (KeyError, IndexError, TypeError, ValueError) as e:
             raise BridgeError(f"openai: unexpected response: {e!r}") from e
-        return LLMResponse(text=text, tool_calls=calls)
+        return LLMResponse(text=text, tool_calls=calls, usage=usage if u else {})
 
 
 register_adapter("openai", OpenAIAdapter)

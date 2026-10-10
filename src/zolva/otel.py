@@ -68,6 +68,19 @@ class OTelExporter:
             "gen_ai.agent.name": step.agent,
             "session.id": step.session_id,
         }
+        # OTel GenAI semantic conventions (still "Development" status upstream,
+        # so every gen_ai.* name lives here, in one place, to track renames)
+        attrs["gen_ai.conversation.id"] = step.session_id
+        if step.type in ("model_call", "model_result"):
+            attrs["gen_ai.operation.name"] = "chat"
+            attrs["gen_ai.provider.name"] = str(step.data.get("provider", ""))[:_MAX_ATTR_LEN]
+            attrs["gen_ai.request.model"] = str(step.data.get("model", ""))[:_MAX_ATTR_LEN]
+        elif step.type in ("tool_call", "tool_result"):
+            attrs["gen_ai.operation.name"] = "execute_tool"
+            attrs["gen_ai.tool.name"] = str(step.data.get("name", ""))[:_MAX_ATTR_LEN]
+        for key in ("input_tokens", "output_tokens"):
+            if isinstance(step.data.get(key), int):
+                attrs[f"gen_ai.usage.{key}"] = step.data[key]
         for key, value in step.data.items():
             if isinstance(value, (int, float)):  # bool is an int subclass, included
                 attrs[f"zolva.{key}"] = value

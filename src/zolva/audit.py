@@ -152,7 +152,7 @@ class AuditLog:
         if self._attached:
             return  # idempotent: a second attach must not double-log every step
         self._attached = True
-        app.bus.on(self._observe)
+        app.bus.on(self._observe, first=True)  # record steps even when a later hook blocks
 
     async def _observe(self, step: Step) -> Verdict | None:
         self.append(step)
@@ -170,8 +170,14 @@ class AuditLog:
 
         self._store.append_chained(build)
 
-    def verify(self, *, incremental: bool = False) -> bool:
+    def verify(self, *, incremental: bool = False, anchor: str | None = None) -> bool:
         """Recompute the chain; any edited, deleted, or reordered row breaks it.
+
+        A chain alone cannot prove its tail was not cut (deleting the newest
+        rows leaves the rest self-consistent). Pass `anchor`, a head hash
+        kept OUTSIDE this database (the `audit_head_hash` of a past
+        compliance pack, a WORM bucket, a ticket), and verify also fails
+        unless that row is still in the chain. Anchors force a full pass.
 
         Default is the full pass from genesis, the regulator-grade check.
         `incremental=True` hashes only rows past this instance's last proven
@@ -181,6 +187,8 @@ class AuditLog:
         by the full pass. Any boundary anomaly falls back to full."""
         prev = _GENESIS
         after_id = 0
+        if anchor is not None:
+            incremental = False
         if incremental and self._checkpoint is not None:
             cid, chash = self._checkpoint
             boundary = self._store.row(cid)
@@ -207,8 +215,10 @@ class AuditLog:
                 return False
             prev = digest
             last = (row_id, digest)
+            if digest == anchor:
+                anchor = None  # seen
         self._checkpoint = last
-        return True
+        return anchor is None
 
     def records(self) -> list[AuditRow]:
         """Every audit row in append order — the evidence backing the log.

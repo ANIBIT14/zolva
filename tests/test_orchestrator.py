@@ -156,3 +156,22 @@ async def test_max_turns_escalates() -> None:
     )
     assert await app.run("collections-agent", "s1", "dues?") == BLOCKED_MESSAGE
     assert "max turns" in handover.tickets[0].reason
+
+
+async def test_model_result_step_carries_token_usage() -> None:
+    seen: list[Step] = []
+    app = AgentApp(
+        {"collections-agent": make_cfg(tools=[])},
+        registry=ToolRegistry(),
+        adapter=FakeAdapter(
+            script=[LLMResponse(text="hi", usage={"input_tokens": 7, "output_tokens": 2})]
+        ),
+    )
+
+    async def spy(step: Step) -> None:
+        seen.append(step)
+
+    app.bus.on(spy)
+    await app.run("collections-agent", "s1", "hello")
+    (result,) = [s for s in seen if s.type == "model_result"]
+    assert result.data == {"provider": "test", "model": "m", "input_tokens": 7, "output_tokens": 2}

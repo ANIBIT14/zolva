@@ -2,4 +2,4 @@ import zolva
 
 
 def test_version() -> None:
-    assert zolva.__version__ == "0.5.1"
+    assert zolva.__version__ == "0.6.0"

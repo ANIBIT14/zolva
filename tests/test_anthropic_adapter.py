@@ -75,3 +75,13 @@ def test_missing_key_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     with pytest.raises(BridgeError, match="ANTHROPIC_API_KEY"):
         AnthropicAdapter()
+
+
+async def test_parses_token_usage() -> None:
+    payload = {
+        "content": [{"type": "text", "text": "hi"}],
+        "usage": {"input_tokens": 20, "output_tokens": 5},
+    }
+    a = AnthropicAdapter(api_key="k", transport=transport(payload, {}))
+    resp = await a.complete(model="m", system="s", messages=[], tools=[])
+    assert resp.usage == {"input_tokens": 20, "output_tokens": 5}

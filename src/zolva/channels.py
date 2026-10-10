@@ -228,7 +228,20 @@ class ChannelHub:
             reply = await self._app.escalate(
                 agent, session_id, verdict.reason or "blocked", trigger=reply
             )
-        await adapter.send(msg.session_id, reply)
+        try:
+            await adapter.send(msg.session_id, reply)
+        except ChannelError as e:
+            # the "out" step above is the pre-send gate; record that delivery
+            # never happened so the audit doesn't read as customer contact
+            await self._app.bus.emit(
+                Step(
+                    type="channel",
+                    session_id=session_id,
+                    agent=agent,
+                    data={"channel": channel, "direction": "delivery_failed", "reason": str(e)},
+                )
+            )
+            raise
         return reply
 
     async def aclose(self) -> None:

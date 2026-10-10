@@ -37,6 +37,17 @@ async def test_contact_window_blocks_outside_hours() -> None:
     assert await g_day._hook(step("user_msg", "pay up")) is None
 
 
+async def test_contact_window_can_span_midnight() -> None:
+    # e.g. a night-shift support desk: 20:00-06:00 is open, midday is closed
+    policy = {"pre": [{"block_outside_window": {"hours": "20:00-06:00", "tz": "Asia/Kolkata"}}]}
+    for open_at in ("23:30", "02:00", "20:00", "06:00"):
+        g = Guardrails(policy, agent=AGENT, now=at(open_at))
+        assert await g._hook(step("user_msg", "hi")) is None, open_at
+    g_closed = Guardrails(policy, agent=AGENT, now=at("12:00"))
+    v = await g_closed._hook(step("user_msg", "hi"))
+    assert v is not None and not v.allow
+
+
 async def test_disclaimer_required_when_topic_mentioned() -> None:
     policy = {
         "post": [
