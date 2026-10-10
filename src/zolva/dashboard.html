@@ -83,8 +83,8 @@
   .tile .v.warn { color: var(--warn); }
   .tile .s { font-size: 11px; color: var(--text-2); }
 
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
-  @media (max-width: 860px) { .grid2 { grid-template-columns: 1fr; } }
+  .grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.25rem; }
+  @media (max-width: 860px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
   .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 1.1rem 1.2rem; }
 
   /* topology */
@@ -104,6 +104,7 @@
 
   /* sessions table */
   table { width: 100%; border-collapse: collapse; }
+  .table-scroll { overflow-x: auto; } /* narrow screens: the table scrolls, the page doesn't */
   th { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-3); text-align: left; font-weight: 400; padding: 8px 12px; border-bottom: 1px solid var(--line); }
   th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
   td { padding: 8px 12px; border-bottom: 1px solid rgba(43,32,68,.45); vertical-align: middle; }
@@ -202,10 +203,10 @@
   <section>
     <h2>Sessions <small>live tail &middot; newest activity first &middot; click a row for the full transcript</small></h2>
     <div class="panel" style="padding:0.15rem 0.35rem 0">
-      <table>
+      <div class="table-scroll"><table>
         <thead><tr><th>session</th><th>agent</th><th class="num">steps</th><th>outcome</th><th>last activity</th></tr></thead>
         <tbody id="sess-body"><tr><td colspan="5"><div class="empty">waiting for audit data&hellip;</div></td></tr></tbody>
-      </table>
+      </table></div>
       <div class="pager" id="pager" hidden>
         <span class="count" id="pg-count"></span>
         <button id="pg-prev" type="button">&larr; newer</button>
