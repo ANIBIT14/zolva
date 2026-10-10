@@ -774,3 +774,38 @@ h2:hover .anchor-link { opacity: 1; }
   .ticker-track { animation: none; }
   * { transition-duration: 0.01ms !important; }
 }
+
+/* ---- Parallax: scroll-driven depth layers ----
+   Native CSS scroll timelines, no JS. Uses the `translate` property so it
+   composes with the `transform`-based entrance animations instead of fighting
+   them. Browsers without scroll timelines simply get the static page. */
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    /* hero: copy drifts back slowly, the audit card (foreground) moves faster */
+    .hero-grid > div:first-child {
+      animation: drift-back linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 85vh;
+    }
+    .chain-card {
+      animation:
+        rise var(--dur-enter) var(--ease-out) forwards,
+        drift-front linear both;
+      animation-delay: calc(var(--i, 0) * 75ms), 0s;
+      animation-timeline: auto, scroll(root);
+      animation-range: normal, 0 85vh;
+    }
+    /* section folios: a slow background layer gliding against the content */
+    .folio {
+      animation: folio-glide linear both;
+      animation-timeline: view();
+      animation-range: cover;
+    }
+  }
+}
+@keyframes drift-back { to { translate: 0 -56px; opacity: 0.35; } }
+@keyframes drift-front { to { translate: 0 -150px; } }
+@keyframes folio-glide {
+  from { translate: 0 90px; }
+  to   { translate: 0 -90px; }
+}
