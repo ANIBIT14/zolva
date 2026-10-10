@@ -122,7 +122,8 @@ await q.record(session_id, "collections-agent", "thumbs_down",
           <div class="code-bar"><span>python</span><button class="copy-btn" data-copy="#c-tri">copy</button></div>
           <pre><code data-lang="python" id="c-tri">q.accept(failure_id=42,
          cohort_path="evals/regressions.yaml",
-         expect="states the correct due date from the ledger, not a guess")</code></pre>
+         expect="states the correct due date from the ledger, not a guess",
+         redactor=Redactor.from_file("policies/redaction.yaml"))  # from zolva.redaction</code></pre>
         </div>
         <div class="code">
           <div class="code-bar"><span>terminal</span><button class="copy-btn" data-copy="#c-tricli">copy</button></div>
@@ -130,11 +131,15 @@ await q.record(session_id, "collections-agent", "thumbs_down",
 zolva triage failures.db
 zolva triage failures.db --accept 42 \
   --cohort evals/regressions.yaml \
-  --expect "states the correct due date from the ledger, not a guess"
+  --expect "states the correct due date from the ledger, not a guess" \
+  --redaction policies/redaction.yaml
 zolva triage failures.db --reject 43      # not a real defect</code></pre>
         </div>
         <p>The captured transcript carries the exact input that failed, so the regression case
-        reproduces the real conversation, not a paraphrase of it.</p>
+        reproduces the real conversation, not a paraphrase of it. That input is a real customer
+        message and the cohort file gets committed, so pass a redaction pattern file and PII is
+        masked before the case is written. See the
+        <a href="/playbooks/pii-redaction-data-residency/">PII redaction playbook</a>.</p>
       </section>
 
       <section id="step-gate">
@@ -145,7 +150,7 @@ zolva triage failures.db --reject 43      # not a real defect</code></pre>
         <div class="code">
           <div class="code-bar"><span>terminal</span><button class="copy-btn" data-copy="#c-gate">copy</button></div>
           <pre><code data-lang="bash" id="c-gate">zolva eval evals/ --app app:app --gate \
-  --judge-provider anthropic --judge-model claude-neutral</code></pre>
+  --judge-provider anthropic --judge-model "$JUDGE_MODEL"</code></pre>
         </div>
         <p>A great average never rescues a failing cohort: the gate is on the worst cohort, so a
         single unfixed regression fails the release. Wire this into the pipeline in the

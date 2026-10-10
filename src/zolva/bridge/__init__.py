@@ -32,6 +32,7 @@ class Message(BaseModel):
 class LLMResponse(BaseModel):
     text: str = ""
     tool_calls: list[ToolCall] = []
+    usage: dict[str, int] = {}  # input_tokens / output_tokens when the provider reports them
 
 
 class LLMAdapter(Protocol):

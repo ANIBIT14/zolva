@@ -98,3 +98,13 @@ def test_missing_key_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     with pytest.raises(BridgeError, match="OPENAI_API_KEY"):
         OpenAIAdapter()
+
+
+async def test_parses_token_usage() -> None:
+    payload = {
+        "choices": [{"message": {"content": "hi"}}],
+        "usage": {"prompt_tokens": 12, "completion_tokens": 3},
+    }
+    a = OpenAIAdapter(api_key="sk-test", transport=transport(payload, {}))
+    resp = await a.complete(model="m", system="s", messages=[], tools=[])
+    assert resp.usage == {"input_tokens": 12, "output_tokens": 3}

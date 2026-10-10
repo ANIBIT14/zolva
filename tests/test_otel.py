@@ -60,3 +60,16 @@ async def test_attach_is_idempotent() -> None:
     exporter.attach(app)
     await bus.emit(step("user_msg", text="hi"))
     assert len(exp.get_finished_spans()) == 1
+
+
+async def test_genai_semconv_attributes() -> None:
+    exp, exporter = make()
+    await exporter._observe(
+        step("model_result", provider="openai", model="gpt-5", input_tokens=12, output_tokens=3)
+    )
+    attrs = dict(exp.get_finished_spans()[0].attributes or {})
+    assert attrs["gen_ai.provider.name"] == "openai"
+    assert attrs["gen_ai.request.model"] == "gpt-5"
+    assert attrs["gen_ai.usage.input_tokens"] == 12
+    assert attrs["gen_ai.usage.output_tokens"] == 3
+    assert attrs["gen_ai.conversation.id"] == "s1"

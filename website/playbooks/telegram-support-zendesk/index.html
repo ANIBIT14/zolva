@@ -358,6 +358,12 @@ async def resolved(request: Request) -> JSONResponse:
         <p>The customer hears the outcome on the channel where they asked, and the next time
         they message, the agent's context includes the human's resolution instead of a dead
         end that says "a human will contact you".</p>
+        <p>The gateway calls <code>zolva_app.resume(...)</code> in process, after verifying
+        Zendesk's signature. If you route resolutions through <code>zolva serve</code>'s
+        <code>POST /sessions/{agent}/resume</code> instead, it returns 403 unless
+        <code>ZOLVA_INBOUND_SECRET</code> is set and every request must carry a valid
+        <code>X-Zolva-Signature</code> / <code>X-Zolva-Timestamp</code> (sign with
+        <code>zolva.sign_payload</code>).</p>
       </section>
 
       <section id="step-gate">
@@ -399,6 +405,10 @@ cases:
           updates with your <code>secret_token</code> echo; Zolva signs channel replies and the
           gateway verifies them; Zendesk signs its webhook and the gateway verifies that too.
           No unauthenticated request can reach the agent, the customer, or the session.</li>
+          <li><strong>Failed sends are on the record:</strong> if a reply cannot be delivered,
+          the hub emits a <code>channel</code> step with direction <code>delivery_failed</code>
+          and re-raises <code>ChannelError</code>, so the audit never reads as if the customer
+          got an answer they did not.</li>
           <li><strong><code>external_id</code> is the join key:</strong> it carries the
           channel-namespaced session id through Zendesk untouched. Agents can work tickets
           entirely in Zendesk without knowing Zolva exists; the plumbing survives them

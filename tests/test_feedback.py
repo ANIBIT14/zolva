@@ -94,6 +94,25 @@ async def test_accept_promotes_to_eval_cohort(tmp_path: Path) -> None:
     assert len(load_cohorts(tmp_path / "evals")[0].cases) == 2
 
 
+async def test_accept_redacts_pii_before_writing_cohort(tmp_path: Path) -> None:
+    from zolva.redaction import BUILTIN_PATTERNS, Redactor
+
+    app = make_app([LLMResponse(text="wrong answer")])
+    q = FeedbackQueue(tmp_path / "fb.db")
+    q.attach(app)
+    await app.run(AGENT, "s1", "card 4111 1111 1111 1111 was declined")
+    await q.record("s1", AGENT, "thumbs_down")
+    cohort_file = tmp_path / "evals" / "regressions.yaml"
+    q.accept(
+        q.pending()[0].id,
+        cohort_file,
+        expect="explains the decline",
+        redactor=Redactor({"card": BUILTIN_PATTERNS["card"]}),
+    )
+    text = cohort_file.read_text()
+    assert "4111" not in text and "[REDACTED:card]" in text
+
+
 async def test_accept_rejects_non_mapping_cohort_file(tmp_path: Path) -> None:
     app = make_app([LLMResponse(text="wrong answer")])
     q = FeedbackQueue(tmp_path / "fb.db")

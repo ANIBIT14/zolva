@@ -133,7 +133,7 @@ def _cmd_compliance(args: argparse.Namespace) -> int:
 
         with open(args.eval_report) as f:
             eval_report = EvalReport(**json.load(f))
-    report = build_report(log, agents=agents, eval_report=eval_report)
+    report = build_report(log, agents=agents, eval_report=eval_report, anchor=args.anchor or None)
     print(report.summary())
     if args.out:
         with open(args.out, "w") as f:
@@ -152,7 +152,12 @@ def _cmd_triage(args: argparse.Namespace) -> int:
         if not args.cohort or not args.expect:
             print("--accept requires --cohort and --expect", file=sys.stderr)
             return 1
-        q.accept(args.accept, args.cohort, expect=args.expect)
+        redactor = None
+        if args.redaction:
+            from zolva.redaction import Redactor
+
+            redactor = Redactor.from_file(args.redaction)
+        q.accept(args.accept, args.cohort, expect=args.expect, redactor=redactor)
         print(f"failure {args.accept} promoted to {args.cohort}")
         return 0
     if args.reject is not None:
@@ -259,6 +264,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_comp.add_argument("--out", default="", help="write the full evidence bundle JSON here")
     p_comp.add_argument("--gate", action="store_true", help="exit 1 unless regulator-ready")
+    p_comp.add_argument(
+        "--anchor", default="", help="head hash from a previous pack; fails if the tail was cut"
+    )
 
     p_serve = sub.add_parser("serve", help="serve the reference channel-webhook endpoint")
     p_serve.add_argument("--app", required=True, help="import path to your AgentApp: module:attr")
@@ -278,6 +286,7 @@ def main(argv: list[str] | None = None) -> int:
     p_triage.add_argument("--cohort", default="", help="eval cohort file to promote into")
     p_triage.add_argument("--expect", default="", help="expected behavior for the judge")
     p_triage.add_argument("--reject", type=int, default=None, metavar="ID")
+    p_triage.add_argument("--redaction", default="", help="PII pattern file to mask promoted input")
 
     p_export = sub.add_parser("export-dataset", help="accepted failures as fine-tuning JSONL")
     p_export.add_argument("failures_db")

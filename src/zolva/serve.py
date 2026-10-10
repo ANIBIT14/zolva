@@ -39,17 +39,23 @@ def create_app(app: AgentApp, hub: ChannelHub, *, inbound_secret: str | None = N
     @api.post("/sessions/{agent}/resume")
     async def resume(agent: str, request: Request) -> JSONResponse:
         """Close the human loop: a resolved ticket lands back in the session."""
+        # unlike channel inbound (customer text, untrusted anyway), resume
+        # writes a TRUSTED "[human teammate]" turn: never accept it unsigned
+        if inbound_secret is None:
+            return JSONResponse(
+                {"error": "resume disabled: set ZOLVA_INBOUND_SECRET to enable signed resume"},
+                status_code=403,
+            )
         body = await request.body()
-        if inbound_secret is not None:
-            try:
-                verify_zolva_signature(
-                    body,
-                    request.headers.get("X-Zolva-Signature", ""),
-                    request.headers.get("X-Zolva-Timestamp", ""),
-                    inbound_secret,
-                )
-            except SignatureError as e:
-                return JSONResponse({"error": str(e)}, status_code=401)
+        try:
+            verify_zolva_signature(
+                body,
+                request.headers.get("X-Zolva-Signature", ""),
+                request.headers.get("X-Zolva-Timestamp", ""),
+                inbound_secret,
+            )
+        except SignatureError as e:
+            return JSONResponse({"error": str(e)}, status_code=401)
         try:
             payload = json.loads(body)
             session_id = str(payload["session_id"])

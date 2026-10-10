@@ -70,6 +70,8 @@
       <a href="#channels">Channels</a>
       <p class="group">Safety systems</p>
       <a href="#guardrails">Guardrails</a>
+      <a href="#tool-controls">Tool-call controls</a>
+      <a href="#tool-output">Tool-output screening</a>
       <a href="#evals">Evals &amp; CI gating</a>
       <a href="#feedback">Feedback loop &amp; training data</a>
       <a href="#audit">Audit &amp; scorecard</a>
@@ -293,7 +295,7 @@ app = AgentApp.from_config("agents/", adapter=FakeAdapter(script=[...]))</code><
 └── middleware bus    every step flows through hooks; the plugin attachment point
 
 plugins
-├── guardrails        policy YAML, pre/post rules, fail-closed judge
+├── guardrails        policy YAML, pre/post/tools/tool_output rules, fail-closed judge
 ├── evals             cohort YAML, 5 graders, worst-cohort CI gate
 ├── feedback          failure queue → triage → permanent eval case → JSONL export
 ├── audit + scorecard hash-chained log, SARR scorecard
@@ -374,8 +376,15 @@ def send_payment_link(customer_id: str, amount: int) -> LinkResult:
         <h2>Orchestrator &amp; handoffs <a class="anchor-link" href="#handoffs">#</a></h2>
         <p>The orchestrator runs the agent loop: build context from the session store, call the
         model through the bridge, dispatch validated tool calls, and publish every step (
-        <code>user_msg</code>, <code>model_call</code>, <code>tool_call</code>,
+        <code>user_msg</code>, <code>model_call</code>, <code>model_result</code>,
+        <code>tool_call</code>, <code>tool_result</code>, <code>response</code>,
         <code>handover</code>) onto the middleware bus where plugins observe or veto it.</p>
+        <p><code>model_result</code> carries <code>provider</code>, <code>model</code>, and the
+        token counts (<code>input_tokens</code>, <code>output_tokens</code>) the OpenAI and
+        Anthropic adapters parse from each response into <code>LLMResponse.usage</code>: the
+        hook point for cost tracking and budgets. <code>tool_result</code> carries the tool
+        <code>name</code> and the <code>content</code> it returned, emitted before the model
+        reads it, so a hook that vetoes it stops the turn and escalates.</p>
         <p>Handoffs are typed and declared in config. When an agent hands off, the session
         context travels with it; the receiving agent (or human) sees the full conversation.
         Provider errors surface as typed exceptions with session context; the orchestrator
@@ -399,7 +408,8 @@ app = AgentApp.from_config("agents/", handover=WebhookBackend(url, secret=hmac_s
           <li><code>WebhookBackend</code> payloads are HMAC-signed with a timestamp inside the MAC, replay-resistant. Verify at your receiver with <code>zolva.verify_zolva_signature(body, sig, ts, secret)</code>; constant-time compare and timestamp tolerance are handled for you.</li>
           <li><code>LogBackend</code> ships for development. Ticketing-system adapters (Zendesk, Freshdesk, ServiceNow) are community/plugin territory.</li>
           <li>Every escalation auto-lands in the <a href="#feedback">failure queue</a>; an escalation is tomorrow's eval case.</li>
-          <li><strong>The loop closes both ways.</strong> When a teammate resolves the ticket, <code>await app.resume(agent, session_id, resolution)</code> (or the HMAC-verified <code>POST /sessions/{agent}/resume</code> on <code>zolva serve</code>) records the resolution as an audited <code>resume</code> step and a session note, so the agent knows the outcome when the customer returns.</li>
+          <li><strong>The loop closes both ways.</strong> When a teammate resolves the ticket, <code>await app.resume(agent, session_id, resolution)</code> (or the signed <code>POST /sessions/{agent}/resume</code> on <code>zolva serve</code>) records the resolution as an audited <code>resume</code> step and a session note, so the agent knows the outcome when the customer returns.</li>
+          <li><strong>Resume is always signed.</strong> It writes a trusted "[human teammate]" turn, so <code>zolva serve</code> returns 403 on the resume endpoint unless <code>ZOLVA_INBOUND_SECRET</code> is set, and 401 unless the request carries a valid <code>X-Zolva-Signature</code> and <code>X-Zolva-Timestamp</code> (same HMAC scheme as the handover webhook). It is never reachable unauthenticated.</li>
         </ul>
       </section>
 
@@ -435,7 +445,7 @@ reply = await hub.dispatch("whatsapp", "collections-agent", payload)</code></pre
           <li><strong>Session isolation per channel</strong>: session ids are namespaced as <code>channel:native_id</code>, so a WhatsApp session can never address a webchat session even if the channel-native ids collide.</li>
           <li><strong>Trust-boundary validation</strong>: inbound payloads are validated before use; malformed bodies raise <code>ChannelError</code>, and extra provider metadata rides along as <code>meta</code>.</li>
           <li><strong>Audited contact</strong>: both directions emit <code>channel</code> steps on the bus, so the audit log records the customer contact itself, and a hook that blocks the outbound step replaces the reply with the safe blocked message.</li>
-          <li><strong>Signed delivery</strong>: <code>WebhookChannel</code> posts replies with the same HMAC scheme as handover (timestamp inside the MAC, replay-resistant); delivery failures raise, never silently drop.</li>
+          <li><strong>Signed delivery</strong>: <code>WebhookChannel</code> posts replies with the same HMAC scheme as handover (timestamp inside the MAC, replay-resistant); delivery failures raise, never silently drop. A failed send also emits a <code>channel</code> step with direction <code>delivery_failed</code> before re-raising, so the audit never reads as if a reply reached the customer.</li>
         </ul>
         <p>Adapters ship for <code>webhook</code>, <code>log</code>, and <code>fake</code>
         (scripted, for tests). A custom channel (voice, telephony, a vendor SDK) implements the
@@ -446,7 +456,9 @@ reply = await hub.dispatch("whatsapp", "collections-agent", payload)</code></pre
       <section id="guardrails">
         <h2>Guardrails <a class="anchor-link" href="#guardrails">#</a></h2>
         <p>Policy is config, attached to the bus, enforced on every step: before the model
-        runs (<code>pre</code>) and on everything it produces (<code>post</code>):</p>
+        runs (<code>pre</code>), on everything it produces (<code>post</code>), on every tool
+        call (<code>tools</code>), and on every tool result before the model reads it
+        (<code>tool_output</code>):</p>
         <div class="code">
           <div class="code-bar"><span>policies/collections.yaml</span><button class="copy-btn" data-copy="#c-gr">copy</button></div>
           <pre><code data-lang="yaml" id="c-gr">pre:
@@ -462,7 +474,9 @@ on_violation: { action: block_and_escalate, log: true }</code></pre>
           <thead><tr><th>Type</th><th>Examples</th><th>Mechanism</th></tr></thead>
           <tbody>
             <tr><td>Exact / regex</td><td><code>require_disclaimer</code></td><td>String and pattern checks on output.</td></tr>
-            <tr><td>Structural</td><td><code>block_outside_window</code>, tool allowlists</td><td>Deterministic checks against config and context.</td></tr>
+            <tr><td>Structural</td><td><code>block_outside_window</code>, <code>block_contact_frequency</code>, tool allowlists</td><td>Deterministic checks against config and context.</td></tr>
+            <tr><td>Tool call</td><td><code>require_approval</code>, <code>max_calls</code>, <code>max_amount</code></td><td>Deterministic checks on <code>tool_call</code> steps, in the <code>tools:</code> section.</td></tr>
+            <tr><td>Tool output</td><td><code>block_patterns</code>, plus <code>refuse_topics</code> / <code>never</code></td><td>Regex and judge checks on <code>tool_result</code> steps, in the <code>tool_output:</code> section.</td></tr>
             <tr><td>LLM-judge</td><td><code>refuse_topics</code>, <code>never</code></td><td>Binary judge; <strong>fail-closed</strong>; anything that isn't an explicit PASS blocks.</td></tr>
           </tbody>
         </table>
@@ -470,7 +484,11 @@ on_violation: { action: block_and_escalate, log: true }</code></pre>
         Threats and third-party disclosure hard-block and escalate regardless of what any other
         config says. This is deliberate: the unsafe-comply path must not be reachable by a
         config change.</div>
-        <p>Policies are validated at startup. Agents with a <code>guardrails:</code> field get
+        <p>Contact windows may span midnight: <code>hours: "20:00-06:00"</code> allows contact
+        from 8pm through 6am in the given <code>tz</code>.</p>
+        <p>Policies are validated at startup, including placement: a rule in the wrong section
+        (say <code>max_amount</code> under <code>post</code>, or <code>require_disclaimer</code>
+        under <code>tool_output</code>) fails at load, not in a live conversation. Agents with a <code>guardrails:</code> field get
         their policy attached automatically by <code>AgentApp.from_config</code>; you can also
         attach manually:</p>
         <div class="code">
@@ -482,6 +500,34 @@ Guardrails.from_file("policies/collections.yaml", agent="collections-agent",
         </div>
         <p>Extension = subclass one <code>Rule</code> class. Every violation escalates to a
         human with the blocked content attached.</p>
+        <h3 id="tool-controls">Tool-call controls</h3>
+        <p>The <code>tools:</code> section runs on every <code>tool_call</code> step, before the
+        tool executes. A blocked call never reaches your bank API; it escalates to a human with
+        the exact arguments in the ticket.</p>
+        <div class="code">
+          <div class="code-bar"><span>policies/payments.yaml</span><button class="copy-btn" data-copy="#c-tools-pol">copy</button></div>
+          <pre><code data-lang="yaml" id="c-tools-pol">tools:
+  - require_approval: [issue_refund, change_card_limit]   # always routed to a human
+  - max_calls: { tool: send_payment_link, per_session: 2 }
+  - max_amount: { tool: send_payment_link, field: amount, max: 50000 }</code></pre>
+        </div>
+        <ul>
+          <li><code>require_approval</code>: a list of tool names that always hand over instead of executing.</li>
+          <li><code>max_calls</code>: caps how many times one session may call a tool. Blocked calls do not use up the budget.</li>
+          <li><code>max_amount</code>: caps a numeric argument. It <strong>fails closed</strong>: a missing or non-numeric amount is not provably under the cap, so it blocks.</li>
+        </ul>
+        <p>Walkthrough: <a href="/playbooks/high-risk-tool-controls/">High-risk tool controls playbook &rarr;</a></p>
+        <h3 id="tool-output">Tool-output screening</h3>
+        <p>Tool output is untrusted input. A CRM note, an email, or an uploaded document can carry
+        planted instructions (indirect prompt injection). The <code>tool_output:</code> section
+        screens every <code>tool_result</code> step before the model reads it; a hit stops the
+        turn and escalates with the offending content attached.</p>
+        <div class="code">
+          <div class="code-bar"><span>policies/collections.yaml</span><button class="copy-btn" data-copy="#c-tool-out">copy</button></div>
+          <pre><code data-lang="yaml" id="c-tool-out">tool_output:
+  - block_patterns: ["(?i)ignore (all|previous) instructions", "(?i)system prompt"]
+  - never: [instructions_to_the_assistant]   # binary LLM-judge, fail-closed</code></pre>
+        </div>
               <h3>Per-customer contact caps</h3>
         <p>Collections regulation caps contact attempts per customer, not per session. Pass
         <code>customer_ref</code> (a hashed phone or core-banking id) into <code>app.run(...)</code>
@@ -554,20 +600,22 @@ assert report.gate_passed   # or: zolva eval evals/ --gate  → exit 1 in CI</co
         <div class="code">
           <div class="code-bar"><span>python</span><button class="copy-btn" data-copy="#c-fb">copy</button></div>
           <pre><code data-lang="python" id="c-fb">from zolva import FeedbackQueue
+from zolva.redaction import Redactor
 
 q = FeedbackQueue("failures.db")
 q.attach(app)                       # every escalation auto-captured from the bus
 await q.record(session_id, agent, "thumbs_down", note="wrong due date")
 
-# human-in-the-loop promotion to a permanent eval case
+# human-in-the-loop promotion to a permanent eval case, PII masked first
 q.accept(failure_id, "evals/regressions.yaml",
-         expect="states the correct due date from the ledger")
+         expect="states the correct due date from the ledger",
+         redactor=Redactor.from_file("policies/redaction.yaml"))
 
 q.export_dataset("dataset.jsonl")   # accepted failures as SFT/DPO-ready JSONL</code></pre>
         </div>
         <ul>
           <li><strong>Capture</strong>: escalations are observed on the bus automatically; thumbs-downs are one call. Each failure stores the full transcript in a SQLite queue.</li>
-          <li><strong>Triage</strong>: <code>zolva triage failures.db</code> is an interactive CLI. Promotion is human-in-the-loop <em>on purpose</em>: auto-promotion poisons golden sets.</li>
+          <li><strong>Triage</strong>: <code>zolva triage failures.db</code> is an interactive CLI. Promotion is human-in-the-loop <em>on purpose</em>: auto-promotion poisons golden sets. The case input is a real customer message and the cohort file usually gets committed, so pass <code>--redaction policies/redaction.yaml</code> (or <code>redactor=</code> in Python) to mask PII before it lands in the repo.</li>
           <li><strong>Gate</strong>: the accepted case joins your eval cohort; the fix ships only when <code>eval --gate</code> passes including the new case. The bug can never silently return.</li>
           <li><strong>Training data</strong>: <code>export_dataset()</code> / <code>zolva export-dataset</code> emits accepted failures as JSONL, the on-ramp for later fine-tuning (SFT/DPO). Zolva does no weight training itself in v1; it curates the dataset from real production failures.</li>
         </ul>
@@ -582,10 +630,12 @@ q.export_dataset("dataset.jsonl")   # accepted failures as SFT/DPO-ready JSONL</
 log = AuditLog("audit.db")
 log.attach(app)
 assert log.verify()               # detects gaps, edits, reordering
+assert log.verify(anchor=prev_pack_head)  # head hash kept outside the DB: catches a cut tail
 print(scorecard(log).summary())   # SARR + containment + velocity</code></pre>
         </div>
         <ul>
           <li><strong>Hash-chained</strong>: each row carries the previous row's hash. Edits, deletions, and reordering are all detectable; <code>verify()</code> proves integrity.</li>
+          <li><strong>Anchored</strong>: a chain alone cannot prove its tail was not cut, since deleting the newest rows leaves the rest self-consistent. Keep a head hash <em>outside</em> the database (the <code>audit_head_hash</code> of the previous compliance pack, a WORM bucket, a ticket) and pass it as <code>verify(anchor=...)</code>; verification fails unless that row is still in the chain. Anchored checks always run the full pass.</li>
           <li><strong>Config-stamped</strong>: every row records the config version and instruction-file hash, so any response is replayable to exactly the config that produced it.</li>
           <li><strong>Append-only</strong>: a crash mid-turn leaves an auditable partial record.</li>
         </ul>
@@ -614,15 +664,24 @@ print(scorecard(log).summary())   # SARR + containment + velocity</code></pre>
         hash-chained audit (Art. 12 record-keeping), the config hashes (Art. 13 traceable
         definition), handover events (Art. 14 human oversight), and eval gates plus the SARR
         scorecard (Art. 15 / SR 11-7) to named articles. The audit chain's head hash is the
-        tamper-evidence anchor and <code>bundle_sha256</code> self-seals the report. It packages
+        tamper-evidence anchor and <code>bundle_sha256</code> self-seals the report. Pass the
+        previous pack's head hash as <code>--anchor &lt;hash&gt;</code> (or
+        <code>build_report(..., anchor=...)</code>) and the pack fails if the tail was cut since. It packages
         existing evidence; your own mapping and sign-off still decide adequacy.</p>
         <h3>OpenTelemetry export</h3>
         <p>Every bus step becomes an OpenTelemetry span through the global tracer, so Zolva drops
         into the observability stack you already run (Datadog, Grafana, Langfuse, any OTLP
         collector). It depends on the OpenTelemetry API only; you own the SDK and exporter config,
-        and with none configured the tracer is a no-op. Only metadata leaves the process (step
-        type, agent, session, tool and model names), never message bodies, so customer content
-        stays in the in-VPC audit log. <code>OTelExporter().attach(app)</code> after <code>pip
+        and with none configured the tracer is a no-op. Spans carry the OpenTelemetry GenAI
+        semantic-convention attributes: <code>gen_ai.conversation.id</code>,
+        <code>gen_ai.operation.name</code> (<code>chat</code> or <code>execute_tool</code>),
+        <code>gen_ai.provider.name</code>, <code>gen_ai.request.model</code>,
+        <code>gen_ai.tool.name</code>, and <code>gen_ai.usage.input_tokens</code> /
+        <code>output_tokens</code>, so GenAI-aware backends chart cost and latency out of the box.
+        The GenAI conventions are still Development status upstream, so names may change; Zolva
+        keeps them in one place to track renames. Only metadata leaves the process (step
+        type, agent, session, tool and model names, token counts), never message bodies, so
+        customer content stays in the in-VPC audit log. <code>OTelExporter().attach(app)</code> after <code>pip
         install "zolva[otel]"</code>.</p>
 </section>
 
@@ -650,12 +709,12 @@ goal: "customer obtains their dues amount and a valid repayment option"</code></
         <table>
           <thead><tr><th>Threat</th><th>Mitigation</th></tr></thead>
           <tbody>
-            <tr><td>Prompt injection via user or tool output</td><td>Tool results are data, rendered into fenced typed blocks, never re-interpreted as instructions; post-guardrails run on every output regardless; <code>never</code> rules cannot be disabled.</td></tr>
-            <tr><td>Tool misuse / excessive agency</td><td>Per-agent tool allowlists; contract-validated arguments; <code>confirm: human</code> flag routes irreversible actions (payments, limit changes) through handover before execution.</td></tr>
+            <tr><td>Prompt injection via user or tool output</td><td>Tool results are data, rendered into fenced typed blocks, never re-interpreted as instructions; <a href="#tool-output"><code>tool_output</code></a> rules screen every tool result before the model reads it; post-guardrails run on every output regardless; <code>never</code> rules cannot be disabled.</td></tr>
+            <tr><td>Tool misuse / excessive agency</td><td>Per-agent tool allowlists; contract-validated arguments; <a href="#tool-controls"><code>tools</code></a> policy routes irreversible actions (payments, limit changes) through handover before execution (<code>require_approval</code>) and caps call counts and amounts (<code>max_calls</code>, <code>max_amount</code>).</td></tr>
             <tr><td>Data exfiltration via provider</td><td>Self-hosted; bridge supports in-house gateways and local models; optional PII-redaction middleware scrubs configured fields before any provider call.</td></tr>
             <tr><td>Cross-session leakage</td><td>Session store keyed and isolated per <code>session_id</code>; no cross-session context is ever assembled.</td></tr>
             <tr><td>Secrets in config</td><td>Loader rejects keys matching <code>key|secret|token|password</code> unless they are <code>${ENV:VAR}</code> references.</td></tr>
-            <tr><td>Audit tampering</td><td>Hash-chained rows; <code>verify()</code> detects gaps and edits; WORM-store interface for regulators.</td></tr>
+            <tr><td>Audit tampering</td><td>Hash-chained rows; <code>verify()</code> detects gaps and edits; <code>verify(anchor=...)</code> with an externally kept head hash detects a cut tail; WORM-store interface for regulators.</td></tr>
             <tr><td>Supply chain</td><td>Three runtime deps; <code>pip-audit</code>, <code>bandit</code>, and secret-scanning in CI on every commit.</td></tr>
           </tbody>
         </table>
@@ -688,10 +747,10 @@ goal: "customer obtains their dues amount and a valid repayment option"</code></
             <tr><td><code>zolva eval &lt;dir&gt; --gate</code></td><td>Run all cohorts; exit 1 if any cohort misses <code>min_pass_rate</code>. <code>--app module:attr</code> imports your app from the current directory; <code>--agents agents/</code> runs the cohorts declared by <code>evals:</code> in agent YAML instead of a directory.</td></tr>
             <tr><td><code>zolva synthetics &lt;dir&gt; --gate</code></td><td>Run persona patrols against your real agent; exit 1 if any synthetic fails. <code>--driver-provider</code>/<code>--judge-provider</code> pick the bridge adapters.</td></tr>
             <tr><td><code>zolva scorecard &lt;audit.db&gt;</code></td><td>SARR + quadrant metrics from the audit log.</td></tr>
-            <tr><td><code>zolva compliance &lt;audit.db&gt; --gate</code></td><td>Build an EU AI Act evidence pack from the audit log: maps the hash chain (Art. 12), config hashes (Art. 13), handover events (Art. 14), and eval gates + scorecard (Art. 15 / SR 11-7) to named articles. <code>--agents</code> and <code>--eval-report</code> add evidence; <code>--gate</code> exits 1 unless every control passes.</td></tr>
-            <tr><td><code>zolva serve --app module:attr --channels channels.yaml</code></td><td>Reference HTTP entrypoint: HMAC-verified channel webhooks in, agent replies out, plus the human-loop resume endpoint. Needs <code>pip install "zolva[dashboard]"</code>.</td></tr>
+            <tr><td><code>zolva compliance &lt;audit.db&gt; --gate</code></td><td>Build an EU AI Act evidence pack from the audit log: maps the hash chain (Art. 12), config hashes (Art. 13), handover events (Art. 14), and eval gates + scorecard (Art. 15 / SR 11-7) to named articles. <code>--agents</code> and <code>--eval-report</code> add evidence; <code>--anchor &lt;hash&gt;</code> fails if the chain no longer contains a previous pack's head hash; <code>--gate</code> exits 1 unless every control passes.</td></tr>
+            <tr><td><code>zolva serve --app module:attr --channels channels.yaml</code></td><td>Reference HTTP entrypoint: HMAC-verified channel webhooks in, agent replies out, plus the human-loop resume endpoint (403 unless <code>ZOLVA_INBOUND_SECRET</code> is set; always signature-checked). Needs <code>pip install "zolva[dashboard]"</code>.</td></tr>
             <tr><td><code>zolva dashboard &lt;dir&gt; --audit &lt;audit.db&gt;</code></td><td>Serve the local read-only dashboard UI: topology, live session tail, tool stats, scorecard. Needs <code>pip install "zolva[dashboard]"</code>. <a href="/docs/dashboard/">Full architecture &rarr;</a></td></tr>
-            <tr><td><code>zolva triage &lt;failures.db&gt;</code></td><td>Interactive review of the failure queue; accept into an eval cohort or reject.</td></tr>
+            <tr><td><code>zolva triage &lt;failures.db&gt;</code></td><td>Review the failure queue; <code>--accept ID --cohort ... --expect ...</code> promotes into an eval cohort, <code>--reject ID</code> drops. <code>--redaction policies/redaction.yaml</code> masks PII in the promoted case.</td></tr>
             <tr><td><code>zolva export-dataset &lt;failures.db&gt; &lt;out.jsonl&gt;</code></td><td>Accepted failures as fine-tuning-ready JSONL.</td></tr>
           </tbody>
         </table>
@@ -746,7 +805,7 @@ use live provider keys. Follow the AGENTS.md conventions in the file exactly.</c
         whatever fine-tuning pipeline you choose.</p>
         <h3>How does this help with EU AI Act / SR 11-7 / RBI expectations?</h3>
         <p>Transparency → audit log with config hashes. Traceability → hash-chained, replayable
-        records. Human oversight → the handover path and <code>confirm: human</code> tools.
+        records. Human oversight → the handover path and <code>require_approval</code> tools.
         Ongoing monitoring → scheduled evals and synthetics. The controls are designed to
         <em>be</em> the evidence.</p>
         <h3>How does it scale?</h3>

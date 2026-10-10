@@ -158,6 +158,9 @@ guardrails: policies/contact.yaml   # every channel-facing agent references this
 post:
   - block_contact_frequency: { max_contacts: 3, window_hours: 168, ledger: contacts.sqlite }</code></pre>
         </div>
+        <p>The window may span midnight: <code>hours: "20:00-06:00"</code> permits contact from
+        8pm through 6am in the given <code>tz</code>, useful for night-shift outbound or a
+        follow-the-sun desk. Hours must be zero-padded <code>HH:MM-HH:MM</code>.</p>
         <p>Policies are validated at startup, so a malformed cap fails the deploy, not a live
         customer conversation.</p>
       </section>

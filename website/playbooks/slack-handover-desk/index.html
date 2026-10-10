@@ -389,6 +389,11 @@ EOF</code></pre>
           <code>v0:{timestamp}:{body}</code> and a five-minute replay window; Zolva signs with
           <code>{timestamp}.{body}</code> and the same window. Both directions of the desk are
           authenticated, both use constant-time comparison.</li>
+          <li><strong>Resume is never unsigned:</strong> the resume endpoint writes a trusted
+          <code>[human teammate]</code> turn, so <code>zolva serve</code> returns 403 on it
+          unless <code>ZOLVA_INBOUND_SECRET</code> is set, and 401 on a missing or bad
+          <code>X-Zolva-Signature</code> / <code>X-Zolva-Timestamp</code>. The desk's
+          <code>sign_payload</code> call above is what gets it through.</li>
           <li><strong>Every agent, every channel:</strong> the ticket carries
           <code>agent</code> and the channel-namespaced <code>session_id</code>, so one desk
           serves your WhatsApp, voice, and webchat deployments at once.</li>

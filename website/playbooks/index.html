@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Playbooks | Zolva</title>
-  <meta name="description" content="Copy-paste playbooks for deploying Zolva agents in production: channels (WhatsApp, SMS, RCS, Telegram, voice), security red-teaming, the feedback-to-fix loop, regulator-ready audit, self-hosted model gateways, PII redaction, and CI gating. Every provider call verified against official documentation." />
+  <meta name="description" content="Copy-paste playbooks for deploying Zolva agents in production: channels (WhatsApp, SMS, RCS, Telegram, voice), security red-teaming, the feedback-to-fix loop, regulator-ready audit, self-hosted model gateways, PII redaction, high-risk tool controls, and CI gating. Every provider call verified against official documentation." />
   <link rel="canonical" href="https://zolva.ai/playbooks/" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="apple-touch-icon" href="/mark-512.png" />
@@ -135,8 +135,8 @@
         <div class="section-head" style="max-width:46em; margin:clamp(2rem,5vh,3.5rem) 0 1.4rem;">
           <p class="eyebrow">Compliance &amp; privacy</p>
           <p>The evidence regulators ask for and the data handling they require: a tamper-evident
-          trail, contact limits that count across channels, and PII that never leaves your
-          perimeter.</p>
+          trail, contact limits that count across channels, PII that never leaves your
+          perimeter, and high-risk tools that cannot act without a human.</p>
         </div>
         <div class="why-grid">
           <a class="why-card" href="/playbooks/regulator-ready-audit/" style="display:block">
@@ -162,6 +162,14 @@
             reaches the model, while sessions, audit, and human handover keep the true transcript.
             Exports are masked too.</p>
             <p style="margin-top:0.8rem"><code>redaction</code> · <code>sessions</code> · <code>handover</code></p>
+          </a>
+          <a class="why-card" href="/playbooks/high-risk-tool-controls/" style="display:block">
+            <span class="num">14</span>
+            <h3>High-risk tool controls</h3>
+            <p>Fee waivers need a human, refunds have an amount cap, payment links have a
+            per-session budget, all checked before the tool runs. Tool output is screened for
+            planted instructions before the model ever reads it.</p>
+            <p style="margin-top:0.8rem"><code>guardrails</code> · <code>tools</code> · <code>handover</code></p>
           </a>
         </div>
 

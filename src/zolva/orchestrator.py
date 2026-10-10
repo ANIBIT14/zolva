@@ -193,6 +193,21 @@ class AgentApp:
             except BridgeError as e:
                 # degrade to handover, never to silence
                 return await self._escalate(cfg, session_id, f"provider error: {e}")
+            # token usage: cost tracking, OTel gen_ai.usage.*, and a hook point for budgets
+            verdict = await self.bus.emit(
+                Step(
+                    type="model_result",
+                    session_id=session_id,
+                    agent=cfg.name,
+                    data={
+                        "provider": cfg.model.provider,
+                        "model": cfg.model.name,
+                        **response.usage,
+                    },
+                )
+            )
+            if not verdict.allow:
+                return await self._escalate(cfg, session_id, verdict.reason or "blocked")
             if response.tool_calls:
                 await self._sessions.append(
                     session_id,
@@ -274,6 +289,21 @@ class AgentApp:
                             session_id,
                             f"tool error: {tc.name}: {e}",
                             trigger=json.dumps({"tool": tc.name, "args": tc.args}, default=str),
+                        )
+                    # tool output is untrusted input (CRM notes, emails, documents can
+                    # carry planted instructions): screened before the model reads it
+                    verdict = await self.bus.emit(
+                        Step(
+                            type="tool_result",
+                            session_id=session_id,
+                            agent=batch_agent,
+                            data={"name": tc.name, "content": content},
+                        )
+                    )
+                    if not verdict.allow:
+                        await self._close_pending(session_id, response.tool_calls[i:])
+                        return await self._escalate(
+                            cfg, session_id, verdict.reason or "blocked", trigger=content
                         )
                     await self._sessions.append(
                         session_id, [Message(role="tool", content=content, tool_call_id=tc.id)]

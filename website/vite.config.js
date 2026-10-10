@@ -25,6 +25,7 @@ export default defineConfig({
         "playbook-rcs": resolve(import.meta.dirname, "playbooks/rcs-fraud-alerts/index.html"),
         "playbook-contactcaps": resolve(import.meta.dirname, "playbooks/cross-channel-contact-caps/index.html"),
         "playbook-redaction": resolve(import.meta.dirname, "playbooks/pii-redaction-data-residency/index.html"),
+        "playbook-toolcontrols": resolve(import.meta.dirname, "playbooks/high-risk-tool-controls/index.html"),
         "use-cases": resolve(import.meta.dirname, "use-cases/index.html"),
         "uc-support": resolve(import.meta.dirname, "use-cases/banking-customer-support/index.html"),
         "uc-collections": resolve(import.meta.dirname, "use-cases/loan-collections/index.html"),

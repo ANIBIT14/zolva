@@ -113,8 +113,19 @@ class FeedbackQueue:
     def accepted(self) -> list[Failure]:
         return self._rows("accepted")
 
-    def accept(self, failure_id: int, cohort_path: str | Path, expect: str) -> None:
-        """Promote a failure to a PERMANENT eval case, the bug can never silently return."""
+    def accept(
+        self,
+        failure_id: int,
+        cohort_path: str | Path,
+        expect: str,
+        *,
+        redactor: "Redactor | None" = None,
+    ) -> None:
+        """Promote a failure to a PERMANENT eval case, the bug can never silently return.
+
+        The case input is a real customer message and the cohort file usually
+        gets committed; pass a Redactor (or `zolva triage --redaction`) so PII
+        never lands in the repo."""
         failure = self._get(failure_id)
         user_msgs = [m.content for m in failure.transcript if m.role == "user"]
         if not user_msgs:
@@ -132,7 +143,8 @@ class FeedbackQueue:
                 "min_pass_rate": 1.0,  # nosec B105  (eval gate threshold)
                 "cases": [],
             }
-        cohort.setdefault("cases", []).append({"input": user_msgs[-1], "expect": expect})
+        case_input = redactor.redact(user_msgs[-1]) if redactor else user_msgs[-1]
+        cohort.setdefault("cases", []).append({"input": case_input, "expect": expect})
         try:
             Cohort(**cohort)
         except ValidationError as e:
