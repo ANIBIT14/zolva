@@ -439,8 +439,8 @@ zolva compliance audit.sqlite --agents agents/ --out pack.json</code></pre>
           a judge answer that is not an explicit PASS is a block; a guardrail that raises blocks the
           step and escalates.</li>
           <li><strong>Budgets are per app instance:</strong> <code>max_calls</code> counts in
-          process memory, keyed on the customer (when <code>customer_ref</code> is passed, so a caller
-          rotating session ids cannot reset it) or else the session, and the tool. If one customer can move between replicas
+          process memory, counted against the session and, when <code>customer_ref</code> is passed, the customer;
+          either one being spent blocks, so rotating session ids or dropping the ref cannot reset it. If one customer can move between replicas
           mid-conversation, each replica counts separately, and a restart resets the count.</li>
           <li><strong>Amount caps are per call:</strong> <code>max_amount</code> checks one call's
           argument. Pair it with <code>max_calls</code> on the same tool so a large refund cannot

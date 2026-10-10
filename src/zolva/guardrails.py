@@ -237,19 +237,24 @@ class Guardrails:
                         return self._violation(
                             f"amount limit: {tool}.{spec['field']} {amount:g} > {spec['max']:g}"
                         )
-        # counted last, so a call blocked above doesn't use up the budget. Keyed
-        # on customer_ref when the caller supplies one: session ids come from
-        # the channel payload, so rotating them must not reset the budget
-        subject = str(step.data.get("customer_ref") or step.session_id)
+        # counted last, so a call blocked above doesn't use up the budget.
+        # Counted against the session AND the customer_ref (when given), and
+        # blocked if either is spent: session ids come from the channel
+        # payload and customer_ref is caller-supplied too, so neither rotating
+        # sessions nor dropping/swapping the ref mid-session opens a new budget
+        subjects = [f"session:{step.session_id}"]
+        if step.data.get("customer_ref"):
+            subjects.append(f"customer:{step.data['customer_ref']}")
         for rule in self._tools:
             spec = rule.get("max_calls")
             if spec is not None and spec["tool"] == tool:
-                key = (subject, tool)
-                if self._tool_counts.get(key, 0) >= spec["per_session"]:
+                keys = [(subject, tool) for subject in subjects]
+                if any(self._tool_counts.get(k, 0) >= spec["per_session"] for k in keys):
                     return self._violation(
-                        f"call limit: {tool} max {spec['per_session']} per session"
+                        f"call limit: {tool} max {spec['per_session']} per session/customer"
                     )
-                self._tool_counts[key] = self._tool_counts.get(key, 0) + 1
+                for k in keys:
+                    self._tool_counts[k] = self._tool_counts.get(k, 0) + 1
         return None
 
     def _violation(self, reason: str) -> Verdict:
