@@ -175,6 +175,13 @@ zolva validate agents/</code></pre>
           <li><strong>Protocol, not vendor:</strong> <code>provider: openai</code> means the
           OpenAI wire format. Anything that speaks it, including Azure OpenAI and Bedrock behind a
           compatible proxy, works through the same setting.</li>
+          <li><strong>Per-call token counts:</strong> the adapter reads the response's
+          <code>usage</code> block (<code>prompt_tokens</code> / <code>completion_tokens</code>)
+          into a <code>model_result</code> step with <code>input_tokens</code> and
+          <code>output_tokens</code>, which <code>OTelExporter</code> exports as
+          <code>gen_ai.usage.*</code>. Most OpenAI-compatible gateways return it; if yours omits
+          it, the step simply carries no counts. Reconcile it against the gateway's own spend
+          logs.</li>
         </ul>
         <p style="margin-top:1.5rem"><a href="/playbooks/">← All playbooks</a></p>
       </section>

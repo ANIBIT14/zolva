@@ -150,7 +150,7 @@ goal: >
           <pre><code data-lang="bash" id="c-run">zolva synthetics synthetics/ \
   --app app:app \
   --driver-provider openai --driver-model gpt-5.6-sol \
-  --judge-provider anthropic --judge-model claude-neutral \
+  --judge-provider anthropic --judge-model "$JUDGE_MODEL" \
   --gate</code></pre>
         </div>
         <p>Every turn flows through the bus, so the entire attack transcript, and any guardrail
@@ -195,6 +195,13 @@ jobs:
           <li><strong>Defences are config, not the prompt:</strong> third-party disclosure and
           threats are <code>never</code> rules that hard-block and escalate; no instruction pasted
           by an attacker can switch them off, because they run outside the model.</li>
+          <li><strong>Runtime counterpart for indirect injection:</strong> synthetics test what a
+          customer types; instructions planted in a CRM note, email, or document arrive through a
+          tool instead. A <code>tool_output:</code> guardrail section (<code>block_patterns</code>
+          regexes plus <code>never</code> / <code>refuse_topics</code> judge rules) screens every
+          tool result before the model reads it and escalates on a hit. See
+          <a href="/docs/#tool-output">tool-output screening</a> and the
+          <a href="/playbooks/high-risk-tool-controls/">high-risk tool controls playbook</a>.</li>
           <li><strong>Different-family judge:</strong> grade with a model from another family than
           the agent so the grader does not inherit the agent's weaknesses. The runner warns when
           the driver, judge, and agent all match.</li>

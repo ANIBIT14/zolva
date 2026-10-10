@@ -113,7 +113,19 @@ Guardrails.from_file("policies/collections.yaml", agent="collections-agent",
                      judge=judge_adapter, judge_model="...").attach(app.bus)
 ```
 
-Policies are validated at startup, a typo fails your deploy, not a live customer conversation. Judge rules are **fail-closed**: anything that isn't an explicit PASS blocks. Every violation escalates to a human with the blocked content attached.
+Tools that move money or change records get their own policy section, checked on every tool call *before* the tool runs, and `tool_output` screens what a tool returns *before* the model reads it, so instructions planted in a CRM note, email, or uploaded document never steer the agent (OWASP Agentic Top 10: goal hijack, tool misuse, context poisoning):
+
+```yaml
+tools:
+  - require_approval: [waive_fee]                                   # human handover with the exact args
+  - max_calls:  { tool: send_payment_link, per_session: 3 }
+  - max_amount: { tool: refund, field: amount, max: 5000 }          # missing/non-numeric amount fails closed
+tool_output:
+  - block_patterns: ["(?i)ignore (all )?previous instructions"]
+  - never: [instructions_addressed_to_the_assistant]                # judge rule, fail-closed
+```
+
+Contact windows may span midnight (`hours: "20:00-06:00"`). Policies are validated at startup, a typo or a rule in the wrong section fails your deploy, not a live customer conversation. Judge rules are **fail-closed**: anything that isn't an explicit PASS blocks. Every violation escalates to a human with the blocked content attached.
 
 ### Evals, gate releases on the worst cohort, never the average
 
@@ -154,6 +166,8 @@ q.accept(failure_id, "evals/regressions.yaml",   # human-in-the-loop promotion
 q.export_dataset("dataset.jsonl")                # fine-tuning on-ramp (SFT/DPO-ready)
 ```
 
+Promoted cases are real customer messages headed for a committed YAML file: pass `redactor=` to `accept` (or `zolva triage --redaction policies/redaction.yaml`) so PII never lands in the repo.
+
 Production signal → failure queue → triage → permanent eval case → gated fix. The bug can never silently return.
 
 ### Audit, tamper-evident, regulator-ready
@@ -165,7 +179,7 @@ from zolva import AuditLog, PostgresAuditStore
 log = AuditLog(PostgresAuditStore("postgresql://.../bankdb"))   # pip install "zolva[postgres]"
 ```
 
-`verify()` is the full pass from genesis by default; monitors use `verify(incremental=True)` plus a periodic full pass, which is what the dashboard does.
+`verify()` is the full pass from genesis by default; monitors use `verify(incremental=True)` plus a periodic full pass, which is what the dashboard does. A chain alone cannot prove its newest rows weren't cut off, so keep the head hash somewhere outside the database (the previous compliance pack's `audit_head_hash`, a WORM bucket) and pass it back: `verify(anchor=head)` / `zolva compliance ... --anchor <hash>` fails if that row is gone.
 
 ```python
 from zolva import AuditLog, scorecard
@@ -193,7 +207,7 @@ assert report.regulator_ready
 
 ### OpenTelemetry, drop into the observability stack you already run
 
-Every bus step becomes an OTel span, so Zolva lands in Datadog, Grafana, Langfuse, or any OTLP collector alongside the rest of the bank's telemetry. Zolva depends on the OpenTelemetry API only and emits through the global tracer, the bank owns the SDK and exporter config; with none configured the tracer is a no-op. By default only metadata leaves the process (step type, agent, session, tool and model names), never message bodies, so customer content stays in the in-VPC audit log.
+Every bus step becomes an OTel span, so Zolva lands in Datadog, Grafana, Langfuse, or any OTLP collector alongside the rest of the bank's telemetry. Zolva depends on the OpenTelemetry API only and emits through the global tracer, the bank owns the SDK and exporter config; with none configured the tracer is a no-op. Spans carry the OpenTelemetry GenAI semantic-convention attributes (`gen_ai.provider.name`, `gen_ai.request.model`, `gen_ai.tool.name`, `gen_ai.usage.input_tokens` / `output_tokens`, `gen_ai.conversation.id`); every model reply emits a `model_result` step with the provider-reported token usage, so cost per agent and per session falls out of the audit log or your tracing backend. By default only metadata leaves the process (step type, agent, session, tool and model names, token counts), never message bodies, so customer content stays in the in-VPC audit log.
 
 ```python
 from zolva import OTelExporter
@@ -222,21 +236,21 @@ A persona LLM converses with your *real* agent (staging tools); a judge grades t
 
 ### Human handover, one interface, your ticketing system, and back
 
-When a teammate resolves the ticket, close the loop: the resolution lands in the session and the audit trail, so the agent knows what happened when the customer returns.
-
-```python
-await app.resume("collections-agent", session_id, "waived the late fee, customer notified")
-# or over HTTP: POST /sessions/{agent}/resume via `zolva serve`
-```
-
-### Human handover, one interface, your ticketing system
-
 ```python
 from zolva import HandoverBackend, WebhookBackend
 app = AgentApp.from_config("agents/", handover=WebhookBackend(url, secret=hmac_secret))
 ```
 
 Triggered by agent decision, guardrail violation, tool crash, provider failure, or the customer asking, one code path. Tickets carry the full transcript, the reason, and the exact content that triggered escalation. Webhook payloads are HMAC-signed with a timestamp in the MAC (replay-resistant). Receivers verify with `zolva.verify_zolva_signature(body, sig, ts, secret)`.
+
+When a teammate resolves the ticket, close the loop: the resolution lands in the session and the audit trail, so the agent knows what happened when the customer returns.
+
+```python
+await app.resume("collections-agent", session_id, "waived the late fee, customer notified")
+# or over HTTP: POST /sessions/{agent}/resume via `zolva serve` (signed; requires ZOLVA_INBOUND_SECRET)
+```
+
+The HTTP resume path writes a trusted `[human teammate]` turn, so `zolva serve` refuses it (403) unless `ZOLVA_INBOUND_SECRET` is set and the request carries a valid `X-Zolva-Signature`.
 
 ### Channels, one CX endpoint, every declared channel
 
@@ -265,7 +279,7 @@ reply = await hub.dispatch("whatsapp", "collections-agent", webhook_payload)
 
 Any agent becomes reachable on the channels the company declares; the hub resolves the adapter, enforces a per-agent channel allowlist, namespaces sessions per channel (identities can never collide across channels), and delivers the reply back on the same channel with HMAC-signed webhooks. Both directions are emitted on the bus, so audit and guardrails see the customer contact itself. Custom channels implement one two-method `ChannelAdapter`; a scripted `FakeChannel` ships for tests, and an `elevenlabs` voice adapter (documented TTS endpoint, signed audio delivery, webhook-signature helper) ships in the box.
 
-Thirteen end-to-end recipes live at [zolva.ai/playbooks](https://zolva.ai/playbooks/): channel deployments (WhatsApp collections, SMS with Twilio and Razorpay, RCS fraud alerts, Telegram support with Zendesk, voice CX with ElevenLabs), a Slack handover desk, CI gating, and capability playbooks that stand alone, red-teaming your agent with adversarial synthetics, the feedback-to-fix loop, regulator-ready audit and dashboard, running against your own in-VPC LLM gateway, cross-channel contact caps, and PII redaction. Every provider call is verified against the official documentation, and each playbook links to it.
+Fourteen end-to-end recipes live at [zolva.ai/playbooks](https://zolva.ai/playbooks/): channel deployments (WhatsApp collections, SMS with Twilio and Razorpay, RCS fraud alerts, Telegram support with Zendesk, voice CX with ElevenLabs), a Slack handover desk, CI gating, and capability playbooks that stand alone, high-risk tool controls (approvals, amount caps, tool-output injection screening), red-teaming your agent with adversarial synthetics, the feedback-to-fix loop, regulator-ready audit and dashboard, running against your own in-VPC LLM gateway, cross-channel contact caps, and PII redaction. Every provider call is verified against the official documentation, and each playbook links to it.
 
 ## Security posture
 
@@ -295,7 +309,7 @@ Point your agent at [`llms.txt`](llms.txt) / [`llms-full.txt`](llms-full.txt), o
 
 ## Status & roadmap
 
-**Beta.** Core runtime, eight plugins (guardrails, evals, feedback, audit, synthetics, channels, redaction, OpenTelemetry export), the dashboard, the `zolva serve` entrypoint, and the CLI (`zolva validate | eval --gate | synthetics --gate | scorecard | compliance --gate | dashboard | serve | triage | export-dataset`) are implemented and tested (270 tests, `mypy --strict`, 3-version CI matrix). Agents with a `guardrails:` or `evals:` field in their YAML get them wired automatically by `AgentApp.from_config`.
+**Beta.** Core runtime, eight plugins (guardrails, evals, feedback, audit, synthetics, channels, redaction, OpenTelemetry export), the dashboard, the `zolva serve` entrypoint, and the CLI (`zolva validate | eval --gate | synthetics --gate | scorecard | compliance --gate | dashboard | serve | triage | export-dataset`) are implemented and tested (290+ tests, `mypy --strict`, 3-version CI matrix). Agents with a `guardrails:` or `evals:` field in their YAML get them wired automatically by `AgentApp.from_config`.
 
 Zolva is maintained as an independent open-source reference implementation, no commercial backing and no sales motion. Use it, fork it, battle-test it in staging; issues and PRs genuinely shape what gets built.
 
@@ -304,7 +318,11 @@ Before 1.0:
 - More `ChannelAdapter` implementations (Twilio, telephony) and ticketing-system handover backends that call the resume path (the interfaces and an ElevenLabs voice adapter ship; more adapters welcome)
 - Session summarization for months-long conversation threads
 - Judge model configured per policy
-- Full parent/child OTel trace trees per session (v0.5.1 emits one span per step)
+- Approve-then-execute for `require_approval` tools (today the human performs the action; the approval would be bound to a hash of the exact args)
+- MCP client: import tools from MCP servers over Streamable HTTP, schema-pinned, every result screened by `tool_output`
+- OpenAI Responses API adapter (newest OpenAI models require it for tool calling)
+- Versioned audit digest (unambiguous field encoding; today's `|`-joined digest needs a migration path to change)
+- Full parent/child OTel trace trees per session (one span per step today)
 
 Design docs: [`docs/specs/`](docs/specs/) · Full architecture, threat model, and competitive positioning included.
 

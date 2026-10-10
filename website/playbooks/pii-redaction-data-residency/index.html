@@ -134,13 +134,23 @@ app = AgentApp.from_config("agents/", redaction="policies/redaction.yaml")</code
           <pre><code data-lang="bash" id="c-exp">zolva export-dataset failures.db dataset.jsonl \
   --redaction policies/redaction.yaml</code></pre>
         </div>
+        <p>Do the same at triage. Promoting a failure writes the customer's message into an eval
+        cohort that usually gets committed to git, so mask it on the way in:</p>
+        <div class="code">
+          <div class="code-bar"><span>terminal</span><button class="copy-btn" data-copy="#c-tri-red">copy</button></div>
+          <pre><code data-lang="bash" id="c-tri-red">zolva triage failures.db --accept 42 \
+  --cohort evals/regressions.yaml \
+  --expect "states the correct due date from the ledger" \
+  --redaction policies/redaction.yaml</code></pre>
+        </div>
       </section>
 
       <section id="notes">
         <h2>What is and is not masked <a class="anchor-link" href="#notes">#</a></h2>
         <ul>
           <li><strong>Masked:</strong> only the copy sent to the model provider, and, on request,
-          the dataset export. That is the text that would otherwise leave your perimeter.</li>
+          the dataset export and promoted eval cases. That is the text that would otherwise leave your
+          perimeter or land in git.</li>
           <li><strong>Not masked:</strong> the session history, the audit chain, and the human
           handover ticket, all keep the true transcript, because your own systems and staff need
           it to resolve the case and to answer an auditor.</li>

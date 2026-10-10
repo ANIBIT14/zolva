@@ -131,12 +131,24 @@ print(scorecard(log).summary())           # SARR + containment</code></pre>
         <p>Run <code>zolva scorecard</code> in a scheduled job and alert on a failed verification;
         a broken chain is the one signal you never want to discover during an audit instead of
         before it.</p>
+        <p>A chain alone cannot prove its tail was not cut: deleting the newest rows leaves the
+        rest self-consistent. So keep a head hash outside the database, such as the
+        <code>audit_head_hash</code> of the previous compliance pack, and anchor each new check to
+        it. Verification then fails unless that row is still on the chain.</p>
+        <div class="code">
+          <div class="code-bar"><span>terminal</span><button class="copy-btn" data-copy="#c-anchor">copy</button></div>
+          <pre><code data-lang="bash" id="c-anchor"># python: log.verify(anchor=prev_head) or build_report(log, anchor=prev_head)
+zolva compliance audit.sqlite --anchor "$PREV_HEAD" --out pack.json --gate</code></pre>
+        </div>
+        <p>Store each pack's head hash somewhere the database's operators cannot rewrite (a WORM
+        bucket, a ticket, the signed pack itself), and pass it as the next run's anchor.</p>
       </section>
 
       <section id="step-dashboard">
         <h2>Step 3 · Stand up the read-only dashboard <a class="anchor-link" href="#step-dashboard">#</a></h2>
         <p>The dashboard is a self-hosted web UI over the config and the audit database: agent, tool,
-        and handoff topology, a live-tailing session feed with full transcripts, tool-call stats, and
+        and handoff topology, a live-tailing session feed with full transcripts (including
+        <code>tool_result</code> content and <code>model_result</code> token counts), tool-call stats, and
         the SARR scorecard behind a continuous chain-verification badge. It opens the database
         read-only and adds no instrumentation.</p>
         <div class="code">
@@ -154,7 +166,8 @@ zolva dashboard agents/ --audit audit.sqlite    # http://127.0.0.1:8600</code></
         <h2>Mapping to the rules <a class="anchor-link" href="#notes">#</a></h2>
         <ul>
           <li><strong>Traceability:</strong> the hash chain makes every decision reconstructable and
-          tamper-evident; verification is a single call that either holds or does not.</li>
+          tamper-evident; verification is a single call that either holds or does not, and an
+          external anchor catches a truncated tail.</li>
           <li><strong>Human oversight:</strong> handovers are first-class entries, so the record
           shows when and why a human took over, and how the session resumed.</li>
           <li><strong>Ongoing monitoring:</strong> the scorecard plus scheduled verification give a

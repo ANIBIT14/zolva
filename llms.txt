@@ -2,13 +2,16 @@
 
 > Open-source, self-hosted agent platform for banks and fintechs. Agents are
 > declared in YAML + Markdown config; tools are the bank's own APIs registered
-> as typed Python functions; guardrails (incl. per-customer contact caps),
+> as typed Python functions; guardrails (incl. per-customer contact caps,
+> human approval and amount/call limits on high-risk tools, and screening of
+> tool output for planted prompt injection before the model reads it),
 > PII redaction before provider calls, evals, feedback loop, hash-chained
 > audit with pluggable storage (SQLite or Postgres), human handover with a
 > resume path, and synthetics attach to every step via a middleware bus.
 > An EU AI Act compliance evidence pack maps the audit chain, config hashes,
 > handover and eval gates to named articles; OpenTelemetry export drops every
-> step into the bank's existing observability stack. Ships a read-only team
+> step into the bank's existing observability stack (GenAI semantic-convention
+> attributes, per-call token usage). Ships a read-only team
 > dashboard and a reference HTTP entrypoint (`zolva serve`).
 > pip-installable, runs entirely inside the bank's infrastructure.
 > Apache-2.0. https://zolva.ai
@@ -20,7 +23,7 @@ Entry points: `zolva.AgentApp.from_config("agents/")`, `@zolva.tool`, CLI `zolva
 
 - [AGENTS.md](AGENTS.md): exact setup, verify, and convention instructions for AI coding agents
 - [README.md](README.md): quickstart and public API
-- [Playbooks](https://zolva.ai/playbooks/): thirteen production playbooks. Channels: WhatsApp, Twilio+Razorpay SMS, RCS fraud alerts, Telegram+Zendesk, ElevenLabs voice. Platform: CI gating, Slack handover desk, red-team synthetics, feedback-to-fix loop, regulator-ready audit+dashboard, self-hosted LLM gateway, cross-channel contact caps, PII redaction. Every provider call verified against and linked to official docs
+- [Playbooks](https://zolva.ai/playbooks/): fourteen production playbooks. Channels: WhatsApp, Twilio+Razorpay SMS, RCS fraud alerts, Telegram+Zendesk, ElevenLabs voice. Platform: CI gating, Slack handover desk, high-risk tool controls (approvals, amount caps, tool-output injection screening), red-team synthetics, feedback-to-fix loop, regulator-ready audit+dashboard, self-hosted LLM gateway, cross-channel contact caps, PII redaction. Every provider call verified against and linked to official docs
 - [Use cases](https://zolva.ai/use-cases/): seven industry use cases with the controls each one needs. Banking customer support, loan collections, fraud and disputes, KYC and onboarding, insurance claims, healthcare patient support, telecom operations
 - [Blog](https://zolva.ai/blog/): RBI FREE-AI framework as an engineering spec, prompt injection and the 2026 OWASP agentic risks, MCP tool access inside a bank, AI voice disclosure in collections, EU AI Act obligations for financial services, DORA and LLM vendor concentration risk, guardrails as config rather than prompts, what a defensible audit trail contains, choosing an agent framework for regulated industries
 - [docs/specs/2026-07-12-zolva-design.md](docs/specs/2026-07-12-zolva-design.md): full architecture, security model, competitive positioning
